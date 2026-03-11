@@ -1,184 +1,153 @@
-import { create } from "zustand";
-import type { Session, UseaiConfig, User, UpdateInfo } from "./lib/api.js";
-import {
-  fetchSessions,
-  fetchMilestones,
-  fetchConfig,
-  patchConfig as apiPatchConfig,
-  postSendOtp,
-  postVerifyOtp,
-  postLogout,
-  postSync,
-  fetchUpdateCheck,
-  type MilestoneRow,
-} from "./lib/api.js";
-import { computeStats, type ComputedStats } from "./lib/stats.js";
+import { create } from 'zustand';
+import type { SessionSeal, Milestone, LocalConfig, HealthInfo, UpdateInfo } from './lib/api';
+import { fetchSessions, fetchMilestones, fetchConfig, fetchHealth, fetchUpdateCheck, deleteSession as apiDeleteSession, deleteConversation as apiDeleteConversation, deleteMilestone as apiDeleteMilestone } from './lib/api';
+import type { TimeScale } from './components/time-travel/types';
+import { ALL_SCALES, SCALE_MS } from './components/time-travel/types';
+import type { Filters, ActiveTab } from './lib/types';
 
-export type ActiveTab = "stats" | "sessions" | "milestones" | "settings";
-export type AuthStep = "idle" | "email" | "code";
+export type { TimeScale, Filters, ActiveTab };
+export { SCALE_MS };
 
-interface State {
-  // Data
-  sessions: Session[];
-  stats: ComputedStats | null;
-  milestones: MilestoneRow[];
-  config: UseaiConfig | null;
-  user: User | null;
+export interface DashboardState {
+  sessions: SessionSeal[];
+  milestones: Milestone[];
+  config: LocalConfig | null;
+  health: HealthInfo | null;
   updateInfo: UpdateInfo | null;
-
-  // UI
-  activeTab: ActiveTab;
-  daysRange: number;
   loading: boolean;
-  syncing: boolean;
-  authStep: AuthStep;
-  authEmail: string;
-  authError: string | null;
-  error: string | null;
-
-  // Actions
-  setTab: (tab: ActiveTab) => void;
-  setDaysRange: (days: number) => void;
+  timeTravelTime: number | null; // null = live
+  timeScale: TimeScale;
+  filters: Filters;
+  activeTab: ActiveTab;
 
   loadAll: () => Promise<void>;
-  loadSessions: () => Promise<void>;
-  loadMilestones: () => Promise<void>;
-  loadConfig: () => Promise<void>;
+  loadHealth: () => Promise<void>;
   loadUpdateCheck: () => Promise<void>;
-
-  patchConfig: (patch: Partial<UseaiConfig>) => Promise<void>;
-
-  // Auth
-  beginLogin: () => void;
-  cancelLogin: () => void;
-  sendOtp: (email: string) => Promise<void>;
-  verifyOtp: (code: string) => Promise<void>;
-  logout: () => Promise<void>;
-
-  // Sync
-  syncNow: () => Promise<void>;
+  setTimeTravelTime: (t: number | null) => void;
+  setTimeScale: (s: TimeScale) => void;
+  setFilter: (key: keyof Filters, value: string) => void;
+  setActiveTab: (tab: ActiveTab) => void;
+  deleteSession: (sessionId: string) => Promise<void>;
+  deleteConversation: (conversationId: string) => Promise<void>;
+  deleteMilestone: (milestoneId: string) => Promise<void>;
 }
 
-export const useStore = create<State>((set, get) => ({
+// Track IDs with in-flight delete operations so loadAll doesn't resurrect them
+let pendingDeletes = new Set<string>();
+
+export const useDashboardStore = create<DashboardState>((set, get) => ({
   sessions: [],
-  stats: null,
   milestones: [],
   config: null,
-  user: null,
+  health: null,
   updateInfo: null,
-  activeTab: "stats",
-  daysRange: 30,
-  loading: false,
-  syncing: false,
-  authStep: "idle",
-  authEmail: "",
-  authError: null,
-  error: null,
-
-  setTab: (tab) => set({ activeTab: tab }),
-
-  setDaysRange: (days) => {
-    set({ daysRange: days });
-    void get().loadSessions();
-    void get().loadMilestones();
-  },
-
-  loadAll: async () => {
-    set({ loading: true, error: null });
+  loading: true,
+  timeTravelTime: null,
+  timeScale: (() => {
     try {
-      await Promise.all([
-        get().loadSessions(),
-        get().loadMilestones(),
-        get().loadConfig(),
-        get().loadUpdateCheck(),
+      const saved = localStorage.getItem('useai-time-scale');
+      const valid: TimeScale[] = [...ALL_SCALES];
+      if (saved && valid.includes(saved as TimeScale)) return saved as TimeScale;
+    } catch { /* ignore */ }
+    return 'day' as TimeScale;
+  })(),
+  filters: { category: 'all', client: 'all', project: 'all', language: 'all' },
+  activeTab: (() => {
+    try {
+      const saved = localStorage.getItem('useai-active-tab');
+      if (saved === 'sessions' || saved === 'insights' || saved === 'settings') return saved;
+    } catch { /* ignore */ }
+    return 'sessions' as ActiveTab;
+  })(),
+  loadAll: async () => {
+    try {
+      const [sessions, milestones, config] = await Promise.all([
+        fetchSessions(),
+        fetchMilestones(),
+        fetchConfig(),
       ]);
-    } catch (err) {
-      set({ error: String(err) });
-    } finally {
+      // Filter out sessions/milestones with in-flight deletes so auto-refresh doesn't resurrect them
+      set({
+        sessions: pendingDeletes.size > 0 ? sessions.filter(s => !pendingDeletes.has(s.session_id)) : sessions,
+        milestones: pendingDeletes.size > 0 ? milestones.filter(m => !pendingDeletes.has(m.session_id)) : milestones,
+        config,
+        loading: false,
+      });
+    } catch {
       set({ loading: false });
     }
   },
 
-  loadSessions: async () => {
-    const { daysRange } = get();
-    const data = await fetchSessions(daysRange);
-    const stats = computeStats(data.sessions);
-    set({ sessions: data.sessions, stats });
-  },
-
-  loadMilestones: async () => {
-    const { daysRange } = get();
-    const data = await fetchMilestones(daysRange);
-    set({ milestones: data.milestones });
-  },
-
-  loadConfig: async () => {
-    const data = await fetchConfig();
-    const config = data.config;
-    const user = (config.auth?.user as User | undefined) ?? null;
-    set({ config, user });
+  loadHealth: async () => {
+    try {
+      const health = await fetchHealth();
+      set({ health });
+    } catch { /* ignore */ }
   },
 
   loadUpdateCheck: async () => {
     try {
-      const info = await fetchUpdateCheck();
-      set({ updateInfo: info });
-    } catch {
-      // Non-critical
-    }
+      const updateInfo = await fetchUpdateCheck();
+      set({ updateInfo });
+    } catch { /* ignore */ }
   },
 
-  patchConfig: async (patch) => {
-    const data = await apiPatchConfig(patch);
-    const config = data.config;
-    const user = (config.auth?.user as User | undefined) ?? null;
-    set({ config, user });
+  setTimeTravelTime: (t) => set({ timeTravelTime: t }),
+
+  setTimeScale: (s) => {
+    try { localStorage.setItem('useai-time-scale', s); } catch { /* ignore */ }
+    set({ timeScale: s });
   },
 
-  // ── Auth ────────────────────────────────────────────────────────────────────
+  setFilter: (key, value) =>
+    set((state) => ({ filters: { ...state.filters, [key]: value } })),
 
-  beginLogin: () => set({ authStep: "email", authEmail: "", authError: null }),
-  cancelLogin: () => set({ authStep: "idle", authEmail: "", authError: null }),
+  setActiveTab: (tab) => {
+    try { localStorage.setItem('useai-active-tab', tab); } catch { /* ignore */ }
+    set({ activeTab: tab });
+  },
 
-  sendOtp: async (email) => {
-    set({ authError: null });
+  deleteSession: async (sessionId) => {
+    pendingDeletes.add(sessionId);
+    set({
+      sessions: get().sessions.filter(s => s.session_id !== sessionId),
+      milestones: get().milestones.filter(m => m.session_id !== sessionId),
+    });
     try {
-      await postSendOtp(email);
-      set({ authStep: "code", authEmail: email });
+      await apiDeleteSession(sessionId);
     } catch (err) {
-      set({ authError: String(err) });
-    }
-  },
-
-  verifyOtp: async (code) => {
-    set({ authError: null });
-    const { authEmail } = get();
-    try {
-      const data = await postVerifyOtp(authEmail, code);
-      set({ user: data.user, authStep: "idle" });
-      await get().loadConfig();
-    } catch (err) {
-      set({ authError: String(err) });
-    }
-  },
-
-  logout: async () => {
-    await postLogout();
-    await get().loadConfig();
-    set({ user: null });
-  },
-
-  // ── Sync ────────────────────────────────────────────────────────────────────
-
-  syncNow: async () => {
-    set({ syncing: true });
-    try {
-      await postSync();
-      await get().loadConfig();
+      console.error('Failed to delete session:', sessionId, err);
+      // Re-fetch to get the actual server state instead of blindly reverting
+      get().loadAll();
     } finally {
-      set({ syncing: false });
+      pendingDeletes.delete(sessionId);
+    }
+  },
+
+  deleteConversation: async (conversationId) => {
+    const sessionIds = new Set(get().sessions.filter(s => s.conversation_id === conversationId).map(s => s.session_id));
+    for (const id of sessionIds) pendingDeletes.add(id);
+    set({
+      sessions: get().sessions.filter(s => s.conversation_id !== conversationId),
+      milestones: get().milestones.filter(m => !sessionIds.has(m.session_id)),
+    });
+    try {
+      await apiDeleteConversation(conversationId);
+    } catch (err) {
+      console.error('Failed to delete conversation:', conversationId, err);
+      get().loadAll();
+    } finally {
+      for (const id of sessionIds) pendingDeletes.delete(id);
+    }
+  },
+
+  deleteMilestone: async (milestoneId) => {
+    set({ milestones: get().milestones.filter(m => m.id !== milestoneId) });
+    try {
+      await apiDeleteMilestone(milestoneId);
+    } catch (err) {
+      console.error('Failed to delete milestone:', milestoneId, err);
+      get().loadAll();
     }
   },
 }));
-
-export type { MilestoneRow };

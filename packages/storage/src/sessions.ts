@@ -49,6 +49,16 @@ export async function readSessionsForRange(days: number): Promise<Session[]> {
     );
 }
 
+export async function writeSessionsForDate(date: string, sessions: Session[]): Promise<void> {
+  await ensureDir(DATA_DIR);
+  const lines = sessions.map((s) => JSON.stringify(s));
+  await writeFile(
+    dateFilePath(date),
+    lines.join("\n") + (lines.length ? "\n" : ""),
+    "utf-8",
+  );
+}
+
 export async function deleteSession(promptId: string): Promise<void> {
   const dates = getLast(30);
   for (const date of dates) {

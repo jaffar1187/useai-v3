@@ -1,254 +1,319 @@
-import { useStore } from "../store.js";
-import type { UseaiConfig } from "../lib/api.js";
+import { useEffect, useState, useCallback } from 'react';
+import { Camera, BarChart3, Cloud, AlertTriangle, ChevronDown, Save, Check, Loader2 } from 'lucide-react';
+import type { FullConfig } from '../lib/api';
+import { fetchFullConfig, patchConfig } from '../lib/api';
 
-function Toggle({
-  checked,
-  onChange,
+// ── Inline sub-components ───────────────────────────────────────────────────
+
+function SettingToggle({
   label,
   description,
+  checked,
+  onChange,
+  warning,
 }: {
+  label: string;
+  description: string;
   checked: boolean;
   onChange: (v: boolean) => void;
-  label: string;
-  description?: string;
+  warning?: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-start justify-between gap-4 py-3">
-      <div>
-        <p className="text-sm font-medium text-slate-200">{label}</p>
-        {description && <p className="mt-0.5 text-xs text-slate-500">{description}</p>}
+    <label className="flex items-start justify-between gap-3 py-2 cursor-pointer group">
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-medium text-text-primary">{label}</div>
+        <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">{description}</div>
+        {warning && checked && (
+          <div className="flex items-center gap-1 mt-1 text-[11px] text-warning">
+            <AlertTriangle className="w-3 h-3 shrink-0" />
+            {warning}
+          </div>
+        )}
       </div>
       <button
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={[
-          "relative mt-0.5 inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
-          checked ? "bg-violet-600" : "bg-slate-600",
-        ].join(" ")}
+        className="relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200"
+        style={{ backgroundColor: checked ? '#52525b' : 'var(--bg-surface-2)' }}
       >
         <span
-          className={[
-            "inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform",
-            checked ? "translate-x-4" : "translate-x-1",
-          ].join(" ")}
+          className={`
+            pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200
+            ${checked ? 'translate-x-4' : 'translate-x-0'}
+          `}
         />
       </button>
     </label>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function SettingSelect({
+  label,
+  description,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
   return (
-    <div className="card">
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">
-        {title}
-      </h3>
-      <div className="divide-y divide-slate-700/50">{children}</div>
+    <div className="flex items-start justify-between gap-3 py-2">
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-medium text-text-primary">{label}</div>
+        <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">{description}</div>
+      </div>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="appearance-none bg-bg-surface-2 border border-border/50 rounded-md px-2.5 py-1 pr-7 text-xs text-text-primary cursor-pointer hover:border-border transition-colors"
+        >
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-text-muted pointer-events-none" />
+      </div>
     </div>
   );
 }
 
-export function SettingsPage() {
-  const { config, patchConfig, user, logout, syncNow, syncing } = useStore();
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-  if (!config) {
+function configsEqual(a: FullConfig, b: FullConfig): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+// ── Main ────────────────────────────────────────────────────────────────────
+
+type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+
+export function SettingsPage() {
+  const [saved, setSaved] = useState<FullConfig | null>(null); // last-saved config from server
+  const [draft, setDraft] = useState<FullConfig | null>(null); // local draft being edited
+  const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [saveResult, setSaveResult] = useState<string[] | null>(null); // tools updated
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchFullConfig()
+      .then((c) => {
+        setSaved(c);
+        setDraft(structuredClone(c));
+      })
+      .catch((err) => setError((err as Error).message));
+  }, []);
+
+  const isDirty = saved && draft ? !configsEqual(saved, draft) : false;
+
+  const handleSave = useCallback(async () => {
+    if (!draft || !saved) return;
+    setSaveState('saving');
+    setSaveResult(null);
+    try {
+      const result = await patchConfig({
+        capture: draft.capture,
+        sync: draft.sync,
+        evaluation_framework: draft.evaluation_framework,
+      });
+      const { instructions_updated, ...config } = result;
+      setSaved(config);
+      setDraft(structuredClone(config));
+      setSaveResult(instructions_updated ?? []);
+      setSaveState('saved');
+      setTimeout(() => setSaveState('idle'), 3000);
+    } catch {
+      setSaveState('error');
+      setTimeout(() => setSaveState('idle'), 3000);
+    }
+  }, [draft, saved]);
+
+  const handleDiscard = useCallback(() => {
+    if (saved) setDraft(structuredClone(saved));
+  }, [saved]);
+
+  // Local draft setters (no API calls)
+  const setCapture = useCallback((partial: Partial<FullConfig['capture']>) => {
+    setDraft((d) => d ? { ...d, capture: { ...d.capture, ...partial } } : d);
+  }, []);
+
+  const setSync = useCallback((partial: Partial<FullConfig['sync']>) => {
+    setDraft((d) => d ? { ...d, sync: { ...d.sync, ...partial } } : d);
+  }, []);
+
+  const setFramework = useCallback((v: string) => {
+    setDraft((d) => d ? { ...d, evaluation_framework: v } : d);
+  }, []);
+
+  if (error) {
     return (
-      <div className="card animate-pulse h-48 bg-slate-800/40" />
+      <div className="max-w-xl mx-auto mt-12 text-center">
+        <div className="text-sm text-danger">Failed to load config: {error}</div>
+      </div>
     );
   }
 
-  async function update(patch: Partial<UseaiConfig>) {
-    await patchConfig(patch);
+  if (!draft) {
+    return (
+      <div className="max-w-xl mx-auto mt-12 text-center">
+        <div className="text-sm text-text-muted">Loading settings...</div>
+      </div>
+    );
   }
 
-  const capture = config.capture ?? { prompt: false, promptImages: false, evaluation: true, milestones: true, reasonsLevel: "none" };
-  const sync = config.sync ?? { enabled: false, autoSync: false, intervalMinutes: 30 };
-  const framework = config.evaluation?.framework ?? "space";
-
   return (
-    <div className="space-y-5">
-      {/* Evaluation framework */}
-      <Section title="Evaluation Framework">
-        <div className="py-3">
-          <p className="mb-2 text-xs text-slate-500">
-            How sessions are scored after each conversation.
-          </p>
-          <div className="flex gap-2">
-            {(["space", "aps", "raw"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => void update({ evaluation: { framework: f } })}
-                className={[
-                  "rounded-lg border px-4 py-2 text-sm font-medium transition-colors",
-                  framework === f
-                    ? "border-violet-500 bg-violet-900/40 text-violet-300"
-                    : "border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-200",
-                ].join(" ")}
-              >
-                {f.toUpperCase()}
-              </button>
-            ))}
+    <div className="max-w-xl mx-auto pt-2 pb-12 space-y-5">
+      {/* Capture */}
+      <section className="bg-bg-surface-1 border border-border/50 rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Camera className="w-4 h-4 text-text-muted" />
+          <h2 className="text-xs font-bold text-text-muted uppercase tracking-widest">Capture</h2>
+        </div>
+        <p className="text-[11px] text-text-muted mb-3">What data to record locally for each session.</p>
+
+        <div className="divide-y divide-border/30">
+          <SettingToggle
+            label="Prompts"
+            description="Record prompt word count and content metadata"
+            checked={draft.capture.prompt}
+            onChange={(v) => setCapture({ prompt: v })}
+          />
+          <SettingToggle
+            label="Prompt images"
+            description="Record image descriptions from prompts"
+            checked={draft.capture.prompt_images}
+            onChange={(v) => setCapture({ prompt_images: v })}
+          />
+          <SettingToggle
+            label="Evaluation scores"
+            description="Record session quality scores (SPACE framework)"
+            checked={draft.capture.evaluation}
+            onChange={(v) => setCapture({ evaluation: v })}
+          />
+          <SettingSelect
+            label="Evaluation reasons"
+            description="When to include reason text for each score"
+            value={draft.capture.evaluation_reasons}
+            options={[
+              { value: 'all', label: 'All scores' },
+              { value: 'below_perfect', label: 'Below perfect only' },
+              { value: 'none', label: 'None' },
+            ]}
+            onChange={(v) => setCapture({ evaluation_reasons: v as FullConfig['capture']['evaluation_reasons'] })}
+          />
+          <SettingToggle
+            label="Milestones"
+            description="Record milestones (accomplishments) from each session"
+            checked={draft.capture.milestones}
+            onChange={(v) => setCapture({ milestones: v })}
+          />
+        </div>
+      </section>
+
+      {/* Evaluation */}
+      <section className="bg-bg-surface-1 border border-border/50 rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <BarChart3 className="w-4 h-4 text-text-muted" />
+          <h2 className="text-xs font-bold text-text-muted uppercase tracking-widest">Evaluation</h2>
+        </div>
+        <p className="text-[11px] text-text-muted mb-3">How sessions are scored.</p>
+
+        <SettingSelect
+          label="Framework"
+          description="Scoring method used for session evaluations"
+          value={draft.evaluation_framework}
+          options={[
+            { value: 'space', label: 'SPACE (weighted)' },
+            { value: 'raw', label: 'Raw (equal weight)' },
+          ]}
+          onChange={setFramework}
+        />
+      </section>
+
+      {/* Cloud Sync */}
+      <section className="bg-bg-surface-1 border border-border/50 rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Cloud className="w-4 h-4 text-text-muted" />
+          <h2 className="text-xs font-bold text-text-muted uppercase tracking-widest">Cloud Sync</h2>
+        </div>
+        <p className="text-[11px] text-text-muted mb-3">
+          Sync session data to useai.dev for leaderboards and public profiles.
+          {!draft.authenticated && ' Login first to enable sync.'}
+        </p>
+
+        <div className="divide-y divide-border/30">
+          <SettingToggle
+            label="Auto-sync"
+            description="Automatically sync data on a schedule"
+            checked={draft.sync.enabled}
+            onChange={(v) => setSync({ enabled: v })}
+          />
+
+          {draft.sync.enabled && (
+            <>
+              <SettingSelect
+                label="Sync interval"
+                description="How often to sync data"
+                value={String(draft.sync.interval_hours)}
+                options={[
+                  { value: '0.25', label: 'Every 15 minutes' },
+                  { value: '0.5', label: 'Every 30 minutes' },
+                  { value: '1', label: 'Every hour' },
+                  { value: '2', label: 'Every 2 hours' },
+                  { value: '3', label: 'Every 3 hours' },
+                  { value: '6', label: 'Every 6 hours' },
+                  { value: '12', label: 'Every 12 hours' },
+                  { value: '24', label: 'Every 24 hours' },
+                ]}
+                onChange={(v) => setSync({ interval_hours: Number(v) })}
+              />
+
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* Save bar */}
+      {isDirty && (
+        <div className="sticky bottom-4 flex items-center justify-between gap-3 bg-bg-surface-1 border border-border/50 rounded-xl px-4 py-3 shadow-lg">
+          <div className="text-xs text-text-muted">
+            {saveState === 'saved' && saveResult
+              ? `Saved. Updated instructions in ${saveResult.length} tool${saveResult.length !== 1 ? 's' : ''}: ${saveResult.join(', ') || 'none installed'}`
+              : saveState === 'error'
+                ? 'Failed to save. Try again.'
+                : 'You have unsaved changes'}
           </div>
-          <p className="mt-2 text-xs text-slate-600">
-            {framework === "space"
-              ? "SPACE: Satisfaction, Performance, Activity, Communication, Efficiency"
-              : framework === "aps"
-                ? "APS: Aggregate performance score across 5 weighted dimensions"
-                : "Raw: Direct evaluation pass-through with simple average"}
-          </p>
-        </div>
-      </Section>
-
-      {/* Capture settings */}
-      <Section title="Data Capture">
-        <Toggle
-          label="Capture prompt text"
-          description="Store the full prompt locally. Never sent to cloud."
-          checked={capture.prompt}
-          onChange={(v) => void update({ capture: { ...capture, prompt: v } })}
-        />
-        <Toggle
-          label="Capture prompt images"
-          description="Store attached images locally. Never sent to cloud."
-          checked={capture.promptImages}
-          onChange={(v) => void update({ capture: { ...capture, promptImages: v } })}
-        />
-        <Toggle
-          label="Capture evaluation details"
-          description="Store per-session evaluation scores and reasons."
-          checked={capture.evaluation}
-          onChange={(v) => void update({ capture: { ...capture, evaluation: v } })}
-        />
-        <Toggle
-          label="Capture milestones"
-          description="Store milestone titles and categories in session records."
-          checked={capture.milestones}
-          onChange={(v) => void update({ capture: { ...capture, milestones: v } })}
-        />
-        <div className="py-3">
-          <label className="label">Reasons detail level</label>
-          <select
-            value={capture.reasonsLevel ?? "none"}
-            onChange={(e) =>
-              void update({ capture: { ...capture, reasonsLevel: e.target.value as "none" | "summary" | "detailed" } })
-            }
-            className="input w-auto"
-          >
-            <option value="none">None — no reason text stored</option>
-            <option value="summary">Summary — brief reason notes</option>
-            <option value="detailed">Detailed — complete reason text</option>
-          </select>
-        </div>
-      </Section>
-
-      {/* Cloud sync */}
-      <Section title="Cloud Sync">
-        {user ? (
-          <>
-            <div className="py-3">
-              <p className="text-sm text-slate-300">
-                Signed in as <span className="font-medium text-violet-300">{user.username ?? user.email}</span>
-              </p>
-              {config.lastSyncAt && (
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Last sync: {new Date(config.lastSyncAt).toLocaleString()}
-                </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDiscard}
+              disabled={saveState === 'saving'}
+              className="px-3 py-1.5 rounded-md text-xs font-medium text-text-muted hover:text-text-primary border border-border/50 hover:border-border transition-colors disabled:opacity-50"
+            >
+              Discard
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saveState === 'saving'}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-accent text-bg-base hover:bg-accent/90 transition-colors disabled:opacity-50"
+            >
+              {saveState === 'saving' ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : saveState === 'saved' ? (
+                <Check className="w-3 h-3" />
+              ) : (
+                <Save className="w-3 h-3" />
               )}
-            </div>
-            <Toggle
-              label="Enable sync"
-              description="Sync sessions to the useai cloud for leaderboard and cross-device access."
-              checked={sync.enabled}
-              onChange={(v) => void update({ sync: { ...sync, enabled: v } })}
-            />
-            <Toggle
-              label="Auto sync"
-              description="Automatically sync sessions in the background."
-              checked={sync.autoSync}
-              onChange={(v) => void update({ sync: { ...sync, autoSync: v } })}
-            />
-            {sync.autoSync && (
-              <div className="py-3">
-                <label className="label">Sync interval (minutes)</label>
-                <input
-                  type="number"
-                  min={5}
-                  max={1440}
-                  value={sync.intervalMinutes}
-                  onChange={(e) =>
-                    void update({ sync: { ...sync, intervalMinutes: Number(e.target.value) } })
-                  }
-                  className="input w-32"
-                />
-              </div>
-            )}
-            <div className="py-3">
-              <button
-                className="btn-primary"
-                disabled={syncing || !sync.enabled}
-                onClick={() => void syncNow()}
-              >
-                {syncing ? "Syncing…" : "Sync now"}
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="py-4">
-            <p className="text-sm text-slate-400">
-              Sign in to enable cloud sync and access the leaderboard.
-            </p>
-            <p className="mt-1 text-xs text-slate-600">
-              Use the profile menu in the top-right corner to sign in.
-            </p>
-          </div>
-        )}
-      </Section>
-
-      {/* Daemon settings */}
-      <Section title="Daemon">
-        <div className="py-3">
-          <label className="label">Port</label>
-          <input
-            type="number"
-            value={config.daemon?.port ?? 19200}
-            onChange={(e) =>
-              void update({ daemon: { ...config.daemon, port: Number(e.target.value) } })
-            }
-            className="input w-32"
-          />
-          <p className="mt-1 text-xs text-slate-600">
-            Requires daemon restart to take effect.
-          </p>
-        </div>
-        <div className="py-3">
-          <label className="label">Idle timeout (minutes)</label>
-          <input
-            type="number"
-            min={1}
-            value={config.daemon?.idleTimeoutMinutes ?? 30}
-            onChange={(e) =>
-              void update({
-                daemon: { ...config.daemon, idleTimeoutMinutes: Number(e.target.value) },
-              })
-            }
-            className="input w-32"
-          />
-        </div>
-      </Section>
-
-      {/* Danger zone */}
-      {user && (
-        <Section title="Danger Zone">
-          <div className="py-3">
-            <p className="mb-2 text-sm text-slate-400">
-              Sign out of your useai account. Local sessions are not deleted.
-            </p>
-            <button className="btn-danger" onClick={() => void logout()}>
-              Sign out
+              {saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved' : 'Save'}
             </button>
           </div>
-        </Section>
+        </div>
       )}
     </div>
   );

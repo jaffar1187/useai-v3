@@ -1,32 +1,79 @@
-import { useStore, type ActiveTab } from "../store.js";
+import { ExternalLink, Settings } from 'lucide-react';
+import type { ActiveTab } from '../lib/types';
 
-const TABS: { id: ActiveTab; label: string; icon: string }[] = [
-  { id: "stats", label: "Stats", icon: "📊" },
-  { id: "sessions", label: "Sessions", icon: "💬" },
-  { id: "milestones", label: "Milestones", icon: "🏆" },
-  { id: "settings", label: "Settings", icon: "⚙️" },
+export interface ExternalNavLink {
+  label: string;
+  href: string;
+}
+
+interface TabBarProps {
+  activeTab: ActiveTab;
+  onTabChange: (tab: ActiveTab) => void;
+  externalLinks?: ExternalNavLink[];
+  showSettings?: boolean;
+}
+
+const tabs: { id: ActiveTab; label: string }[] = [
+  { id: 'sessions', label: 'Sessions' },
+  { id: 'insights', label: 'Insights' },
 ];
 
-export function TabBar() {
-  const { activeTab, setTab } = useStore();
-
+export function TabBar({ activeTab, onTabChange, externalLinks, showSettings = true }: TabBarProps) {
   return (
-    <div className="flex gap-1 border-b border-slate-700 bg-slate-900/80 px-4">
-      {TABS.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => setTab(tab.id)}
-          className={[
-            "flex items-center gap-1.5 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
-            activeTab === tab.id
-              ? "border-violet-500 text-violet-300"
-              : "border-transparent text-slate-400 hover:text-slate-200",
-          ].join(" ")}
-        >
-          <span>{tab.icon}</span>
-          {tab.label}
-        </button>
-      ))}
+    <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-bg-surface-1 border border-border/40">
+      {tabs.map(({ id, label }) => {
+        const isActive = activeTab === id;
+        return (
+          <button
+            key={id}
+            onClick={() => onTabChange(id)}
+            className={`
+              px-3 py-1 rounded-md text-xs font-medium transition-all duration-150
+              ${isActive
+                ? 'bg-bg-surface-2 text-text-primary shadow-sm'
+                : 'text-text-muted hover:text-text-primary'
+              }
+            `}
+          >
+            {label}
+          </button>
+        );
+      })}
+      {showSettings && (
+        <>
+          <div className="w-px h-4 bg-border/60 mx-1" />
+          <button
+            onClick={() => onTabChange('settings')}
+            className={`
+              flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150
+              ${activeTab === 'settings'
+                ? 'bg-bg-surface-2 text-text-primary shadow-sm'
+                : 'text-text-muted hover:text-text-primary'
+              }
+            `}
+          >
+            <Settings className="w-3 h-3" />
+            Settings
+          </button>
+        </>
+      )}
+      {externalLinks && externalLinks.length > 0 && (
+        <>
+          <div className="w-px h-4 bg-border/60 mx-1" />
+          {externalLinks.map(({ label, href }) => (
+            <a
+              key={href}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-mono tracking-wide text-text-muted hover:text-accent transition-colors duration-150"
+            >
+              {label}
+              <ExternalLink className="w-2.5 h-2.5 opacity-50" />
+            </a>
+          ))}
+        </>
+      )}
     </div>
   );
 }

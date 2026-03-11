@@ -1,53 +1,97 @@
-import { useEffect } from "react";
-import { useStore } from "./store.js";
-import { Header } from "./components/Header.js";
-import { TabBar } from "./components/TabBar.js";
-import { StatsOverview } from "./components/StatsOverview.js";
-import { SessionsList } from "./components/SessionsList.js";
-import { MilestonesList } from "./components/MilestonesList.js";
-import { SettingsPage } from "./components/SettingsPage.js";
-
-function DaemonError() {
-  return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-      <p className="text-4xl">⚡</p>
-      <h2 className="text-lg font-semibold text-slate-200">Daemon not running</h2>
-      <p className="max-w-sm text-sm text-slate-400">
-        Start the useai daemon to see your session data.
-      </p>
-      <code className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-violet-300">
-        useai daemon start
-      </code>
-    </div>
-  );
-}
+import { useEffect, useState } from 'react';
+import { useDashboardStore } from './store';
+import { Header } from './components/Header';
+import { DashboardBody } from './components/DashboardBody';
+import { SearchOverlay } from './components/SearchOverlay';
+import { SettingsPage } from './components/SettingsPage';
 
 export function App() {
-  const { activeTab, loadAll, error } = useStore();
+  const {
+    sessions,
+    milestones,
+    config,
+    health,
+    updateInfo,
+    loading,
+    loadAll,
+    loadHealth,
+    loadUpdateCheck,
+    deleteSession,
+    deleteConversation,
+    deleteMilestone,
+    activeTab,
+    setActiveTab,
+  } = useDashboardStore();
 
+  // Load data on mount
   useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
+    loadAll();
+    loadHealth();
+    loadUpdateCheck();
+  }, [loadAll, loadHealth, loadUpdateCheck]);
+
+  // Auto-refresh every 30s
+  useEffect(() => {
+    const healthInterval = setInterval(loadHealth, 30000);
+    const dataInterval = setInterval(loadAll, 30000);
+    return () => {
+      clearInterval(healthInterval);
+      clearInterval(dataInterval);
+    };
+  }, [loadAll, loadHealth]);
+
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Cmd+K / Ctrl+K to open search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(v => !v);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-text-muted text-sm">Loading...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
-      <Header />
-      <TabBar />
-
-      <main className="flex-1 overflow-y-auto">
-        {error ? (
-          <div className="mx-auto max-w-4xl px-4 pt-6">
-            <DaemonError />
-          </div>
+    <div className="min-h-screen bg-bg-base selection:bg-accent/30 selection:text-text-primary">
+      <Header health={health} updateInfo={updateInfo} onSearchOpen={() => setSearchOpen(true)} activeTab={activeTab} onTabChange={setActiveTab} config={config} onRefresh={loadAll} />
+      <div className="max-w-[1240px] mx-auto px-4 sm:px-6 pb-6">
+        {activeTab === 'settings' ? (
+          <SettingsPage />
         ) : (
-          <div className="mx-auto max-w-5xl px-4 py-5">
-            {activeTab === "stats" && <StatsOverview />}
-            {activeTab === "sessions" && <SessionsList />}
-            {activeTab === "milestones" && <MilestonesList />}
-            {activeTab === "settings" && <SettingsPage />}
-          </div>
+          <>
+            <SearchOverlay
+              open={searchOpen}
+              onClose={() => setSearchOpen(false)}
+              sessions={sessions}
+              milestones={milestones}
+              onDeleteSession={deleteSession}
+              onDeleteConversation={deleteConversation}
+              onDeleteMilestone={deleteMilestone}
+            />
+
+            <DashboardBody
+              sessions={sessions}
+              milestones={milestones}
+              onDeleteSession={deleteSession}
+              onDeleteConversation={deleteConversation}
+              onDeleteMilestone={deleteMilestone}
+              activeTab={activeTab}
+              onActiveTabChange={setActiveTab}
+            />
+          </>
         )}
-      </main>
+      </div>
     </div>
   );
 }
