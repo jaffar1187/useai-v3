@@ -1,8 +1,12 @@
 import { serve } from "@hono/node-server";
 import { createApp } from "./router.js";
 import { ensureDir } from "@devness/useai-storage";
-import { DATA_DIR, DAEMON_PORT, DAEMON_HOST } from "@devness/useai-storage/paths";
-import { startSyncScheduler } from "./sync-scheduler.js";
+import {
+  DATA_DIR,
+  DAEMON_PORT,
+  DAEMON_HOST,
+} from "@devness/useai-storage/paths";
+// import { startSyncScheduler } from "./sync-scheduler.js";
 
 export async function startDaemon(): Promise<void> {
   await ensureDir(DATA_DIR);
@@ -10,7 +14,7 @@ export async function startDaemon(): Promise<void> {
   const app = createApp();
 
   // Start background sync scheduler
-  startSyncScheduler();
+  // startSyncScheduler();
 
   serve(
     { fetch: app.fetch, port: DAEMON_PORT, hostname: DAEMON_HOST },

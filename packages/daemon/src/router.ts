@@ -44,18 +44,8 @@ export function createApp(): Hono {
   });
 
   // Serve dashboard SPA from the built dist directory
-  const dashboardDir =
-    process.env["USEAI_DASHBOARD_DIR"] ??
-    resolve(__dirname, "../../dashboard/dist");
-
+  const dashboardDir = resolve(__dirname, "../../dashboard/dist");
   app.use("/*", serveStatic({ root: dashboardDir }));
-
-  // SPA fallback for client-side routes
-  app.get("*", async (c) => {
-    const { readFile } = await import("node:fs/promises");
-    const html = await readFile(resolve(dashboardDir, "index.html"), "utf-8");
-    return c.html(html);
-  });
 
   return app;
 }

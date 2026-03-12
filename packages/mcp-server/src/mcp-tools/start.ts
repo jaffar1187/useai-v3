@@ -6,10 +6,7 @@ import type { PromptContext } from "../prompt-context.js";
 import { saveParentState } from "../prompt-context.js";
 import { coerceJsonString } from "../coerce.js";
 
-export function registerStartTool(
-  server: McpServer,
-  ctx: PromptContext,
-): void {
+export function registerStartTool(server: McpServer, ctx: PromptContext): void {
   server.registerTool(
     "useai_start",
     {
@@ -24,43 +21,68 @@ export function registerStartTool(
         client: z
           .string()
           .optional()
-          .describe("Name of the AI tool being used (e.g. claude-code, cursor, windsurf)"),
+          .describe(
+            "Name of the AI tool being used (e.g. claude-code, cursor, windsurf)",
+          ),
         task_type: TaskTypeSchema.optional().describe(
           "What kind of task is the developer working on?",
         ),
         title: z
           .string()
           .optional()
-          .describe('Short public session title. No project names or file paths. Example: "Fix authentication bug"'),
+          .describe(
+            'Short public session title. No project names or file paths. Example: "Fix authentication bug"',
+          ),
         private_title: z
           .string()
           .optional()
-          .describe("Detailed session title for private records. Can include project names and specifics."),
+          .describe(
+            "Detailed session title for private records. Can include project names and specifics.",
+          ),
         project: z
           .string()
           .optional()
-          .describe('Project name — typically the root directory name of the codebase. Example: "useai", "goodpass"'),
+          .describe(
+            'Project name — typically the root directory name of the codebase. Example: "useai", "goodpass"',
+          ),
         prompt: z
           .string()
           .optional()
-          .describe("The user's full verbatim prompt text. Stored locally for self-review."),
+          .describe(
+            "The user's full verbatim prompt text. Stored locally for self-review.",
+          ),
         model: z
           .string()
           .optional()
-          .describe('The AI model ID running this session. Example: "claude-sonnet-4-6"'),
+          .describe(
+            'The AI model ID running this session. Example: "claude-sonnet-4-6"',
+          ),
         prompt_images: coerceJsonString(
           z.array(
             z.object({
               type: z.literal("image"),
-              description: z.string().describe("AI-generated description of the image"),
+              description: z
+                .string()
+                .describe("AI-generated description of the image"),
             }),
           ),
         )
           .optional()
-          .describe("Metadata for images attached to the prompt (description only, no binary data)."),
+          .describe(
+            "Metadata for images attached to the prompt (description only, no binary data).",
+          ),
       },
     },
-    async ({ client, task_type, title, private_title, project, prompt, model, prompt_images }) => {
+    async ({
+      client,
+      task_type,
+      title,
+      private_title,
+      project,
+      prompt,
+      model,
+      prompt_images,
+    }) => {
       const isNested = ctx.startedAt !== null;
 
       if (isNested) {
@@ -115,7 +137,7 @@ export function registerStartTool(
         content: [
           {
             type: "text" as const,
-            text: `Session ${ctx.promptId} started. Call useai_end when done.`,
+            text: `useai_start call successful, tracking started for ${ctx.promptId}.`,
           },
         ],
       };
