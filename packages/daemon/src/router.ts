@@ -48,23 +48,13 @@ export function createApp(): Hono {
     process.env["USEAI_DASHBOARD_DIR"] ??
     resolve(__dirname, "../../dashboard/dist");
 
-  app.use(
-    "/dashboard/*",
-    serveStatic({
-      root: dashboardDir,
-      rewriteRequestPath: (path) => path.replace(/^\/dashboard/, ""),
-    }),
-  );
+  app.use("/*", serveStatic({ root: dashboardDir }));
 
-  // Serve favicon from dashboard dist at root path
-  app.get("/favicon.svg", serveStatic({
-    root: dashboardDir,
-    rewriteRequestPath: () => "/favicon.svg",
-  }));
-
-  // SPA fallback: serve index.html for any unmatched /dashboard route
-  app.get("/dashboard", async (c) => {
-    return c.redirect("/dashboard/");
+  // SPA fallback for client-side routes
+  app.get("*", async (c) => {
+    const { readFile } = await import("node:fs/promises");
+    const html = await readFile(resolve(dashboardDir, "index.html"), "utf-8");
+    return c.html(html);
   });
 
   return app;
