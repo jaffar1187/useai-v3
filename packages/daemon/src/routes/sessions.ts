@@ -8,6 +8,7 @@ export const sessionsRoutes = new Hono();
 function toSessionSeal(s: Session) {
   return {
     session_id: s.promptId,
+    ...(s.connectionId && { conversation_id: s.connectionId }),
     client: s.client,
     task_type: s.taskType,
     languages: s.languages ?? [],

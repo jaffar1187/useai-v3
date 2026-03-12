@@ -12,7 +12,7 @@ import {
 import type { SessionEvaluation, Milestone, Session } from "@devness/useai-types";
 import type { PromptContext } from "../prompt-context.js";
 import { touchActivity, getActiveDurationMs, restoreParentState } from "../prompt-context.js";
-import { coerceJsonString } from "./coerce.js";
+import { coerceJsonString } from "../coerce.js";
 
 let privateKey: Buffer | null = null;
 async function getPrivateKey(): Promise<Buffer> {

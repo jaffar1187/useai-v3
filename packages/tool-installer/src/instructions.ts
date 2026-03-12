@@ -8,6 +8,7 @@ export const INSTRUCTIONS_TEXT = [
   "## UseAI Session Tracking",
   "- At the START of every response to a **real user message**, call `useai_start` with the appropriate task_type. Also generate a short session `title` (generic, no project names) and `private_title` (detailed, can include specifics) from the user's prompt.",
   '  - **"Real user message"** = the turn contains actual user-authored text. Do NOT call `useai_start` on turns that only contain system reminders, hook feedback, plan approval clicks, or other automated/system-generated content.',
+  "  - **Interrupted/resumed prompt**: If a previous `useai_start` was called but `useai_end` was never reached (i.e. the prompt was interrupted mid-response), call `useai_heartbeat` instead of `useai_start` when resuming. Do NOT start a new nested session — continue the existing one.",
   "  - **task_type values**: coding, debugging, testing, planning, reviewing, documenting, learning, deployment, devops, research, migration, design, data, security, configuration, code_review, investigation, infrastructure, analysis, ops, setup, refactoring, other",
   "- At the START of every response where you are **not** calling `useai_start` or `useai_end`, call `useai_heartbeat` first.",
   "- While actively working, call `useai_heartbeat` every 4–4.5 minutes. This tracks honest active time — gaps longer than 5 minutes between heartbeats are automatically counted as idle and excluded from the session duration.",

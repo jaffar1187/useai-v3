@@ -7,11 +7,22 @@ export async function getOrCreateKeystore(): Promise<{
   keystore: Keystore;
   privateKey: Buffer;
 }> {
-  let keystore = await readJson<Keystore>(KEYSTORE_FILE);
+  const raw = await readJson<Record<string, unknown>>(KEYSTORE_FILE);
 
-  if (!keystore) {
+  // Detect v2 or malformed keystore by checking for required v3 camelCase fields.
+  // If missing, discard and generate a fresh v3 keystore.
+  const isV3 =
+    raw !== null &&
+    typeof raw["authTag"] === "string" &&
+    typeof raw["encryptedPrivateKey"] === "string" &&
+    typeof raw["publicKey"] === "string";
+
+  let keystore: Keystore;
+  if (!isV3) {
     keystore = generateKeystore();
     await writeJson(KEYSTORE_FILE, keystore);
+  } else {
+    keystore = raw as unknown as Keystore;
   }
 
   const privateKey = decryptKeystore(keystore);

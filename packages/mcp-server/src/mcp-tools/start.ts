@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { TaskTypeSchema } from "@devness/useai-types";
 import type { PromptContext } from "../prompt-context.js";
 import { saveParentState } from "../prompt-context.js";
-import { coerceJsonString } from "./coerce.js";
+import { coerceJsonString } from "../coerce.js";
 
 export function registerStartTool(
   server: McpServer,
