@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Session } from "@devness/useai-types";
-import { readSessionsForRange, deleteSession } from "@devness/useai-storage";
+import { readSessionsForRange, readV1Sessions, readV1Milestones, deleteSession } from "@devness/useai-storage";
 
 export const sessionsRoutes = new Hono();
 
@@ -17,13 +17,13 @@ function toSessionSeal(s: Session) {
     title: s.title,
     ...(s.privateTitle && { private_title: s.privateTitle }),
     ...(s.prompt && { prompt: s.prompt }),
+    ...(s.promptImages && { prompt_images: s.promptImages }),
+    ...(s.promptImageCount && { prompt_image_count: s.promptImageCount }),
     ...(s.model && { model: s.model }),
     ...(s.evaluation && { evaluation: s.evaluation }),
     started_at: s.startedAt,
     ended_at: s.endedAt,
     duration_seconds: Math.round(s.durationMs / 1000),
-    heartbeat_count: 0,
-    record_count: 1,
     chain_start_hash: s.prevHash,
     chain_end_hash: s.hash,
     seal_signature: s.signature,
@@ -53,15 +53,21 @@ function toMilestones(s: Session) {
 // GET /api/local/sessions — returns SessionSeal[]
 sessionsRoutes.get("/", async (c) => {
   const days = Math.min(Number(c.req.query("days") ?? 30), 90);
-  const sessions = await readSessionsForRange(days);
-  return c.json(sessions.map(toSessionSeal));
+  const [sessions, v1Sessions] = await Promise.all([
+    readSessionsForRange(days),
+    readV1Sessions(),
+  ]);
+  return c.json([...sessions.map(toSessionSeal), ...v1Sessions]);
 });
 
 // GET /api/local/sessions/milestones — returns Milestone[]
 sessionsRoutes.get("/milestones", async (c) => {
   const days = Math.min(Number(c.req.query("days") ?? 30), 90);
-  const sessions = await readSessionsForRange(days);
-  return c.json(sessions.flatMap(toMilestones));
+  const [sessions, v1Milestones] = await Promise.all([
+    readSessionsForRange(days),
+    readV1Milestones(),
+  ]);
+  return c.json([...sessions.flatMap(toMilestones), ...v1Milestones]);
 });
 
 // DELETE /api/local/sessions/:id

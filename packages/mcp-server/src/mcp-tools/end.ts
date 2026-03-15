@@ -2,16 +2,28 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { buildSessionRecord } from "@devness/useai-crypto";
-import { appendSession, getOrCreateKeystore, getConfig } from "@devness/useai-storage";
+import {
+  appendSession,
+  getOrCreateKeystore,
+  getConfig,
+} from "@devness/useai-storage";
 import { computeSpaceScore, computeRawScore } from "@devness/useai-scoring";
 import {
   TaskTypeSchema,
   MilestoneCategorySchema,
   ComplexitySchema,
 } from "@devness/useai-types";
-import type { SessionEvaluation, Milestone, Session } from "@devness/useai-types";
+import type {
+  SessionEvaluation,
+  Milestone,
+  Session,
+} from "@devness/useai-types";
 import type { PromptContext } from "../prompt-context.js";
-import { touchActivity, getActiveDurationMs, restoreParentState } from "../prompt-context.js";
+import {
+  touchActivity,
+  getActiveDurationMs,
+  restoreParentState,
+} from "../prompt-context.js";
 import { coerceJsonString } from "../coerce.js";
 
 let privateKey: Buffer | null = null;
@@ -42,7 +54,9 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         ),
         languages: coerceJsonString(z.array(z.string()))
           .optional()
-          .describe('Programming languages used (e.g. ["typescript", "python"])'),
+          .describe(
+            'Programming languages used (e.g. ["typescript", "python"])',
+          ),
         files_touched_count: coerceJsonString(z.number())
           .optional()
           .describe("Approximate number of files created or modified"),
@@ -51,7 +65,9 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
             z.object({
               title: z
                 .string()
-                .describe("Generic description — no project names, file paths, or identifying details."),
+                .describe(
+                  "Generic description — no project names, file paths, or identifying details.",
+                ),
               private_title: z
                 .string()
                 .optional()
@@ -73,7 +89,12 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
             prompt_quality_reason: z.string().optional(),
             context_provided: z.number().min(1).max(5),
             context_provided_reason: z.string().optional(),
-            task_outcome: z.enum(["completed", "partial", "abandoned", "blocked"]),
+            task_outcome: z.enum([
+              "completed",
+              "partial",
+              "abandoned",
+              "blocked",
+            ]),
             task_outcome_reason: z.string().optional(),
             iteration_count: z.number().min(1),
             independence_level: z.number().min(1).max(5),
@@ -96,7 +117,12 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
     }) => {
       if (!ctx.startedAt) {
         return {
-          content: [{ type: "text" as const, text: "No active session. Call useai_start first." }],
+          content: [
+            {
+              type: "text" as const,
+              text: "No active session. Call useai_start first.",
+            },
+          ],
         };
       }
 
@@ -153,7 +179,14 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         ...(ctx.project && { project: ctx.project }),
         ...(ctx.model && { model: ctx.model }),
         ...(ctx.prompt && { prompt: ctx.prompt }),
-        ...(files_touched_count !== undefined && { filesTouchedCount: files_touched_count }),
+        ...(ctx.promptImages &&
+          ctx.promptImages.length > 0 && {
+            promptImages: ctx.promptImages,
+            promptImageCount: ctx.promptImages.length,
+          }),
+        ...(files_touched_count !== undefined && {
+          filesTouchedCount: files_touched_count,
+        }),
         ...(sessionEval && { evaluation: sessionEval }),
       };
 

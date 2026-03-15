@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import type { Session } from "@devness/useai-types";
 import { DATA_DIR } from "./paths.js";
 import { ensureDir, appendLine } from "./fs.js";
@@ -57,6 +58,29 @@ export async function writeSessionsForDate(date: string, sessions: Session[]): P
     lines.join("\n") + (lines.length ? "\n" : ""),
     "utf-8",
   );
+}
+
+const V1_SESSIONS_FILE = join(DATA_DIR, "sessions.json");
+const V1_MILESTONES_FILE = join(DATA_DIR, "milestones.json");
+
+export async function readV1Sessions(): Promise<Record<string, unknown>[]> {
+  if (!existsSync(V1_SESSIONS_FILE)) return [];
+  try {
+    const raw = await readFile(V1_SESSIONS_FILE, "utf-8");
+    return JSON.parse(raw) as Record<string, unknown>[];
+  } catch {
+    return [];
+  }
+}
+
+export async function readV1Milestones(): Promise<Record<string, unknown>[]> {
+  if (!existsSync(V1_MILESTONES_FILE)) return [];
+  try {
+    const raw = await readFile(V1_MILESTONES_FILE, "utf-8");
+    return JSON.parse(raw) as Record<string, unknown>[];
+  } catch {
+    return [];
+  }
 }
 
 export async function deleteSession(promptId: string): Promise<void> {

@@ -1,18 +1,55 @@
 import { z } from "zod";
 
 export const TaskTypeSchema = z.enum([
-  "coding", "debugging", "testing", "planning", "reviewing", "documenting",
-  "learning", "deployment", "devops", "research", "migration", "design",
-  "data", "security", "configuration", "code_review", "investigation",
-  "infrastructure", "analysis", "ops", "setup", "refactoring", "other",
+  "coding",
+  "debugging",
+  "testing",
+  "planning",
+  "reviewing",
+  "documenting",
+  "learning",
+  "deployment",
+  "devops",
+  "research",
+  "migration",
+  "design",
+  "data",
+  "security",
+  "configuration",
+  "code_review",
+  "investigation",
+  "infrastructure",
+  "analysis",
+  "ops",
+  "setup",
+  "refactoring",
+  "other",
 ]);
 export type TaskType = z.infer<typeof TaskTypeSchema>;
 
 export const MilestoneCategorySchema = z.enum([
-  "feature", "bugfix", "refactor", "test", "docs", "setup", "deployment",
-  "fix", "testing", "documentation", "config", "analysis", "research",
-  "investigation", "performance", "cleanup", "chore", "security",
-  "migration", "design", "devops", "other",
+  "feature",
+  "bugfix",
+  "refactor",
+  "test",
+  "docs",
+  "setup",
+  "deployment",
+  "fix",
+  "testing",
+  "documentation",
+  "config",
+  "analysis",
+  "research",
+  "investigation",
+  "performance",
+  "cleanup",
+  "chore",
+  "security",
+  "migration",
+  "design",
+  "devops",
+  "other",
 ]);
 export type MilestoneCategory = z.infer<typeof MilestoneCategorySchema>;
 
@@ -58,6 +95,8 @@ export interface Session {
   project?: string;
   model?: string;
   prompt?: string;
+  promptImages?: Array<{ type: "image"; description: string }>;
+  promptImageCount?: number;
   startedAt: string;
   endedAt: string;
   durationMs: number;
