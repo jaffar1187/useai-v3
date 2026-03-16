@@ -17,9 +17,9 @@ export interface ComputedStats {
   totalSessions: number;
   /** Wall-clock span from earliest session start to latest session end (hours) */
   actualSpanHours: number;
-  /** Union of all session intervals — real time where at least 1 session was active (hours) */
+  /** Union of all active session intervals (idle-excluded) — real user time where at least 1 session was active (hours) */
   coveredHours: number;
-  /** Ratio of total AI time to covered time (totalHours / coveredHours). >= 1.0 always. */
+  /** Ratio of total AI time to user time (totalHours / coveredHours). >= 1.0 always. */
   aiMultiplier: number;
   /** Maximum number of sessions running concurrently at any point */
   peakConcurrency: number;
@@ -94,10 +94,14 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
     for (const s of sessions) {
       const sStart = parseTimestamp(s.started_at);
       const sEnd = parseTimestamp(s.ended_at);
+      // Use active duration (idle-excluded) to shrink the interval so that
+      // coveredHours and totalHours are on the same basis.
+      const activeDurationMs = s.duration_seconds * 1000;
+      const activeEnd = Math.min(sStart + activeDurationMs, sEnd);
       if (sStart < minStart) minStart = sStart;
       if (sEnd > maxEnd) maxEnd = sEnd;
       events.push({ time: sStart, delta: 1 });
-      events.push({ time: sEnd, delta: -1 });
+      events.push({ time: activeEnd, delta: -1 });
     }
 
     actualSpanHours = (maxEnd - minStart) / 3600000;

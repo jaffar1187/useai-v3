@@ -97,10 +97,10 @@ function EvaluationDetail({
 }) {
   const hasMeta = !!model;
   const metrics = [
-    { label: 'Prompt', value: evaluation.prompt_quality, reason: evaluation.prompt_quality_reason, Icon: MessageSquare },
-    { label: 'Context', value: evaluation.context_provided, reason: evaluation.context_provided_reason, Icon: FileText },
-    { label: 'Scope', value: evaluation.scope_quality, reason: evaluation.scope_quality_reason, Icon: Target },
-    { label: 'Independence', value: evaluation.independence_level, reason: evaluation.independence_level_reason, Icon: Compass },
+    { label: 'Prompt', value: evaluation.prompt_quality, reason: evaluation.prompt_quality_reason, ideal: evaluation.prompt_quality_ideal, Icon: MessageSquare },
+    { label: 'Context', value: evaluation.context_provided, reason: evaluation.context_provided_reason, ideal: evaluation.context_provided_ideal, Icon: FileText },
+    { label: 'Scope', value: evaluation.scope_quality, reason: evaluation.scope_quality_reason, ideal: evaluation.scope_quality_ideal, Icon: Target },
+    { label: 'Independence', value: evaluation.independence_level, reason: evaluation.independence_level_reason, ideal: evaluation.independence_level_ideal, Icon: Compass },
   ];
 
   const hasReasons = metrics.some(m => m.reason) || evaluation.task_outcome_reason;
@@ -137,17 +137,31 @@ function EvaluationDetail({
       {!showPublic && hasReasons && (
         <div className="mt-2 pt-2 border-t border-border/15">
           <div className="grid grid-cols-[86px_minmax(0,1fr)] gap-x-2 gap-y-1 text-[10px]">
-            {metrics.filter(m => m.reason).map(({ label, value, reason }) => (
+            {metrics.filter(m => m.reason || m.ideal).map(({ label, value, reason, ideal }) => (
               <div key={label} className="contents">
                 <span className={`${scoreColorClass(value)} font-bold text-right`}>{label}:</span>
-                <span className="text-text-secondary leading-relaxed">{reason}</span>
+                <div>
+                  {reason && <span className="text-text-secondary leading-relaxed">{reason}</span>}
+                  {ideal && (
+                    <div className="text-amber-500/80 leading-relaxed mt-0.5">
+                      <span className="text-[9px]">Ideal: {ideal}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
-            {evaluation.task_outcome_reason && (
+            {(evaluation.task_outcome_reason || evaluation.task_outcome_ideal) && (
               <>
                 <div className="col-span-2 border-t border-border/15 mt-0.5 mb-0.5" />
                 <span className="text-text-secondary font-bold text-right">Outcome:</span>
-                <span className="text-text-secondary leading-relaxed">{evaluation.task_outcome_reason}</span>
+                <div>
+                  {evaluation.task_outcome_reason && <span className="text-text-secondary leading-relaxed">{evaluation.task_outcome_reason}</span>}
+                  {evaluation.task_outcome_ideal && (
+                    <div className="text-amber-500/80 leading-relaxed mt-0.5">
+                      <span className="text-[9px]">Ideal: {evaluation.task_outcome_ideal}</span>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

@@ -208,8 +208,7 @@ function ActiveTimeContent({ stats, sessions }: { stats: TimeStats; sessions: Se
   return (
     <>
       <ExplanationBlock>
-        Real wall-clock time where at least one AI session was running.
-        Gaps between sessions (breaks, thinking, context switches) are excluded.
+        How long <strong>you</strong> were actively working with AI. Overlapping sessions count once.
       </ExplanationBlock>
 
       <div className="rounded-lg border border-border/50 bg-bg-surface-1 divide-y divide-border/30">
@@ -258,8 +257,7 @@ function AITimeContent({ stats, sessions, showPublic }: { stats: TimeStats; sess
   return (
     <>
       <ExplanationBlock>
-        Total accumulated AI session duration. When multiple sessions run in parallel,
-        their durations add up &mdash; so AI Time can exceed User Time.
+        Total AI work done across all sessions. Parallel sessions stack &mdash; so this can be more than User Time.
       </ExplanationBlock>
 
       <div className="rounded-lg border border-border/50 bg-bg-surface-1 divide-y divide-border/30">
@@ -278,8 +276,7 @@ function ParallelContent({ stats, sessions, showPublic }: { stats: TimeStats; se
   return (
     <>
       <ExplanationBlock>
-        Your AI multiplier &mdash; AI Time divided by User Time.
-        Higher means more parallelization. You&apos;re running more AI sessions simultaneously.
+        AI Time &divide; User Time. Higher = more sessions running at once.
       </ExplanationBlock>
 
       <div className="rounded-lg border border-border/50 bg-bg-surface-1 divide-y divide-border/30">
@@ -342,7 +339,7 @@ function StreakContent({ allSessions, currentStreak }: { allSessions: SessionSea
   return (
     <>
       <ExplanationBlock>
-        Consecutive days with at least one AI session. Keep using AI daily to grow your streak!
+        Days in a row you used AI. Keep it going!
       </ExplanationBlock>
 
       <div className="rounded-lg border border-border/50 bg-bg-surface-1 divide-y divide-border/30">

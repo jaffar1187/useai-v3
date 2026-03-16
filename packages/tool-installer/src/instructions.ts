@@ -15,6 +15,7 @@ export const INSTRUCTIONS_TEXT = [
   "- At the END of every response where `useai_start` was called, call `useai_end` with languages used, files_touched_count, milestones, and an `evaluation` object honestly assessing: prompt_quality (1-5), context_provided (1-5), task_outcome, iteration_count, independence_level (1-5), scope_quality (1-5), tools_leveraged count.",
   '  - **milestones**: Array of objects, each with required `title` (generic — no project/file names), `category`, and optional `private_title` (detailed). Example: `[{"title": "Implemented auth flow", "private_title": "Added OAuth2 to UserService in acme-api", "category": "feature"}]`',
   "  - **milestone category values**: feature, bugfix, refactor, test, docs, setup, deployment, fix, analysis, research, investigation, performance, cleanup, chore, security, migration, design, devops, config, other",
+  '  - **calibrated framework**: When the evaluation framework is set to "calibrated", also provide `*_ideal` fields for each scored metric (prompt_quality_ideal, context_provided_ideal, task_outcome_ideal, independence_level_ideal, scope_quality_ideal). Each should explain what would make that metric perfect. If a metric is already 5/5, omit the ideal field. These fields enable gap analysis scoring that penalizes inflated self-assessments.',
 ].join("\n");
 
 /**

@@ -232,6 +232,7 @@ export function SettingsPage() {
           options={[
             { value: 'space', label: 'SPACE (weighted)' },
             { value: 'raw', label: 'Raw (equal weight)' },
+            { value: 'calibrated', label: 'Calibrated (gap analysis)' },
           ]}
           onChange={setFramework}
         />

@@ -93,8 +93,11 @@ export function ProjectAllocation({ sessions, byProject }: ProjectAllocationProp
       const start = new Date(s.started_at).getTime();
       const end = new Date(s.ended_at).getTime();
       if (end <= start) continue;
+      const activeDurationMs = s.duration_seconds * 1000;
+      const activeEnd = Math.min(start + activeDurationMs, end);
+      if (activeEnd <= start) continue;
       events.push({ time: start, project: s.project, delta: 1 });
-      events.push({ time: end, project: s.project, delta: -1 });
+      events.push({ time: activeEnd, project: s.project, delta: -1 });
     }
 
     // Sort by time; at same time, ends before starts

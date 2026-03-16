@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
+import { getConfig } from "@devness/useai-storage";
 import { TaskTypeSchema } from "@devness/useai-types";
 import type { PromptContext } from "../prompt-context.js";
 import { saveParentState } from "../prompt-context.js";
@@ -83,6 +84,9 @@ export function registerStartTool(server: McpServer, ctx: PromptContext): void {
       model,
       prompt_images,
     }) => {
+      const config = await getConfig().catch(() => null);
+      const framework = config?.evaluation.framework ?? "space";
+
       const isNested = ctx.startedAt !== null;
 
       if (isNested) {
@@ -109,7 +113,7 @@ export function registerStartTool(server: McpServer, ctx: PromptContext): void {
           content: [
             {
               type: "text" as const,
-              text: `Session ${ctx.promptId} started (depth ${ctx.sessionDepth}). Call useai_end when done.`,
+              text: `Session ${ctx.promptId} started (depth ${ctx.sessionDepth}), framework: ${framework}. Call useai_end when done.${framework === "calibrated" ? " Provide *_ideal fields in evaluation for gap analysis." : ""}`,
             },
           ],
         };
@@ -137,7 +141,7 @@ export function registerStartTool(server: McpServer, ctx: PromptContext): void {
         content: [
           {
             type: "text" as const,
-            text: `useai_start call successful, tracking started for ${ctx.promptId}.`,
+            text: `useai_start call successful, tracking started for ${ctx.promptId}, framework: ${framework}.${framework === "calibrated" ? " Provide *_ideal fields in evaluation for gap analysis." : ""}`,
           },
         ],
       };

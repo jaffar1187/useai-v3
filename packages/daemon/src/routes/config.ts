@@ -94,7 +94,7 @@ configRoutes.patch("/", async (c) => {
   }
 
   const fw = body["evaluation_framework"];
-  if (typeof fw === "string" && (fw === "space" || fw === "aps" || fw === "raw")) {
+  if (typeof fw === "string" && (fw === "space" || fw === "aps" || fw === "raw" || fw === "calibrated")) {
     current.evaluation = { ...current.evaluation, framework: fw };
   }
 

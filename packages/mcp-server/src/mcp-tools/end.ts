@@ -7,7 +7,7 @@ import {
   getOrCreateKeystore,
   getConfig,
 } from "@devness/useai-storage";
-import { computeSpaceScore, computeRawScore } from "@devness/useai-scoring";
+import { computeSpaceScore, computeRawScore, computeCalibratedScore } from "@devness/useai-scoring";
 import {
   TaskTypeSchema,
   MilestoneCategorySchema,
@@ -47,7 +47,8 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         "migration, design, devops, other. " +
         'Also provide an "evaluation" object assessing the session: prompt_quality (1-5), context_provided (1-5), ' +
         "task_outcome (completed/partial/abandoned/blocked), iteration_count, independence_level (1-5), " +
-        "scope_quality (1-5), and tools_leveraged count. For every scored metric, provide a *_reason field.",
+        "scope_quality (1-5), and tools_leveraged count. For every scored metric, provide a *_reason field. " +
+        "When using the calibrated framework, also provide *_ideal fields explaining what would make each metric perfect.",
       inputSchema: {
         task_type: TaskTypeSchema.optional().describe(
           "What kind of task was the developer working on?",
@@ -87,8 +88,10 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
           z.object({
             prompt_quality: z.number().min(1).max(5),
             prompt_quality_reason: z.string().optional(),
+            prompt_quality_ideal: z.string().optional().describe("What would make prompt quality 5/5? (calibrated framework)"),
             context_provided: z.number().min(1).max(5),
             context_provided_reason: z.string().optional(),
+            context_provided_ideal: z.string().optional().describe("What would make context 5/5? (calibrated framework)"),
             task_outcome: z.enum([
               "completed",
               "partial",
@@ -96,11 +99,14 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
               "blocked",
             ]),
             task_outcome_reason: z.string().optional(),
+            task_outcome_ideal: z.string().optional().describe("What would have made the outcome better? (calibrated framework)"),
             iteration_count: z.number().min(1),
             independence_level: z.number().min(1).max(5),
             independence_level_reason: z.string().optional(),
+            independence_level_ideal: z.string().optional().describe("What would make independence 5/5? (calibrated framework)"),
             scope_quality: z.number().min(1).max(5),
             scope_quality_reason: z.string().optional(),
+            scope_quality_ideal: z.string().optional().describe("What would make scope quality 5/5? (calibrated framework)"),
             tools_leveraged: z.number().min(0),
           }),
         )
@@ -144,6 +150,9 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
       const sessionEval = evaluation as SessionEvaluation | undefined;
 
       const score = (() => {
+        if (framework === "calibrated" && sessionEval) {
+          return computeCalibratedScore(sessionEval);
+        }
         if (framework === "raw" && sessionEval) {
           return computeRawScore(sessionEval);
         }
