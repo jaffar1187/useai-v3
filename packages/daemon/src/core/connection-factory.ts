@@ -8,6 +8,8 @@ export async function createMcpConnection(): Promise<WebStandardStreamableHTTPSe
   const promptContext = createPromptContext();
   const server = new McpServer({ name: "useai", version: "0.1.0" });
 
+  registerTools(server, promptContext);
+
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
     onsessioninitialized: (connectionId) => {
@@ -22,7 +24,6 @@ export async function createMcpConnection(): Promise<WebStandardStreamableHTTPSe
         transport,
         mcpServer: server,
         promptContext,
-        lastActivity: Date.now(),
         pingInterval,
       });
     },
@@ -32,8 +33,6 @@ export async function createMcpConnection(): Promise<WebStandardStreamableHTTPSe
       connections.delete(connectionId);
     },
   });
-
-  registerTools(server, promptContext);
 
   await server.connect(transport);
 

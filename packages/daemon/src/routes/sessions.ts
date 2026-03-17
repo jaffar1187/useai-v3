@@ -24,6 +24,7 @@ function toSessionSeal(s: Session) {
     started_at: s.startedAt,
     ended_at: s.endedAt,
     duration_seconds: Math.round(s.durationMs / 1000),
+    ...(s.activeSegments && { active_segments: s.activeSegments }),
     chain_start_hash: s.prevHash,
     chain_end_hash: s.hash,
     seal_signature: s.signature,

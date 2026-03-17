@@ -64,7 +64,8 @@ function formatHours(hours: number): string {
   return `${hours.toFixed(1)} hrs`;
 }
 
-/** Compute merged active periods from sessions using sweep-line */
+/** Compute merged active periods from sessions using sweep-line.
+ *  Uses active_segments when available (same logic as computeStats) to exclude idle time. */
 function computeActivePeriods(sessions: SessionSeal[]): { start: number; end: number }[] {
   if (sessions.length === 0) return [];
 
@@ -72,9 +73,22 @@ function computeActivePeriods(sessions: SessionSeal[]): { start: number; end: nu
   for (const s of sessions) {
     const sStart = parseTimestamp(s.started_at);
     const sEnd = parseTimestamp(s.ended_at);
-    if (sEnd <= sStart) continue; // skip zero/negative duration
-    events.push({ time: sStart, delta: 1 });
-    events.push({ time: sEnd, delta: -1 });
+
+    if (s.active_segments && s.active_segments.length > 0) {
+      for (const [segStart, segEnd] of s.active_segments) {
+        const t0 = parseTimestamp(segStart);
+        const t1 = parseTimestamp(segEnd);
+        if (t1 <= t0) continue;
+        events.push({ time: t0, delta: 1 });
+        events.push({ time: t1, delta: -1 });
+      }
+    } else {
+      // Fallback: cap end to startedAt + duration (same as computeStats)
+      if (sEnd <= sStart) continue;
+      const activeEnd = Math.min(sStart + s.duration_seconds * 1000, sEnd);
+      events.push({ time: sStart, delta: 1 });
+      events.push({ time: activeEnd, delta: -1 });
+    }
   }
   events.sort((a, b) => a.time - b.time || a.delta - b.delta);
 
@@ -263,7 +277,7 @@ function AITimeContent({ stats, sessions, showPublic }: { stats: TimeStats; sess
       <div className="rounded-lg border border-border/50 bg-bg-surface-1 divide-y divide-border/30">
         <CalcRow label="AI time" value={formatHours(stats.totalHours)} />
         <CalcRow label="User time" value={formatHours(stats.coveredHours)} />
-        <CalcRow label="Multiplier" value={`${stats.aiMultiplier.toFixed(1)}x`} />
+        <CalcRow label="Multiplier" value={`${stats.aiMultiplier.toFixed(2)}x`} />
         <CalcRow label="Sessions" value={String(sessions.length)} />
       </div>
 
@@ -280,7 +294,7 @@ function ParallelContent({ stats, sessions, showPublic }: { stats: TimeStats; se
       </ExplanationBlock>
 
       <div className="rounded-lg border border-border/50 bg-bg-surface-1 divide-y divide-border/30">
-        <CalcRow label="Multiplier" value={`${stats.aiMultiplier.toFixed(1)}x`} />
+        <CalcRow label="Multiplier" value={`${stats.aiMultiplier.toFixed(2)}x`} />
         <CalcRow label="Peak concurrent" value={String(stats.peakConcurrency)} />
         <CalcRow
           label="Calculation"
@@ -381,7 +395,7 @@ function StreakContent({ allSessions, currentStreak }: { allSessions: SessionSea
                   </span>
                   {day.boost > 0 && (
                     <span className="text-[10px] font-mono font-bold whitespace-nowrap" style={{ color: '#a78bfa' }} title="Multiplier">
-                      {day.boost.toFixed(1)}x
+                      {day.boost.toFixed(2)}x
                     </span>
                   )}
                 </motion.div>

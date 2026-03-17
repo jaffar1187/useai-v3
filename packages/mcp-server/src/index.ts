@@ -1,3 +1,10 @@
-export { registerTools } from "./mcp-tools.js";
-export { createPromptContext, getParentSessionIds } from "./prompt-context.js";
-export type { PromptContext, SavedPromptContext } from "./prompt-context.js";
+export { registerTools } from "./mcp-tools/mcp-tools.js";
+export {
+  createPromptContext,
+  getParentSessionIds,
+  getActiveSessionIds,
+} from "./core/prompt-context.js";
+export type {
+  PromptContext,
+  SavedPromptContext,
+} from "./core/prompt-context.js";

@@ -1,15 +1,15 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { sessionsRoutes } from "./routes/sessions.js";
-import { milestonesRoutes } from "./routes/milestones.js";
-import { statsRoutes } from "./routes/stats.js";
-import { configRoutes } from "./routes/config.js";
-import { healthRoutes } from "./routes/health.js";
-import { mcpRoutes } from "./routes/mcp.js";
-import { authRoutes } from "./routes/auth.js";
-import { syncRouteRoutes } from "./routes/sync-route.js";
-import { updateRoutes } from "./routes/update.js";
+import { sessionsRoutes } from "../routes/sessions.js";
+import { milestonesRoutes } from "../routes/milestones.js";
+import { statsRoutes } from "../routes/stats.js";
+import { configRoutes } from "../routes/config.js";
+import { healthRoutes } from "../routes/health.js";
+import { mcpRoutes } from "../routes/mcp.js";
+import { authRoutes } from "../routes/auth.js";
+import { syncRouteRoutes } from "../routes/sync-route.js";
+import { updateRoutes } from "../routes/update.js";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -44,7 +44,7 @@ export function createApp(): Hono {
   });
 
   // Serve dashboard SPA from the built dist directory
-  const dashboardDir = resolve(__dirname, "../../dashboard/dist");
+  const dashboardDir = resolve(__dirname, "../../../dashboard/dist");
   app.use("/*", serveStatic({ root: dashboardDir }));
 
   return app;

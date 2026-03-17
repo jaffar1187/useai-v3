@@ -1,9 +1,9 @@
 import type { IncomingMessage } from "node:http";
 import { Hono } from "hono";
-import { connections } from "./connection-store.js";
-import { createMcpConnection } from "./connection-factory.js";
+import { connections } from "../core/connection-store.js";
+import { createMcpConnection } from "../core/connection-factory.js";
 
-export { getConnectionCount } from "./connection-store.js";
+export { getConnectionCount } from "../core/connection-store.js";
 
 export const mcpRoutes = new Hono();
 
@@ -12,7 +12,6 @@ mcpRoutes.all("/", async (c) => {
 
   if (connectionId && connections.has(connectionId)) {
     const conn = connections.get(connectionId)!;
-    conn.lastActivity = Date.now();
 
     if (c.req.method === "GET") {
       const incoming = (c.env as { incoming?: IncomingMessage }).incoming;

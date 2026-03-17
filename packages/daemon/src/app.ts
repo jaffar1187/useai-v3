@@ -1,5 +1,5 @@
 import { serve } from "@hono/node-server";
-import { createApp } from "./router.js";
+import { createApp } from "./core/router.js";
 import { ensureDir } from "@devness/useai-storage";
 import {
   DATA_DIR,

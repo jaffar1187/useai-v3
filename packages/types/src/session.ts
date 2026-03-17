@@ -105,6 +105,8 @@ export interface Session {
   startedAt: string;
   endedAt: string;
   durationMs: number;
+  /** Active time segments as [isoStart, isoEnd] pairs. Gaps between segments were idle (>5min heartbeat gap). */
+  activeSegments?: [string, string][];
   score?: SessionScore;
   milestones: Milestone[];
   languages?: string[];

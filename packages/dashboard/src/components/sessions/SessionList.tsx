@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp, Clock, Lock, Shield, Eye, EyeOff, Flag, FolderKanban } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lock, Shield, Eye, EyeOff, Flag, FolderKanban, User, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { SessionSeal, Milestone } from '../../lib/api';
 import type { Filters } from '../../lib/types';
@@ -17,6 +17,33 @@ function formatDuration(seconds: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function computeCoveredSeconds(sessions: SessionSeal[]): number {
+  const events: { time: number; delta: number }[] = [];
+  for (const s of sessions) {
+    if (s.active_segments && s.active_segments.length > 0) {
+      for (const [start, end] of s.active_segments) {
+        events.push({ time: new Date(start).getTime(), delta: 1 });
+        events.push({ time: new Date(end).getTime(), delta: -1 });
+      }
+    } else {
+      const sStart = new Date(s.started_at).getTime();
+      events.push({ time: sStart, delta: 1 });
+      events.push({ time: sStart + s.duration_seconds * 1000, delta: -1 });
+    }
+  }
+  events.sort((a, b) => a.time - b.time || a.delta - b.delta);
+  let running = 0;
+  let coveredMs = 0;
+  let lastActiveStart = 0;
+  for (const e of events) {
+    const wasActive = running > 0;
+    running += e.delta;
+    if (!wasActive && running > 0) lastActiveStart = e.time;
+    else if (wasActive && running === 0) coveredMs += e.time - lastActiveStart;
+  }
+  return Math.round(coveredMs / 1000);
 }
 
 function formatTime(iso: string): string {
@@ -150,14 +177,18 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
             </div>
 
             <div className="flex items-center gap-3.5 text-[11px] text-text-secondary font-medium">
-              <span className="flex items-center gap-1.5">
-                <Clock className="w-3 h-3 opacity-75" />
+              <span className="flex items-center gap-1.5" title="User time">
+                <User className="w-3 h-3 opacity-75" />
+                {formatDuration(computeCoveredSeconds(group.sessions.map(sg => sg.session)))}
+              </span>
+              <span className="flex items-center gap-1.5" title="AI time">
+                <Bot className="w-3 h-3 opacity-75" />
                 {formatDuration(group.totalDuration)}
               </span>
 
               <span className="text-text-secondary/80 font-mono tracking-tight">
-                {showFullDate && `${new Date(group.lastSessionAt).toLocaleDateString([], { month: 'short', day: 'numeric' })} · `}
-                {formatTime(group.lastSessionAt)}
+                {showFullDate && `${new Date(group.startedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })} · `}
+                {formatTime(group.startedAt)} — {formatTime(group.endedAt)}
               </span>
 
               {!showPublic && hasProject && (

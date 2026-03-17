@@ -1,8 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { PromptContext } from "./prompt-context.js";
-import { registerStartTool } from "./mcp-tools/start.js";
-import { registerHeartbeatTool } from "./mcp-tools/heartbeat.js";
-import { registerEndTool } from "./mcp-tools/end.js";
+import type { PromptContext } from "../core/prompt-context.js";
+import { registerStartTool } from "./start.js";
+import { registerHeartbeatTool } from "./heartbeat.js";
+import { registerEndTool } from "./end.js";
 
 export function registerTools(
   server: McpServer,

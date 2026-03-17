@@ -15,6 +15,6 @@ export type { ConfigFormat } from "./formats.js";
 
 export { injectInstructions, removeInstructions, INSTRUCTIONS_TEXT } from "./instructions.js";
 
-export { installClaudeCodeHooks, removeClaudeCodeHooks, isClaudeCodeHooksInstalled } from "./hooks.js";
+export { removeClaudeCodeHooks, isClaudeCodeHooksInstalled } from "./hooks.js";
 
 export { matchToolId, matchToolIds } from "./tool-matcher.js";

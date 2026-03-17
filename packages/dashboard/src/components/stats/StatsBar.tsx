@@ -7,6 +7,7 @@ function animateCounter(
   el: HTMLSpanElement,
   target: number,
   decimals: number,
+  formatter?: (value: number) => string,
 ) {
   let startTime: number | null = null;
   const duration = 800;
@@ -16,12 +17,21 @@ function animateCounter(
     const progress = Math.min((ts - startTime) / duration, 1);
     const eased = 1 - Math.pow(1 - progress, 4); // Quartic ease out
     const current = target * eased;
-    el.textContent =
-      decimals > 0 ? current.toFixed(decimals) : String(Math.round(current));
+    el.textContent = formatter
+      ? formatter(current)
+      : decimals > 0 ? current.toFixed(decimals) : String(Math.round(current));
     if (progress < 1) requestAnimationFrame(step);
   }
 
   requestAnimationFrame(step);
+}
+
+function formatHrMin(hours: number): string {
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
 }
 
 function StatCard({
@@ -29,6 +39,7 @@ function StatCard({
   value,
   suffix,
   decimals = 0,
+  formatter,
   icon: Icon,
   delay = 0,
   variant = 'default',
@@ -41,6 +52,7 @@ function StatCard({
   value: number;
   suffix?: string;
   decimals?: number;
+  formatter?: (value: number) => string;
   icon: any;
   delay?: number;
   variant?: 'default' | 'accent';
@@ -55,10 +67,10 @@ function StatCard({
   useEffect(() => {
     if (!ref.current) return;
     if (value !== prevValue.current) {
-      animateCounter(ref.current, value, decimals);
+      animateCounter(ref.current, value, decimals, formatter);
       prevValue.current = value;
     }
-  }, [value, decimals]);
+  }, [value, decimals, formatter]);
 
   const isAccent = variant === 'accent';
 
@@ -87,10 +99,10 @@ function StatCard({
       </div>
       <div className="flex flex-col min-w-0">
         <div className="flex items-baseline gap-0.5">
-          <span ref={ref} className="text-lg font-bold text-text-primary tracking-tight leading-none">
-            {decimals > 0 ? value.toFixed(decimals) : Math.round(value)}
+          <span ref={ref} className="text-lg font-bold text-text-primary tracking-tight leading-none whitespace-nowrap">
+            {formatter ? formatter(value) : decimals > 0 ? value.toFixed(decimals) : Math.round(value)}
           </span>
-          {suffix && <span className="text-[10px] text-text-muted font-medium">{suffix}</span>}
+          {!formatter && suffix && <span className="text-[10px] text-text-muted font-medium">{suffix}</span>}
         </div>
         <span className="text-[9px] font-mono text-text-muted uppercase tracking-wider leading-none mt-0.5">{label}</span>
         {subtitle && <span className="text-[8px] text-text-muted/50 leading-none mt-0.5 truncate">{subtitle}</span>}
@@ -139,9 +151,8 @@ export function StatsBar({
       <div className="grid grid-cols-3 lg:grid-cols-7 gap-2 flex-1">
         <StatCard
           label="User Time"
-          value={coveredHours < 1 / 60 ? 0 : coveredHours < 1 ? Math.round(coveredHours * 60) : coveredHours}
-          suffix={coveredHours < 1 ? 'min' : 'hrs'}
-          decimals={coveredHours >= 1 ? 1 : 0}
+          value={coveredHours}
+          formatter={formatHrMin}
           icon={Clock}
           delay={0.1}
           clickable
@@ -150,9 +161,8 @@ export function StatsBar({
         />
         <StatCard
           label="AI Time"
-          value={totalHours < 1 ? Math.round(totalHours * 60) : totalHours}
-          suffix={totalHours < 1 ? 'min' : 'hrs'}
-          decimals={totalHours < 1 ? 0 : 1}
+          value={totalHours}
+          formatter={formatHrMin}
           icon={Timer}
           delay={0.12}
           clickable
@@ -163,7 +173,7 @@ export function StatsBar({
           label="Multiplier"
           value={aiMultiplier}
           suffix="x"
-          decimals={1}
+          decimals={2}
           icon={Layers}
           delay={0.15}
           clickable

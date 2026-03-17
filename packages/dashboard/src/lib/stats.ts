@@ -94,14 +94,22 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
     for (const s of sessions) {
       const sStart = parseTimestamp(s.started_at);
       const sEnd = parseTimestamp(s.ended_at);
-      // Use active duration (idle-excluded) to shrink the interval so that
-      // coveredHours and totalHours are on the same basis.
-      const activeDurationMs = s.duration_seconds * 1000;
-      const activeEnd = Math.min(sStart + activeDurationMs, sEnd);
       if (sStart < minStart) minStart = sStart;
       if (sEnd > maxEnd) maxEnd = sEnd;
-      events.push({ time: sStart, delta: 1 });
-      events.push({ time: activeEnd, delta: -1 });
+
+      if (s.active_segments && s.active_segments.length > 0) {
+        // Use actual active segments for accurate union
+        for (const [segStart, segEnd] of s.active_segments) {
+          events.push({ time: parseTimestamp(segStart), delta: 1 });
+          events.push({ time: parseTimestamp(segEnd), delta: -1 });
+        }
+      } else {
+        // Fallback: approximate with [startedAt, startedAt + duration]
+        const activeDurationMs = s.duration_seconds * 1000;
+        const activeEnd = Math.min(sStart + activeDurationMs, sEnd);
+        events.push({ time: sStart, delta: 1 });
+        events.push({ time: activeEnd, delta: -1 });
+      }
     }
 
     actualSpanHours = (maxEnd - minStart) / 3600000;
@@ -284,8 +292,8 @@ export function groupSessionsWithMilestones(
     milestones: milestoneMap.get(session.session_id) ?? [],
   }));
 
-  // Sort by session start time, most recent first
-  result.sort((a, b) => parseTimestamp(b.session.started_at) - parseTimestamp(a.session.started_at));
+  // Sort by session end time, most recent first
+  result.sort((a, b) => parseTimestamp(b.session.ended_at) - parseTimestamp(a.session.ended_at));
 
   return result;
 }
@@ -346,15 +354,15 @@ export function groupIntoConversations(
   const result: ConversationGroup[] = [];
 
   for (const [convId, sessions] of convMap) {
-    // Sort sessions within conversation: latest first (descending by start time)
-    sessions.sort((a, b) => parseTimestamp(b.session.started_at) - parseTimestamp(a.session.started_at));
+    // Sort sessions within conversation: latest first (descending by end time)
+    sessions.sort((a, b) => parseTimestamp(b.session.ended_at) - parseTimestamp(a.session.ended_at));
 
     const totalDuration = sessions.reduce((sum, s) => sum + s.session.duration_seconds, 0);
     const totalMilestones = sessions.reduce((sum, s) => sum + s.milestones.length, 0);
     // First element is now the latest session (descending order)
     const startedAt = sessions[sessions.length - 1]!.session.started_at;
     const endedAt = sessions[0]!.session.ended_at;
-    const lastSessionAt = sessions[0]!.session.started_at;
+    const lastSessionAt = sessions[0]!.session.ended_at;
 
     result.push({
       conversationId: convId,
@@ -377,7 +385,7 @@ export function groupIntoConversations(
       totalMilestones: sg.milestones.length,
       startedAt: sg.session.started_at,
       endedAt: sg.session.ended_at,
-      lastSessionAt: sg.session.started_at,
+      lastSessionAt: sg.session.ended_at,
     });
   }
 

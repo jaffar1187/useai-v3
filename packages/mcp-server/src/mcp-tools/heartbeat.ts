@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { PromptContext } from "../prompt-context.js";
-import { touchActivity } from "../prompt-context.js";
+import { z } from "zod";
+import type { PromptContext } from "../core/prompt-context.js";
+import { touchActivity, resolveSession } from "../core/prompt-context.js";
 
 export function registerHeartbeatTool(
   server: McpServer,
@@ -13,28 +14,42 @@ export function registerHeartbeatTool(
         "Keep-alive signal for active sessions. Call every 4-4.5 minutes while actively working. " +
         "Gaps longer than 5 minutes between heartbeats are automatically counted as idle time " +
         "and excluded from the active session duration.",
+      inputSchema: {
+        prompt_id: z
+          .string()
+          .optional()
+          .describe(
+            "Target a specific session by its promptId (returned by useai_start). " +
+              "Required for concurrent/parallel sessions. If omitted, targets the most recent session.",
+          ),
+      },
     },
-    async () => {
-      if (!ctx.startedAt) {
+    async ({ prompt_id }) => {
+      const target = resolveSession(ctx, prompt_id);
+
+      if (!target || !target.startedAt) {
         return {
           content: [
             {
               type: "text" as const,
-              text: "No active session. Call useai_start first.",
+              text: prompt_id
+                ? `No active session found for prompt_id "${prompt_id}". Call useai_start first.`
+                : "No active session. Call useai_start first.",
             },
           ],
         };
       }
 
       const now = Date.now();
-      touchActivity(ctx, now);
+      touchActivity(target, now);
 
       const activeDurationMs = Math.max(
         0,
-        now - ctx.startedAt.getTime() - ctx.idleMs - ctx.childPausedMs,
+        now - target.startedAt.getTime() - target.idleMs - target.childPausedMs,
       );
       const activeDurationMin = Math.round(activeDurationMs / 60000);
-      const depthInfo = ctx.sessionDepth > 0 ? ` (depth ${ctx.sessionDepth})` : "";
+      const depthInfo =
+        target.sessionDepth > 0 ? ` (depth ${target.sessionDepth})` : "";
 
       return {
         content: [

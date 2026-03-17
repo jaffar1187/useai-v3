@@ -25,5 +25,6 @@
   },
   // This include is added for vscode editor errors — every package has its own src directory and this will be overridden by each package's tsconfig.json
   "include": ["packages/*/src"],
-  "exclude": ["node_modules", "**/node_modules", "**/dist"]
+
+  "exclude": ["node_modules", "**/node_modules", "**/dist", "dist"]
 }

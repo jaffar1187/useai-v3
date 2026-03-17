@@ -6,7 +6,6 @@ export interface Connection {
   transport: WebStandardStreamableHTTPServerTransport;
   mcpServer: McpServer;
   promptContext: PromptContext;
-  lastActivity: number;
   pingInterval: NodeJS.Timeout;
 }
 

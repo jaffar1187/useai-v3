@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { ChevronDown, Clock, Lock, Shield, Eye, EyeOff, Flag, MessageSquare, FileText, Target, Compass, RefreshCw, Wrench, FolderKanban, Cpu, Image } from 'lucide-react';
+import { ChevronDown, Clock, Lock, Shield, Eye, EyeOff, Flag, MessageSquare, FileText, Target, Compass, RefreshCw, Wrench, FolderKanban, Cpu, Image, User, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { SessionSeal, Milestone, SessionEvaluation } from '../../lib/api';
 import { TOOL_COLORS, TOOL_INITIALS, TOOL_ICONS, CATEGORY_COLORS, TOOL_DISPLAY_NAMES, resolveClient } from '../../constants/tools';
@@ -21,6 +21,17 @@ function formatDuration(seconds: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function computeUserTimeSeconds(session: SessionSeal): number {
+  if (session.active_segments && session.active_segments.length > 0) {
+    let totalMs = 0;
+    for (const [start, end] of session.active_segments) {
+      totalMs += new Date(end).getTime() - new Date(start).getTime();
+    }
+    return Math.round(totalMs / 1000);
+  }
+  return session.duration_seconds;
 }
 
 function fmtMinutes(mins: number): string {
@@ -335,15 +346,28 @@ export const SessionCard = memo(function SessionCard({ session, milestones, defa
             </div>
 
             <div className="flex items-center gap-3.5 text-[11px] text-text-secondary font-medium">
-              <span className="flex items-center gap-1.5">
-                <Clock className="w-3 h-3 opacity-75" />
-                {formatDuration(session.duration_seconds)}
-              </span>
+              {!hideClientAvatar ? (
+                <>
+                  <span className="flex items-center gap-1.5" title="User time">
+                    <User className="w-3 h-3 opacity-75" />
+                    {formatDuration(computeUserTimeSeconds(session))}
+                  </span>
+                  <span className="flex items-center gap-1.5" title="AI time">
+                    <Bot className="w-3 h-3 opacity-75" />
+                    {formatDuration(session.duration_seconds)}
+                  </span>
+                </>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-3 h-3 opacity-75" />
+                  {formatDuration(session.duration_seconds)}
+                </span>
+              )}
 
 
               <span className="text-text-secondary/80 font-mono tracking-tight">
                 {showFullDate && `${new Date(session.started_at).toLocaleDateString([], { month: 'short', day: 'numeric' })} · `}
-                {formatTimeRange(session.started_at, session.ended_at).split(' — ')[0]}
+                {formatTimeRange(session.started_at, session.ended_at)}
               </span>
 
               {!showPublic && !isUntitled && !hideProject && (

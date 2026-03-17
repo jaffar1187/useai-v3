@@ -1,11 +1,13 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { randomUUID } from "node:crypto";
 import { getConfig } from "@devness/useai-storage";
 import { TaskTypeSchema } from "@devness/useai-types";
-import type { PromptContext } from "../prompt-context.js";
-import { saveParentState } from "../prompt-context.js";
-import { coerceJsonString } from "../coerce.js";
+import type { PromptContext } from "../core/prompt-context.js";
+import {
+  createChildContext,
+  globalSessionRegistry,
+} from "../core/prompt-context.js";
+import { coerceJsonString } from "../core/coerce.js";
 
 export function registerStartTool(server: McpServer, ctx: PromptContext): void {
   server.registerTool(
@@ -90,44 +92,43 @@ export function registerStartTool(server: McpServer, ctx: PromptContext): void {
       const isNested = ctx.startedAt !== null;
 
       if (isNested) {
-        // ---- Nested session: save parent, reset only session-specific fields ----
-        saveParentState(ctx);
-        ctx.sessionDepth++;
-        // prevHash intentionally preserved: child inherits parent's chain position
+        // ---- Nested session: create a concurrent child context ----
+        const child = createChildContext(ctx, {
+          client,
+          taskType: task_type,
+          title: title ?? null,
+          privateTitle: private_title ?? null,
+          project,
+          model,
+          prompt: prompt ?? null,
+          promptImages: prompt_images ?? null,
+        });
 
-        ctx.promptId = `prompt_${randomUUID()}`;
-        ctx.startedAt = new Date();
-        ctx.lastActivityTime = null;
-        ctx.idleMs = 0;
-        ctx.childPausedMs = 0;
-        ctx.client = client ?? ctx.client;
-        ctx.taskType = task_type ?? "other";
-        ctx.title = title ?? null;
-        ctx.privateTitle = private_title ?? null;
-        ctx.project = project ?? ctx.project;
-        ctx.model = model ?? ctx.model;
-        ctx.prompt = prompt ?? null;
-        ctx.promptImages = prompt_images ?? null;
+        ctx.concurrentChildren.set(child.promptId, child);
+        ctx.activeChildStack.push(child.promptId);
+        globalSessionRegistry.set(child.promptId, child);
 
         return {
           content: [
             {
               type: "text" as const,
-              text: `Session ${ctx.promptId} started (depth ${ctx.sessionDepth}), framework: ${framework}. Call useai_end when done.${framework === "calibrated" ? " Provide *_ideal fields in evaluation for gap analysis." : ""}`,
+              text: `Session ${child.promptId} started (depth ${child.sessionDepth}), framework: ${framework}. Call useai_end when done.${framework === "calibrated" ? " Provide *_ideal fields in evaluation for gap analysis." : ""}`,
             },
           ],
         };
       }
 
       // ---- Root session: full reset ----
-      ctx.promptId = `prompt_${randomUUID()}`;
+      ctx.promptId = `prompt_${crypto.randomUUID()}`;
       ctx.prevHash = "0".repeat(64);
       ctx.startedAt = new Date();
       ctx.lastActivityTime = null;
       ctx.idleMs = 0;
+      ctx.activeSegments = [[ctx.startedAt.getTime(), ctx.startedAt.getTime()]];
       ctx.childPausedMs = 0;
       ctx.sessionDepth = 0;
-      ctx.parentStack = [];
+      ctx.concurrentChildren = new Map();
+      ctx.activeChildStack = [];
       ctx.client = client ?? "unknown";
       ctx.taskType = task_type ?? "other";
       ctx.title = title ?? null;

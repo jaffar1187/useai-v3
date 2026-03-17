@@ -6,7 +6,6 @@ import {
   isToolConfigured,
   installTool,
   getAllToolConfigs,
-  installClaudeCodeHooks,
 } from "@devness/useai-tool-installer";
 
 export function registerMcpSetup(mcp: Command): void {
@@ -56,17 +55,6 @@ export function registerMcpSetup(mcp: Command): void {
         const res = await installTool(id);
         if (res.success) p.log.success(res.message);
         else             p.log.error(res.message);
-      }
-
-      // Claude Code hooks
-      if (selected.includes("claude-code")) {
-        try {
-          const changed = installClaudeCodeHooks();
-          if (changed) p.log.success("Claude Code hooks installed");
-          else         p.log.info("Claude Code hooks already installed");
-        } catch {
-          p.log.warn("Could not install Claude Code hooks");
-        }
       }
 
       p.outro(pc.green("  Done! Restart your AI tool and useai will track every session."));

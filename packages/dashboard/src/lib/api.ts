@@ -93,6 +93,8 @@ export interface SessionSeal {
   started_at: string;
   ended_at: string;
   duration_seconds: number;
+  /** Active time segments as [isoStart, isoEnd] pairs. When present, used for accurate User Time union. */
+  active_segments?: [string, string][];
   heartbeat_count: number;
   record_count: number;
   chain_start_hash: string;
