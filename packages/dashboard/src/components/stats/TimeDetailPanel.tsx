@@ -115,10 +115,10 @@ function ExplanationBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CalcRow({ label, value }: { label: string; value: string }) {
+function CalcRow({ label, value, tooltip }: { label: string; value: string; tooltip?: string }) {
   return (
-    <div className="flex items-center justify-between py-1.5 px-1">
-      <span className="text-xs text-text-muted">{label}</span>
+    <div className="flex items-center justify-between py-1.5 px-1" title={tooltip}>
+      <span className={`text-xs text-text-muted ${tooltip ? 'cursor-help' : ''}`}>{label}</span>
       <span className="text-xs font-mono font-bold text-text-primary">{value}</span>
     </div>
   );
@@ -182,7 +182,7 @@ export function TimeDetailPanel({ type, sessions, allSessions, currentStreak = 0
                 <span className="text-[10px] font-mono text-text-muted">
                   {type === 'streak'
                     ? `${currentStreak} day${currentStreak === 1 ? '' : 's'} consecutive`
-                    : `${sessions.length} sessions in window`}
+                    : `${sessions.length} prompts in window`}
                 </span>
               </div>
               <button
@@ -229,7 +229,7 @@ function ActiveTimeContent({ stats, sessions }: { stats: TimeStats; sessions: Se
         <CalcRow label="User time" value={formatHours(stats.coveredHours)} />
         <CalcRow label="AI time" value={formatHours(stats.totalHours)} />
         <CalcRow label="Active periods" value={String(periods.length)} />
-        <CalcRow label="Sessions" value={String(sessions.length)} />
+        <CalcRow label="Prompts" value={String(sessions.length)} tooltip="Inclusive of subagent prompts — when a main agent spawns subagents, each subagent prompt is counted separately" />
       </div>
 
       {periods.length > 0 && (
@@ -278,7 +278,7 @@ function AITimeContent({ stats, sessions, showPublic }: { stats: TimeStats; sess
         <CalcRow label="AI time" value={formatHours(stats.totalHours)} />
         <CalcRow label="User time" value={formatHours(stats.coveredHours)} />
         <CalcRow label="Multiplier" value={`${stats.aiMultiplier.toFixed(2)}x`} />
-        <CalcRow label="Sessions" value={String(sessions.length)} />
+        <CalcRow label="Prompts" value={String(sessions.length)} tooltip="Inclusive of subagent prompts — when a main agent spawns subagents, each subagent prompt is counted separately" />
       </div>
 
       <SessionList sessions={sessions} showPublic={showPublic} />
@@ -290,17 +290,13 @@ function ParallelContent({ stats, sessions, showPublic }: { stats: TimeStats; se
   return (
     <>
       <ExplanationBlock>
-        AI Time &divide; User Time. Higher = more sessions running at once.
+        AI Time &divide; User Time
       </ExplanationBlock>
 
       <div className="rounded-lg border border-border/50 bg-bg-surface-1 divide-y divide-border/30">
         <CalcRow label="Multiplier" value={`${stats.aiMultiplier.toFixed(2)}x`} />
         <CalcRow label="Peak concurrent" value={String(stats.peakConcurrency)} />
-        <CalcRow
-          label="Calculation"
-          value={`${formatHours(stats.totalHours)} \u00F7 ${formatHours(stats.coveredHours)}`}
-        />
-        <CalcRow label="Sessions" value={String(sessions.length)} />
+        <CalcRow label="Prompts" value={String(sessions.length)} tooltip="Inclusive of subagent prompts — when a main agent spawns subagents, each subagent prompt is counted separately" />
       </div>
 
       <SessionList sessions={sessions} showPublic={showPublic} />
@@ -359,7 +355,7 @@ function StreakContent({ allSessions, currentStreak }: { allSessions: SessionSea
       <div className="rounded-lg border border-border/50 bg-bg-surface-1 divide-y divide-border/30">
         <CalcRow label="Current streak" value={`${currentStreak} day${currentStreak === 1 ? '' : 's'}`} />
         <CalcRow label="Total active days" value={String(activeDays.length)} />
-        <CalcRow label="Total sessions" value={String(allSessions.length)} />
+        <CalcRow label="Total prompts" value={String(allSessions.length)} tooltip="Inclusive of subagent prompts — when a main agent spawns subagents, each subagent prompt is counted separately" />
       </div>
 
       {activeDays.length > 0 && (
@@ -441,7 +437,7 @@ function SessionList({ sessions, showPublic }: { sessions: SessionSeal[]; showPu
   return (
     <>
       <div className="text-[10px] font-mono text-text-muted uppercase tracking-wider px-1 pt-2">
-        Sessions
+        Prompts
       </div>
       <div className="space-y-1">
         {visible.map((s, i) => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Clock, Rocket, Bug, Brain, Zap, Target, Layers, Timer } from 'lucide-react';
+import { User, Bot, Rocket, Bug, Brain, Zap, Target, Layers, Timer } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { StatCardType } from './StatDetailPanel';
 
@@ -153,7 +153,7 @@ export function StatsBar({
           label="User Time"
           value={coveredHours}
           formatter={formatHrMin}
-          icon={Clock}
+          icon={User}
           delay={0.1}
           clickable
           selected={selectedCard === 'activeTime'}
@@ -163,7 +163,7 @@ export function StatsBar({
           label="AI Time"
           value={totalHours}
           formatter={formatHrMin}
-          icon={Timer}
+          icon={Bot}
           delay={0.12}
           clickable
           selected={selectedCard === 'aiTime'}

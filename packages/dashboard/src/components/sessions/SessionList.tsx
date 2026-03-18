@@ -99,8 +99,8 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
   const agg = group.aggregateEval;
   const avgScore = agg ? (agg.prompt_quality + agg.context_provided + agg.scope_quality + agg.independence_level) / 4 : 0;
 
-  // Determine conversation titles from first session
-  const firstSession = group.sessions[0]!.session;
+  // Determine conversation titles from first (earliest) session
+  const firstSession = group.sessions[group.sessions.length - 1]!.session;
   const privateConvTitle = firstSession.private_title || firstSession.title || firstSession.project || 'Conversation';
   const publicConvTitle = firstSession.title || firstSession.project || 'Conversation';
   const hasPrivacyDifference = privateConvTitle !== publicConvTitle;

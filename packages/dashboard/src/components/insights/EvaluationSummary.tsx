@@ -21,18 +21,17 @@ function getBarColor(score: number): string {
 }
 
 export function EvaluationSummary({ sessions }: EvaluationSummaryProps) {
-  const { scores, summaryLine } = useMemo(() => {
+  const { scores, promptsLine, iterationsLine } = useMemo(() => {
     const evaluated = sessions.filter((s) => s.evaluation != null);
 
     if (evaluated.length === 0) {
-      return { scores: null, summaryLine: null };
+      return { scores: null, promptsLine: null, iterationsLine: null };
     }
 
     let promptQualitySum = 0;
     let contextSum = 0;
     let independenceSum = 0;
     let scopeSum = 0;
-    let completedCount = 0;
     let iterationSum = 0;
 
     for (const s of evaluated) {
@@ -42,11 +41,9 @@ export function EvaluationSummary({ sessions }: EvaluationSummaryProps) {
       independenceSum += ev.independence_level;
       scopeSum += ev.scope_quality;
       iterationSum += ev.iteration_count;
-      if (ev.task_outcome === 'completed') completedCount++;
     }
 
     const n = evaluated.length;
-    const completionPct = Math.round((completedCount / n) * 100);
     const avgIterations = iterationSum / n;
 
     const rows: ScoreRow[] = [
@@ -54,12 +51,12 @@ export function EvaluationSummary({ sessions }: EvaluationSummaryProps) {
       { label: 'Context', value: contextSum / n, max: 5 },
       { label: 'Independence', value: independenceSum / n, max: 5 },
       { label: 'Scope', value: scopeSum / n, max: 5 },
-      { label: 'Completion', value: completionPct / 20, max: 5 },
     ];
 
     return {
       scores: rows,
-      summaryLine: `${n} session${n === 1 ? '' : 's'} evaluated \u00B7 ${completionPct}% completed \u00B7 avg ${avgIterations.toFixed(1)} iterations`,
+      promptsLine: `${sessions.length} prompts`,
+      iterationsLine: `avg ${avgIterations.toFixed(1)} iterations`,
     };
   }, [sessions]);
 
@@ -68,7 +65,7 @@ export function EvaluationSummary({ sessions }: EvaluationSummaryProps) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="rounded-xl bg-bg-surface-1 border border-border/50 p-4"
+      className="rounded-xl bg-bg-surface-1 border border-border/50 p-4 self-start"
     >
       <div className="flex items-center gap-2 mb-4">
         <div className="p-1.5 rounded-lg bg-bg-surface-2">
@@ -121,9 +118,15 @@ export function EvaluationSummary({ sessions }: EvaluationSummaryProps) {
             })}
           </div>
 
-          <p className="text-[10px] text-text-muted mt-4 px-1 font-mono">
-            {summaryLine}
-          </p>
+          <div className="mt-4 px-1 space-y-0.5">
+            <p className="text-[10px] text-text-muted font-mono">{promptsLine}</p>
+            <p
+              className="text-[10px] text-text-muted font-mono cursor-help"
+              title="Average number of back-and-forth rounds needed per task. Lower = AI understood the request first time. Self-reported by the AI in each session."
+            >
+              {iterationsLine}
+            </p>
+          </div>
         </>
       )}
     </motion.div>

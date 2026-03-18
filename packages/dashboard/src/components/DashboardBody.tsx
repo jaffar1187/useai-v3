@@ -116,6 +116,11 @@ export function DashboardBody({
     [milestones, windowStart, windowEnd],
   );
 
+  const displaySessions = useMemo(
+    () => filteredSessions.filter(s => !!s.ended_at && s.duration_seconds > 0),
+    [filteredSessions],
+  );
+
   const stats = useMemo(
     () => computeStats(filteredSessions, filteredMilestones),
     [filteredSessions, filteredMilestones],
@@ -230,7 +235,7 @@ export function DashboardBody({
 
       <TimeDetailPanel
         type={selectedStatCard}
-        sessions={filteredSessions}
+        sessions={displaySessions}
         allSessions={sessions}
         currentStreak={globalStreak}
         stats={{
@@ -252,8 +257,11 @@ export function DashboardBody({
               <h2 className="text-sm font-bold text-text-muted uppercase tracking-widest">
                 Activity Feed
               </h2>
-              <span className="text-[10px] text-text-muted font-mono bg-bg-surface-2 px-2 py-0.5 rounded">
-                {filteredSessions.length} Sessions
+              <span
+                className="text-[10px] text-text-muted font-mono bg-bg-surface-2 px-2 py-0.5 rounded cursor-help"
+                title="Inclusive of subagent prompts — when a main agent spawns subagents, each subagent prompt is counted separately"
+              >
+                {displaySessions.length} Prompts
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -293,7 +301,7 @@ export function DashboardBody({
           )}
 
           <SessionList
-            sessions={filteredSessions}
+            sessions={displaySessions}
             milestones={filteredMilestones}
             filters={filters}
             globalShowPublic={globalShowPublic}
@@ -311,7 +319,7 @@ export function DashboardBody({
       {activeTab === 'insights' && (
         <div className="space-y-4 pt-2">
           <DailyRecap
-            sessions={filteredSessions}
+            sessions={displaySessions}
             milestones={filteredMilestones}
             isLive={isLive}
             windowStart={windowStart}
@@ -321,9 +329,9 @@ export function DashboardBody({
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <EvaluationSummary sessions={filteredSessions} />
+            <EvaluationSummary sessions={displaySessions} />
             <SkillRadar
-              sessions={filteredSessions}
+              sessions={displaySessions}
               milestones={filteredMilestones}
               streak={globalStreak}
             />
@@ -331,7 +339,7 @@ export function DashboardBody({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ComplexityDistribution data={complexityData} />
-            <ProjectAllocation sessions={filteredSessions} byProject={stats.byProject} />
+            <ProjectAllocation sessions={displaySessions} byProject={stats.byProject} />
           </div>
 
           <TaskTypeBreakdown byTaskType={stats.byTaskType} />
