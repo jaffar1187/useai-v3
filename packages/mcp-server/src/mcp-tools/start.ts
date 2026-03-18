@@ -23,7 +23,6 @@ export function registerStartTool(server: McpServer, ctx: PromptContext): void {
       inputSchema: {
         client: z
           .string()
-          .optional()
           .describe(
             "Name of the AI tool being used (e.g. claude-code, cursor, windsurf)",
           ),
@@ -124,7 +123,7 @@ export function registerStartTool(server: McpServer, ctx: PromptContext): void {
       ctx.startedAt = new Date();
       ctx.lastActivityTime = null;
       ctx.idleMs = 0;
-      ctx.activeSegments = [[ctx.startedAt.getTime(), ctx.startedAt.getTime()]];
+      ctx.activeSegments = [[ctx.startedAt.getTime(), 0]];
       ctx.childPausedMs = 0;
       ctx.sessionDepth = 0;
       ctx.concurrentChildren = new Map();

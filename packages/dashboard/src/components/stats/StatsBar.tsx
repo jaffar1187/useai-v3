@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { User, Bot, Rocket, Bug, Brain, Zap, Target, Layers, Timer } from 'lucide-react';
+import { Clock, Bot, Rocket, Bug, Brain, Zap, Target, Layers, Timer } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { StatCardType } from './StatDetailPanel';
 
@@ -150,10 +150,10 @@ export function StatsBar({
     <div className="flex gap-2 mb-4">
       <div className="grid grid-cols-3 lg:grid-cols-7 gap-2 flex-1">
         <StatCard
-          label="User Time"
+          label="Clock Time"
           value={coveredHours}
           formatter={formatHrMin}
-          icon={User}
+          icon={Clock}
           delay={0.1}
           clickable
           selected={selectedCard === 'activeTime'}

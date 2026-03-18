@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Filter, Eye, EyeOff } from 'lucide-react';
+import { Filter, Eye, EyeOff, Info } from 'lucide-react';
 import type { SessionSeal, Milestone } from '../lib/api';
 import type { StatCardType } from './stats/StatDetailPanel';
 import type { Filters, ActiveTab } from '../lib/types';
@@ -33,6 +33,36 @@ export interface DashboardBodyProps {
   /** Controlled tab mode — when provided, DashboardBody won't render its own TabBar */
   activeTab?: ActiveTab;
   onActiveTabChange?: (tab: ActiveTab) => void;
+}
+
+type ChipColor = 'default' | 'blue' | 'amber' | 'purple' | 'green';
+
+const CHIP_STYLES: Record<ChipColor, { chip: string; value: string; dot: string }> = {
+  default: { chip: 'bg-bg-surface-2 border-border/40',        value: 'text-text-muted',   dot: 'bg-text-muted/40' },
+  blue:    { chip: 'bg-accent/10 border-accent/30',           value: 'text-accent',        dot: 'bg-accent' },
+  amber:   { chip: 'bg-amber-500/10 border-amber-500/30',     value: 'text-amber-400',     dot: 'bg-amber-400' },
+  purple:  { chip: 'bg-violet-500/10 border-violet-500/30',   value: 'text-violet-400',    dot: 'bg-violet-400' },
+  green:   { chip: 'bg-success/10 border-success/30',         value: 'text-success',       dot: 'bg-success' },
+};
+
+function MetricChip({ value, label, title, description, color = 'default' }: {
+  value: string; label: string; title: string; description: string; color?: ChipColor;
+}) {
+  const s = CHIP_STYLES[color];
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[10px] font-mono border px-2 py-0.5 rounded ${s.chip}`}>
+      <span className={`w-1 h-1 rounded-full shrink-0 ${s.dot}`} />
+      <span className={`font-semibold ${s.value}`}>{value}</span>
+      <span className="text-text-muted">{label}</span>
+      <span className="relative group flex items-center">
+        <Info className="w-2.5 h-2.5 text-text-muted/60 hover:text-text-muted transition-colors cursor-default" />
+        <span className={`pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 rounded-lg border-2 px-3 py-2.5 font-sans opacity-0 group-hover:opacity-100 transition-opacity duration-0 z-[9999] shadow-2xl space-y-1 ${s.chip}`} style={{ backgroundColor: 'var(--color-bg-base, #0f0f0f)' }}>
+          <p className={`text-[11px] font-bold tracking-wide ${s.value}`}>{title}</p>
+          <p className="text-[10px] text-text-secondary leading-relaxed">{description}</p>
+        </span>
+      </span>
+    </span>
+  );
 }
 
 function readLocalStorage<T extends string>(key: string, valid: T[], fallback: T): T {
@@ -194,6 +224,16 @@ export function DashboardBody({
 
   const hasActiveFilter = filters.client !== 'all' || filters.language !== 'all' || filters.project !== 'all';
 
+  const feedMetrics = useMemo(() => {
+    const evaluated = displaySessions.filter((s) => s.evaluation != null);
+    if (evaluated.length === 0) return null;
+    const n = evaluated.length;
+    const scope = evaluated.reduce((sum, s) => sum + s.evaluation!.scope_quality, 0) / n;
+    const context = evaluated.reduce((sum, s) => sum + s.evaluation!.context_provided, 0) / n;
+    const independence = evaluated.reduce((sum, s) => sum + s.evaluation!.independence_level, 0) / n;
+    return { scope, context, independence };
+  }, [displaySessions]);
+
   // ── Render ──────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3">
@@ -253,16 +293,42 @@ export function DashboardBody({
       {activeTab === 'sessions' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1 pt-0.5">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-sm font-bold text-text-muted uppercase tracking-widest">
                 Activity Feed
               </h2>
-              <span
-                className="text-[10px] text-text-muted font-mono bg-bg-surface-2 px-2 py-0.5 rounded cursor-help"
-                title="Inclusive of subagent prompts — when a main agent spawns subagents, each subagent prompt is counted separately"
-              >
-                {displaySessions.length} Prompts
-              </span>
+              <MetricChip
+                value={`${displaySessions.length}`}
+                label="Prompts"
+                title="Prompts"
+                description="Your direct messages to the AI plus any subagent calls it spawned — each one counts as a prompt."
+                color="blue"
+              />
+              {feedMetrics && (
+                <>
+                  <MetricChip
+                    value={feedMetrics.context.toFixed(1)}
+                    label="Context"
+                    title="Context"
+                    description="Did you give the AI enough detail in your prompt — like file names, error messages, or what you've already tried?"
+                    color="amber"
+                  />
+                  <MetricChip
+                    value={feedMetrics.scope.toFixed(1)}
+                    label="Scope"
+                    title="Scope"
+                    description="Did the AI clearly know what to work on — which files, which feature, which boundaries — without having to guess?"
+                    color="purple"
+                  />
+                  <MetricChip
+                    value={feedMetrics.independence.toFixed(1)}
+                    label="Independence"
+                    title="Independence"
+                    description="How much did the AI handle on its own? High means it completed the task without needing corrections or follow-ups."
+                    color="green"
+                  />
+                </>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button

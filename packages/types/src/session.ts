@@ -63,16 +63,17 @@ export interface SessionEvaluation {
   context_provided: number;
   context_provided_reason?: string;
   context_provided_ideal?: string;
+  scope_quality: number;
+  scope_quality_reason?: string;
+  scope_quality_ideal?: string;
+  independence_level: number;
+  independence_level_reason?: string;
+  independence_level_ideal?: string;
+
   task_outcome: "completed" | "partial" | "abandoned" | "blocked";
   task_outcome_reason?: string;
   task_outcome_ideal?: string;
   iteration_count: number;
-  independence_level: number;
-  independence_level_reason?: string;
-  independence_level_ideal?: string;
-  scope_quality: number;
-  scope_quality_reason?: string;
-  scope_quality_ideal?: string;
   tools_leveraged: number;
 }
 

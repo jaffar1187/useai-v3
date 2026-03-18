@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { ChevronDown, Clock, Lock, Shield, Eye, EyeOff, Flag, MessageSquare, FileText, Target, Compass, RefreshCw, Wrench, FolderKanban, Cpu, Image, User, Bot } from 'lucide-react';
+import { ChevronDown, Clock, Lock, Shield, Eye, EyeOff, Flag, MessageSquare, FileText, Target, Compass, RefreshCw, Wrench, FolderKanban, Cpu, Image, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { SessionSeal, Milestone, SessionEvaluation } from '../../lib/api';
 import { TOOL_COLORS, TOOL_INITIALS, TOOL_ICONS, CATEGORY_COLORS, TOOL_DISPLAY_NAMES, resolveClient } from '../../constants/tools';
@@ -348,8 +348,8 @@ export const SessionCard = memo(function SessionCard({ session, milestones, defa
             <div className="flex items-center gap-3.5 text-[11px] text-text-secondary font-medium">
               {!hideClientAvatar ? (
                 <>
-                  <span className="flex items-center gap-1.5" title="User time">
-                    <User className="w-3 h-3 opacity-75" />
+                  <span className="flex items-center gap-1.5" title="Clock time">
+                    <Clock className="w-3 h-3 opacity-75" />
                     {formatDuration(computeUserTimeSeconds(session))}
                   </span>
                   <span className="flex items-center gap-1.5" title="AI time">

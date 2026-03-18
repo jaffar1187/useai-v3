@@ -59,7 +59,6 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
       inputSchema: {
         prompt_id: z
           .string()
-          .optional()
           .describe(
             "Target a specific session by its promptId (returned by useai_start). " +
               "Required for concurrent/parallel sessions. If omitted, targets the most recent session.",
@@ -159,9 +158,9 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
       milestones: milestonesInput,
       evaluation,
     }) => {
-      const target = resolveSession(ctx, prompt_id);
+      const targetCtx = resolveSession(ctx, prompt_id);
 
-      if (!target || !target.startedAt) {
+      if (!targetCtx || !targetCtx.startedAt) {
         return {
           content: [
             {
@@ -174,16 +173,16 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         };
       }
 
-      const startedAt = target.startedAt;
+      const startedAt = targetCtx.startedAt;
       const endedAt = new Date();
 
-      touchActivity(target, endedAt.getTime());
+      touchActivity(targetCtx, endedAt.getTime());
 
       const durationMs = getActiveDurationMs(
         startedAt,
-        target.lastActivityTime,
-        target.idleMs,
-        target.childPausedMs,
+        targetCtx.lastActivityTime,
+        targetCtx.idleMs,
+        targetCtx.childPausedMs,
       );
 
       // Pick scoring framework from config (default: space)
@@ -200,7 +199,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         }
         return computeSpaceScore({
           durationMs,
-          taskType: task_type ?? target.taskType,
+          taskType: task_type ?? targetCtx.taskType,
           ...(sessionEval && { evaluation: sessionEval }),
         });
       })();
@@ -213,15 +212,15 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         ...(m.complexity && { complexity: m.complexity }),
       }));
 
-      const activeSegments = finalizeActiveSegments(target);
+      const activeSegments = finalizeActiveSegments(targetCtx);
 
       const sessionData: Omit<Session, "hash" | "signature"> = {
-        promptId: target.promptId,
-        connectionId: target.connectionId,
-        prevHash: target.prevHash,
-        client: target.client,
-        taskType: task_type ?? target.taskType,
-        title: target.title ?? "",
+        promptId: targetCtx.promptId,
+        connectionId: targetCtx.connectionId,
+        prevHash: targetCtx.prevHash,
+        client: targetCtx.client,
+        taskType: task_type ?? targetCtx.taskType,
+        title: targetCtx.title ?? "",
         startedAt: startedAt.toISOString(),
         endedAt: endedAt.toISOString(),
         durationMs,
@@ -229,14 +228,14 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         score,
         milestones,
         languages: languages ?? [],
-        ...(target.privateTitle && { privateTitle: target.privateTitle }),
-        ...(target.project && { project: target.project }),
-        ...(target.model && { model: target.model }),
-        ...(target.prompt && { prompt: target.prompt }),
-        ...(target.promptImages &&
-          target.promptImages.length > 0 && {
-            promptImages: target.promptImages,
-            promptImageCount: target.promptImages.length,
+        ...(targetCtx.privateTitle && { privateTitle: targetCtx.privateTitle }),
+        ...(targetCtx.project && { project: targetCtx.project }),
+        ...(targetCtx.model && { model: targetCtx.model }),
+        ...(targetCtx.prompt && { prompt: targetCtx.prompt }),
+        ...(targetCtx.promptImages &&
+          targetCtx.promptImages.length > 0 && {
+            promptImages: targetCtx.promptImages,
+            promptImageCount: targetCtx.promptImages.length,
           }),
         ...(files_touched_count !== undefined && {
           filesTouchedCount: files_touched_count,
@@ -250,16 +249,16 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
 
       await appendSession(fullSession);
 
-      // A child session is any target that is not the root ctx itself.
+      // A child session is any targetCtx that is not the root ctx itself.
       // This covers both sessions still in concurrentChildren and orphaned sessions
       // found via the global registry (e.g. parent was reset by a new root useai_start).
-      const isChild = target !== ctx;
+      const isChild = targetCtx !== ctx;
 
       if (isChild) {
-        globalSessionRegistry.delete(target.promptId);
+        globalSessionRegistry.delete(targetCtx.promptId);
         // Remove from parent's map if it's still there (normal case)
-        if (ctx.concurrentChildren.has(target.promptId)) {
-          removeChildSession(ctx, target.promptId, durationMs, hash);
+        if (ctx.concurrentChildren.has(targetCtx.promptId)) {
+          removeChildSession(ctx, targetCtx.promptId, durationMs, hash);
           return {
             content: [
               {

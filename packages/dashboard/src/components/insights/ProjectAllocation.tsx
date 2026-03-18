@@ -164,7 +164,7 @@ export function ProjectAllocation({ sessions, byProject }: ProjectAllocationProp
   });
 
   const LABELS: Record<TimeMode, string> = {
-    user: 'User Time',
+    user: 'Clock Time',
     ai: 'AI Time',
   };
 

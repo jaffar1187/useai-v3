@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Clock, Timer, Layers, Zap, Calendar } from 'lucide-react';
+import { X, Clock, Bot, Layers, Zap, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { SessionSeal } from '../../lib/api';
 import type { StatCardType } from './StatDetailPanel';
@@ -25,13 +25,13 @@ const PANEL_CONFIG: Record<TimeCardType, {
   accentColor: string;
 }> = {
   activeTime: {
-    title: 'User Time',
+    title: 'Clock Time',
     icon: Clock,
     accentColor: '#60a5fa',
   },
   aiTime: {
     title: 'AI Time',
-    icon: Timer,
+    icon: Bot,
     accentColor: '#4ade80',
   },
   parallel: {
@@ -226,7 +226,7 @@ function ActiveTimeContent({ stats, sessions }: { stats: TimeStats; sessions: Se
       </ExplanationBlock>
 
       <div className="rounded-lg border border-border/50 bg-bg-surface-1 divide-y divide-border/30">
-        <CalcRow label="User time" value={formatHours(stats.coveredHours)} />
+        <CalcRow label="Clock time" value={formatHours(stats.coveredHours)} />
         <CalcRow label="AI time" value={formatHours(stats.totalHours)} />
         <CalcRow label="Active periods" value={String(periods.length)} />
         <CalcRow label="Prompts" value={String(sessions.length)} tooltip="Inclusive of subagent prompts — when a main agent spawns subagents, each subagent prompt is counted separately" />
@@ -271,12 +271,12 @@ function AITimeContent({ stats, sessions, showPublic }: { stats: TimeStats; sess
   return (
     <>
       <ExplanationBlock>
-        Total AI work done across all sessions. Parallel sessions stack &mdash; so this can be more than User Time.
+        Total AI work done across all sessions. Parallel sessions stack &mdash; so this can be more than Clock Time.
       </ExplanationBlock>
 
       <div className="rounded-lg border border-border/50 bg-bg-surface-1 divide-y divide-border/30">
         <CalcRow label="AI time" value={formatHours(stats.totalHours)} />
-        <CalcRow label="User time" value={formatHours(stats.coveredHours)} />
+        <CalcRow label="Clock time" value={formatHours(stats.coveredHours)} />
         <CalcRow label="Multiplier" value={`${stats.aiMultiplier.toFixed(2)}x`} />
         <CalcRow label="Prompts" value={String(sessions.length)} tooltip="Inclusive of subagent prompts — when a main agent spawns subagents, each subagent prompt is counted separately" />
       </div>
@@ -290,7 +290,7 @@ function ParallelContent({ stats, sessions, showPublic }: { stats: TimeStats; se
   return (
     <>
       <ExplanationBlock>
-        AI Time &divide; User Time
+        AI Time &divide; Clock Time
       </ExplanationBlock>
 
       <div className="rounded-lg border border-border/50 bg-bg-surface-1 divide-y divide-border/30">

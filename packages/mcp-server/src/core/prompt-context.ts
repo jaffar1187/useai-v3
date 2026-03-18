@@ -154,8 +154,7 @@ export function resolveSession(
     if (child) return child;
     // Fall back to global registry for orphaned children (e.g. parent was reset by a new root session)
     return globalSessionRegistry.get(promptId) ?? null;
-  }
-  return rootCtx;
+  } else return null;
 }
 
 /**
@@ -261,27 +260,20 @@ export function touchActivity(
   ctx: PromptContext,
   now: number = Date.now(),
 ): void {
-  const baseline = ctx.lastActivityTime ?? ctx.startedAt?.getTime() ?? null;
-  if (baseline !== null) {
-    const gap = now - baseline;
-    if (gap > IDLE_GAP_THRESHOLD_MS) {
-      ctx.idleMs += gap;
-      // Close the current segment at the last known activity time
-      if (ctx.activeSegments.length > 0) {
-        const last = ctx.activeSegments[ctx.activeSegments.length - 1]!;
-        last[1] = baseline;
-      }
-      // Start a new segment at the current time
-      ctx.activeSegments.push([now, now]);
-    } else if (ctx.activeSegments.length > 0) {
-      // Extend the current segment
-      ctx.activeSegments[ctx.activeSegments.length - 1]![1] = now;
+  const baseline = ctx.lastActivityTime || ctx.startedAt?.getTime() || 0;
+  const gap = now - baseline;
+  if (gap > IDLE_GAP_THRESHOLD_MS) {
+    ctx.idleMs += gap;
+    // Close the current segment at the last known activity time
+    if (ctx.activeSegments.length > 0) {
+      const last = ctx.activeSegments[ctx.activeSegments.length - 1]!;
+      last[1] = baseline;
     }
-  }
-
-  // First activity — start the first segment
-  if (ctx.activeSegments.length === 0 && ctx.startedAt) {
-    ctx.activeSegments.push([ctx.startedAt.getTime(), now]);
+    // // Start a new segment at the current time
+    // ctx.activeSegments.push([now, now]);
+  } else if (ctx.activeSegments.length > 0) {
+    // Extend the current segment
+    ctx.activeSegments[ctx.activeSegments.length - 1]![1] = now;
   }
 
   ctx.lastActivityTime = now;
@@ -307,7 +299,7 @@ export function getActiveDurationMs(
   idleMs: number,
   childPausedMs: number,
 ): number {
-  const wallMs =
+  const durationMs =
     (lastActivityTime ?? startedAt.getTime()) - startedAt.getTime();
-  return Math.max(0, wallMs - idleMs - childPausedMs);
+  return Math.max(0, durationMs - idleMs - childPausedMs);
 }
