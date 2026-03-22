@@ -104,7 +104,6 @@ export function registerStartTool(server: McpServer, ctx: PromptContext): void {
         });
 
         ctx.concurrentChildren.set(child.promptId, child);
-        ctx.activeChildStack.push(child.promptId);
         globalSessionRegistry.set(child.promptId, child);
 
         return {
@@ -117,9 +116,8 @@ export function registerStartTool(server: McpServer, ctx: PromptContext): void {
         };
       }
 
-      // ---- Root session: full reset ----
       ctx.promptId = `prompt_${crypto.randomUUID()}`;
-      ctx.prevHash = "0".repeat(64);
+      ctx.prevHash = ctx.prevHash ? ctx.prevHash : "0".repeat(64);
       ctx.startedAt = new Date();
       ctx.lastActivityTime = null;
       ctx.idleMs = 0;
@@ -127,7 +125,6 @@ export function registerStartTool(server: McpServer, ctx: PromptContext): void {
       ctx.childPausedMs = 0;
       ctx.sessionDepth = 0;
       ctx.concurrentChildren = new Map();
-      ctx.activeChildStack = [];
       ctx.client = client ?? "unknown";
       ctx.taskType = task_type ?? "other";
       ctx.title = title ?? null;

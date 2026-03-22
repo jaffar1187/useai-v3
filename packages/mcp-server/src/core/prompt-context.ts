@@ -39,8 +39,6 @@ export interface PromptContext {
   // ---- v3.1: concurrent child sessions ----
   /** Map of concurrent child sessions, keyed by promptId. */
   concurrentChildren: Map<string, PromptContext>;
-  /** Stack of active child session IDs for backward compat (LIFO). Top = most recent child. */
-  activeChildStack: string[];
 }
 
 /**
@@ -89,7 +87,6 @@ export function createPromptContext(): PromptContext {
     childPausedMs: 0,
     sessionDepth: 0,
     concurrentChildren: new Map(),
-    activeChildStack: [],
   };
 }
 
@@ -134,7 +131,6 @@ export function createChildContext(
     childPausedMs: 0,
     sessionDepth: parent.sessionDepth + 1,
     concurrentChildren: new Map(),
-    activeChildStack: [],
   };
 }
 
@@ -165,13 +161,9 @@ export function removeChildSession(
   rootCtx: PromptContext,
   childId: string,
   childDurationMs: number,
-  childHash: string,
 ): void {
   rootCtx.concurrentChildren.delete(childId);
-  const idx = rootCtx.activeChildStack.indexOf(childId);
-  if (idx !== -1) rootCtx.activeChildStack.splice(idx, 1);
   rootCtx.childPausedMs += childDurationMs;
-  rootCtx.prevHash = childHash; // chain continuity
   // Reset lastActivityTime so the parent doesn't see the child's duration as idle
   rootCtx.lastActivityTime = Date.now();
 }

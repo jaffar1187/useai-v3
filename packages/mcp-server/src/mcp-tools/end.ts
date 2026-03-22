@@ -258,7 +258,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         globalSessionRegistry.delete(targetCtx.promptId);
         // Remove from parent's map if it's still there (normal case)
         if (ctx.concurrentChildren.has(targetCtx.promptId)) {
-          removeChildSession(ctx, targetCtx.promptId, durationMs, hash);
+          removeChildSession(ctx, targetCtx.promptId, durationMs);
           return {
             content: [
               {
@@ -279,13 +279,8 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         };
       }
 
-      // Root session: full cleanup, carry prevHash forward for next session
+      // Root session: full cleanup, carry prevHash forward for next session, maintain the chain.
       ctx.prevHash = hash;
-      ctx.startedAt = null;
-      ctx.lastActivityTime = null;
-      ctx.idleMs = 0;
-      ctx.activeSegments = [];
-      ctx.childPausedMs = 0;
 
       return {
         content: [
