@@ -273,6 +273,9 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         ctx.prevHash = hash;
         fullSession = { ...sessionData, hash, signature };
         await appendSession(fullSession);
+        // Only null root's startedAt when sealing the root session itself.
+        // Child sessions must not touch the root's startedAt.
+        if (targetCtx === ctx) ctx.startedAt = null;
       } finally {
         ctx.chainLock.release();
       }

@@ -197,7 +197,8 @@ export async function postSync(): Promise<{ success: boolean; last_sync_at?: str
     // Group sessions by date
     const byDate = new Map<string, SessionSeal[]>();
     for (const s of sessions) {
-      const date = s.started_at.slice(0, 10);
+      const sd = new Date(s.started_at);
+      const date = `${sd.getFullYear()}-${String(sd.getMonth() + 1).padStart(2, '0')}-${String(sd.getDate()).padStart(2, '0')}`;
       const arr = byDate.get(date);
       if (arr) arr.push(s);
       else byDate.set(date, [s]);

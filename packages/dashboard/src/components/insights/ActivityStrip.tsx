@@ -22,7 +22,8 @@ export function ActivityStrip({
   highlightDate,
 }: ActivityStripProps) {
   const useHourly = timeScale === 'day' || timeScale === '24h' || timeScale === '12h' || timeScale === '6h';
-  const effectiveDate = new Date(effectiveTime).toISOString().slice(0, 10);
+  const ed = new Date(effectiveTime);
+  const effectiveDate = `${ed.getFullYear()}-${String(ed.getMonth() + 1).padStart(2, '0')}-${String(ed.getDate()).padStart(2, '0')}`;
 
   const hourlyData = useMemo(
     () => (useHourly ? getHourlyActivity(sessions, effectiveDate) : []),

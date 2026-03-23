@@ -1,5 +1,11 @@
 import type { SessionSeal, Milestone } from './api';
 
+/** Convert an ISO timestamp (or Date) to a local YYYY-MM-DD string */
+function toLocalDate(iso: string | Date): string {
+  const d = typeof iso === 'string' ? new Date(iso) : iso;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // Module-level timestamp cache — avoids repeated new Date(iso).getTime()
 // across filterSessionsByWindow, countSessionsOutsideWindow, etc.
 const _tsCache = new Map<string, number>();
@@ -174,14 +180,14 @@ export function calculateStreak(sessions: SessionSeal[]): number {
 
   const days = new Set<string>();
   for (const s of sessions) {
-    if (s.started_at) days.add(s.started_at.slice(0, 10));
+    if (s.started_at) days.add(toLocalDate(s.started_at));
   }
 
   const sorted = [...days].sort().reverse();
   if (sorted.length === 0) return 0;
 
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const today = toLocalDate(new Date());
+  const yesterday = toLocalDate(new Date(Date.now() - 86400000));
 
   if (sorted[0] !== today && sorted[0] !== yesterday) return 0;
 
@@ -461,11 +467,11 @@ export function getDailyActivity(sessions: SessionSeal[], days: number): { date:
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
+    const dateStr = toLocalDate(d);
 
     let seconds = 0;
     for (const s of sessions) {
-      const sDate = s.started_at?.slice(0, 10);
+      const sDate = s.started_at ? toLocalDate(s.started_at) : undefined;
       if (sDate && sDate === dateStr) {
         seconds += s.duration_seconds;
       }

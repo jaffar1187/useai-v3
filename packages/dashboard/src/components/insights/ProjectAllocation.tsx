@@ -80,6 +80,7 @@ function buildSegments(data: Record<string, number>): Segment[] {
 export function ProjectAllocation({ sessions, byProject }: ProjectAllocationProps) {
   const [timeMode, setTimeMode] = useState<TimeMode>('user');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
 
   // Proportional time-sharing sweep-line: when N projects run concurrently,
   // each gets 1/N of the wall-clock slice. This ensures per-project totals
@@ -163,6 +164,8 @@ export function ProjectAllocation({ sessions, byProject }: ProjectAllocationProp
     return { ...seg, dashLength, gap, offset };
   });
 
+  const hoveredSeg = hovered ? segments.find((s) => s.name === hovered) : null;
+
   const LABELS: Record<TimeMode, string> = {
     user: 'Clock Time',
     ai: 'AI Time',
@@ -244,8 +247,15 @@ export function ProjectAllocation({ sessions, byProject }: ProjectAllocationProp
                 strokeDasharray={`${arc.dashLength} ${arc.gap}`}
                 strokeDashoffset={arc.offset}
                 strokeLinecap="butt"
+                style={{
+                  opacity: hovered && hovered !== arc.name ? 0.3 : 1,
+                  cursor: 'pointer',
+                  transition: 'opacity 0.2s',
+                }}
+                onMouseEnter={() => setHovered(arc.name)}
+                onMouseLeave={() => setHovered(null)}
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                animate={{ opacity: hovered && hovered !== arc.name ? 0.3 : 1 }}
                 transition={{
                   duration: 0.5,
                   delay: 0.1 + i * 0.08,
@@ -255,13 +265,18 @@ export function ProjectAllocation({ sessions, byProject }: ProjectAllocationProp
             ))}
           </svg>
           {/* Center text */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-lg font-bold text-text-primary leading-none">
-              {segments.length}
-            </span>
-            <span className="text-[10px] text-text-muted mt-0.5">
-              {segments.length === 1 ? 'project' : 'projects'}
-            </span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            {hoveredSeg ? (
+              <>
+                <span className="text-base font-bold text-text-primary leading-none">
+                  {hoveredSeg.percentage.toFixed(0)}%
+                </span>
+              </>
+            ) : (
+              <span className="text-lg font-bold text-text-primary leading-none">
+                {segments.length}
+              </span>
+            )}
           </div>
         </div>
 
@@ -270,9 +285,15 @@ export function ProjectAllocation({ sessions, byProject }: ProjectAllocationProp
           {segments.map((seg, i) => (
             <motion.div
               key={seg.name}
-              className="flex items-center gap-2.5"
+              className="flex items-center gap-2.5 rounded-md px-1 -mx-1 cursor-pointer transition-colors"
+              style={{
+                backgroundColor: hovered === seg.name ? 'var(--color-bg-surface-2, rgba(255,255,255,0.05))' : 'transparent',
+                opacity: hovered && hovered !== seg.name ? 0.4 : 1,
+              }}
+              onMouseEnter={() => setHovered(seg.name)}
+              onMouseLeave={() => setHovered(null)}
               initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
+              animate={{ opacity: hovered && hovered !== seg.name ? 0.4 : 1, x: 0 }}
               transition={{
                 duration: 0.4,
                 delay: 0.15 + i * 0.06,
@@ -305,8 +326,14 @@ export function ProjectAllocation({ sessions, byProject }: ProjectAllocationProp
           return (
             <motion.div
               key={seg.name}
-              className="h-full"
-              style={{ backgroundColor: seg.color }}
+              className="h-full cursor-pointer"
+              style={{
+                backgroundColor: seg.color,
+                opacity: hovered && hovered !== seg.name ? 0.3 : 1,
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={() => setHovered(seg.name)}
+              onMouseLeave={() => setHovered(null)}
               initial={{ width: 0 }}
               animate={{ width: `${pct}%` }}
               transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}

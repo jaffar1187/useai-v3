@@ -115,10 +115,10 @@ function generateInsights(
     }
   }
 
-  // 3. Complexity growth
+  // 3. Complexity growth (skip if no previous data to compare against)
   const currentComplex = milestones.filter((m) => m.complexity === 'complex').length;
   const prevComplex = prevMilestones.filter((m) => m.complexity === 'complex').length;
-  if (currentComplex > prevComplex && currentComplex >= 2) {
+  if (currentComplex > prevComplex && currentComplex >= 2 && prevMilestones.length > 0) {
     insights.push({
       priority: 8,
       node: (

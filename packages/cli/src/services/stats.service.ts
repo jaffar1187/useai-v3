@@ -65,8 +65,13 @@ function computeStats(sessions: Session[]): StatsData {
   };
 }
 
+function toLocalDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function computeStreak(sessions: Session[]): { current: number; longest: number } {
-  const days = new Set(sessions.map((s) => s.endedAt.slice(0, 10)));
+  const days = new Set(sessions.map((s) => toLocalDate(s.endedAt)));
   const sorted = Array.from(days).sort().reverse();
   let current = 0;
   let longest = 0;
@@ -74,7 +79,7 @@ function computeStreak(sessions: Session[]): { current: number; longest: number 
   let prevDate: Date | null = null;
 
   for (const day of sorted) {
-    const d = new Date(day);
+    const d = new Date(day + 'T12:00:00');
     if (prevDate === null || (prevDate.getTime() - d.getTime()) === 86_400_000) {
       streak++;
     } else {
@@ -86,12 +91,15 @@ function computeStreak(sessions: Session[]): { current: number; longest: number 
   longest = Math.max(longest, streak);
 
   // current streak: consecutive days ending today or yesterday
-  const today = new Date().toISOString().slice(0, 10);
-  if (sorted[0] === today || sorted[0] === new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)) {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const yd = new Date(Date.now() - 86_400_000);
+  const yesterdayStr = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`;
+  if (sorted[0] === today || sorted[0] === yesterdayStr) {
     let s = 0;
     let prev: Date | null = null;
     for (const day of sorted) {
-      const d = new Date(day);
+      const d = new Date(day + 'T12:00:00');
       if (prev === null || (prev.getTime() - d.getTime()) === 86_400_000) {
         s++;
       } else break;

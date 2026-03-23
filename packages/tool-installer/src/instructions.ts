@@ -36,7 +36,7 @@ export const INSTRUCTIONS_TEXT = [
   '     Example: `[{"title": "Implemented auth flow", "private_title": "Added OAuth2 to UserService in acme-api", "category": "feature"}]`',
   "     Category values: feature, bugfix, refactor, test, docs, setup, deployment, fix, analysis, research, investigation, performance, cleanup, chore, security, migration, design, devops, config, other",
   "  3. `evaluation` object: prompt_quality (1-5), context_provided (1-5), task_outcome, iteration_count, independence_level (1-5), scope_quality (1-5), tools_leveraged count. Include a `*_reason` for every scored field.",
-  '  4. **calibrated framework**: also provide `*_ideal` fields explaining what would make each metric perfect. Omit the ideal field if the metric is already 5/5. These enable gap analysis scoring that penalizes inflated self-assessments.',
+  '  4. **calibrated framework**: provide `*_ideal` fields for every metric that is not 5/5 — this is mandatory, not optional. Only omit `*_ideal` when the score is exactly 5.',
   "- **Subagent tracking**: When spawning subagents, the agent prompt MUST include all of the following instructions explicitly:",
   "  1. Use `ToolSearch` to load the useai tools, then call `useai_start` **as the very first tool call** — before any Glob, Read, Grep, Bash, or other tool — **without** a `prompt_id` (each subagent gets its own independent session).",
   "  2. Note the `prompt_id` returned by `useai_start` and use that exact `prompt_id` for all subsequent `useai_heartbeat` and `useai_end` calls.",
@@ -46,6 +46,8 @@ export const INSTRUCTIONS_TEXT = [
   "  6. Do NOT pass the parent session's `prompt_id` to subagents — each subagent must have its own independent session to avoid tracking collisions.",
   "  7. **Reserve tool calls for useai_end**: Always reserve the last 5 tool calls exclusively for `useai_end`. Once you reach that budget, stop all other work and call `useai_end` immediately — never let context exhaustion prevent the session from being sealed.",
   "  8. **useai_end must be the last action**: Write all output and summaries BEFORE calling `useai_end`. Never write any text after the `useai_end` call — it must be the absolute last thing in the response.",
+  "  9. **useai_end payload**: provide `languages`, `files_touched_count`, `milestones` (array with `title`, `category`, optional `private_title`), and `evaluation` (prompt_quality, context_provided, task_outcome, iteration_count, independence_level, scope_quality, tools_leveraged — include `*_reason` for every scored field).",
+  '  10. **calibrated framework**: provide `*_ideal` fields for every metric that is not 5/5 — this is mandatory, not optional. Only omit `*_ideal` when the score is exactly 5.',
   "  - **Long-running commands**: If a command will run longer than 4 minutes (builds, test suites, deployments, sleeps), break it into ≤4-minute chunks and call `useai_heartbeat` between each chunk. Gaps over 5 minutes without a heartbeat are counted as idle time.",
 ].join("\n");
 

@@ -27,7 +27,7 @@ export function registerMilestones(program: Command): void {
       }
 
       const rows = milestones.map((m) => [
-        m.endedAt.slice(0, 10),
+        new Date(m.endedAt).toLocaleDateString('en-CA'),
         pc.cyan(m.category),
         m.title,
       ]);

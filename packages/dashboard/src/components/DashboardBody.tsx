@@ -200,7 +200,8 @@ export function DashboardBody({
 
   const highlightDate = useMemo(() => {
     if (isLive) return undefined;
-    return new Date(effectiveTime).toISOString().slice(0, 10);
+    const d = new Date(effectiveTime);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, [isLive, effectiveTime]);
 
 

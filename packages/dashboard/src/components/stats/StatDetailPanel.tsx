@@ -16,10 +16,10 @@ const PANEL_CONFIG: Record<MilestoneCardType, {
   accentColor: string;
 }> = {
   milestones: {
-    title: 'All Milestones',
+    title: 'Tasks',
     icon: Target,
     filter: () => true,
-    emptyText: 'No milestones in this time window.',
+    emptyText: 'No tasks in this time window.',
     accentColor: '#60a5fa',
   },
   features: {

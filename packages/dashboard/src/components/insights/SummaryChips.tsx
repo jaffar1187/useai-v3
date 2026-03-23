@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Monitor, Code2 } from 'lucide-react';
 import type { ComputedStats } from '../../lib/stats';
@@ -41,6 +41,7 @@ function buildSegments(
   data: Record<string, number>,
   colors: readonly string[],
   displayNames?: Record<string, string>,
+  colorMap?: Record<string, string>,
 ): Segment[] {
   const entries = Object.entries(data)
     .filter(([, s]) => s > 0)
@@ -61,13 +62,30 @@ function buildSegments(
     otherSeconds = entries.slice(MAX_SLICES).reduce((sum, [, s]) => sum + s, 0);
   }
 
-  const result: Segment[] = visible.map(([name, seconds], i) => ({
-    name,
-    displayName: displayNames?.[name] ?? name,
-    seconds,
-    color: colors[i % colors.length]!,
-    percentage: (seconds / total) * 100,
-  }));
+  // Track which index-based colors have been used so we can skip duplicates
+  let fallbackIdx = 0;
+  const usedColors = new Set<string>();
+
+  const result: Segment[] = visible.map(([name, seconds]) => {
+    let color = colorMap?.[name];
+    if (!color || usedColors.has(color)) {
+      // Find next unused fallback color
+      while (usedColors.has(colors[fallbackIdx % colors.length]!)) {
+        fallbackIdx++;
+        if (fallbackIdx >= colors.length * 2) break; // safety
+      }
+      color = colors[fallbackIdx % colors.length]!;
+      fallbackIdx++;
+    }
+    usedColors.add(color);
+    return {
+      name,
+      displayName: displayNames?.[name] ?? name,
+      seconds,
+      color,
+      percentage: (seconds / total) * 100,
+    };
+  });
 
   if (otherSeconds > 0) {
     result.push({
@@ -93,6 +111,7 @@ function DonutCard({
   segments: Segment[];
   centerLabel: string;
 }) {
+  const [hovered, setHovered] = useState<string | null>(null);
   const size = 100;
   const cx = size / 2;
   const cy = size / 2;
@@ -108,6 +127,8 @@ function DonutCard({
     accumulated += dashLength;
     return { ...seg, dashLength, gap, offset };
   });
+
+  const hoveredSeg = hovered ? segments.find((s) => s.name === hovered) : null;
 
   return (
     <motion.div
@@ -145,17 +166,31 @@ function DonutCard({
                 strokeDasharray={`${arc.dashLength} ${arc.gap}`}
                 strokeDashoffset={arc.offset}
                 strokeLinecap="butt"
+                style={{
+                  opacity: hovered && hovered !== arc.name ? 0.3 : 1,
+                  cursor: 'pointer',
+                  transition: 'opacity 0.2s',
+                }}
+                onMouseEnter={() => setHovered(arc.name)}
+                onMouseLeave={() => setHovered(null)}
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                animate={{ opacity: hovered && hovered !== arc.name ? 0.3 : 1 }}
                 transition={{ duration: 0.5, delay: 0.1 + i * 0.08, ease: [0.22, 1, 0.36, 1] }}
               />
             ))}
           </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-lg font-bold text-text-primary leading-none">
-              {segments.length}
-            </span>
-            <span className="text-[10px] text-text-muted mt-0.5">{centerLabel}</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            {hoveredSeg ? (
+              <>
+                <span className="text-sm font-bold text-text-primary leading-none">
+                  {hoveredSeg.percentage.toFixed(0)}%
+                </span>
+              </>
+            ) : (
+              <span className="text-lg font-bold text-text-primary leading-none">
+                {segments.length}
+              </span>
+            )}
           </div>
         </div>
 
@@ -163,9 +198,15 @@ function DonutCard({
           {segments.map((seg, i) => (
             <motion.div
               key={seg.name}
-              className="flex items-center gap-2.5"
+              className="flex items-center gap-2.5 rounded-md px-1 -mx-1 cursor-pointer transition-colors"
+              style={{
+                backgroundColor: hovered === seg.name ? 'var(--color-bg-surface-2, rgba(255,255,255,0.05))' : 'transparent',
+                opacity: hovered && hovered !== seg.name ? 0.4 : 1,
+              }}
+              onMouseEnter={() => setHovered(seg.name)}
+              onMouseLeave={() => setHovered(null)}
               initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
+              animate={{ opacity: hovered && hovered !== seg.name ? 0.4 : 1, x: 0 }}
               transition={{ duration: 0.4, delay: 0.15 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
             >
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
@@ -188,7 +229,7 @@ function DonutCard({
 
 export function SummaryChips({ stats }: SummaryChipsProps) {
   const clientSegments = useMemo(
-    () => buildSegments(stats.byClient, Object.values(TOOL_COLORS), TOOL_DISPLAY_NAMES),
+    () => buildSegments(stats.byClient, LANG_COLORS, TOOL_DISPLAY_NAMES, TOOL_COLORS),
     [stats.byClient],
   );
 

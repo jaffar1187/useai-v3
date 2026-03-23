@@ -17,7 +17,6 @@ export function registerHeartbeatTool(
       inputSchema: {
         prompt_id: z
           .string()
-          .optional()
           .describe(
             "Target a specific session by its promptId (returned by useai_start). " +
               "Required for concurrent/parallel sessions. If omitted, targets the most recent session.",

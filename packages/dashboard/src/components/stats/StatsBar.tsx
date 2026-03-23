@@ -213,8 +213,8 @@ export function StatsBar({
           icon={Layers}
           delay={0.35}
           clickable
-          selected={selectedCard === 'complex'}
-          onClick={() => handleClick('complex')}
+          selected={selectedCard === 'milestones'}
+          onClick={() => handleClick('milestones')}
         />
       </div>
       <div className="w-px bg-border/30 self-stretch my-1" />
