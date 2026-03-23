@@ -14,8 +14,6 @@ import { FilterChips } from './sessions/FilterChips';
 import { SessionList } from './sessions/SessionList';
 import { TimeTravelPanel } from './time-travel/TimeTravelPanel';
 import { DailyRecap } from './insights/DailyRecap';
-import { EvaluationSummary } from './insights/EvaluationSummary';
-import { SkillRadar } from './insights/SkillRadar';
 import { ComplexityDistribution } from './insights/ComplexityDistribution';
 import { TaskTypeBreakdown } from './insights/TaskTypeBreakdown';
 import { ProjectAllocation } from './insights/ProjectAllocation';
@@ -302,7 +300,6 @@ export function DashboardBody({
                 label="Prompts"
                 title="Prompts"
                 description="Your direct messages to the AI plus any subagent calls it spawned — each one counts as a prompt."
-                color="blue"
               />
               {feedMetrics && (
                 <>
@@ -311,21 +308,18 @@ export function DashboardBody({
                     label="Context"
                     title="Context"
                     description="Did you give the AI enough detail in your prompt — like file names, error messages, or what you've already tried?"
-                    color="amber"
                   />
                   <MetricChip
                     value={feedMetrics.scope.toFixed(1)}
                     label="Scope"
                     title="Scope"
                     description="Did the AI clearly know what to work on — which files, which feature, which boundaries — without having to guess?"
-                    color="purple"
                   />
                   <MetricChip
                     value={feedMetrics.independence.toFixed(1)}
                     label="Independence"
                     title="Independence"
                     description="How much did the AI handle on its own? High means it completed the task without needing corrections or follow-ups."
-                    color="green"
                   />
                 </>
               )}
@@ -395,17 +389,9 @@ export function DashboardBody({
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <EvaluationSummary sessions={displaySessions} />
-            <SkillRadar
-              sessions={displaySessions}
-              milestones={filteredMilestones}
-              streak={globalStreak}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ComplexityDistribution data={complexityData} />
             <ProjectAllocation sessions={displaySessions} byProject={stats.byProject} />
+            <ComplexityDistribution data={complexityData} />
+            <SummaryChips stats={stats} />
           </div>
 
           <TaskTypeBreakdown byTaskType={stats.byTaskType} />
@@ -420,8 +406,6 @@ export function DashboardBody({
           />
 
           <RecentMilestones milestones={filteredMilestones} showPublic={globalShowPublic} />
-
-          <SummaryChips stats={stats} />
         </div>
       )}
     </div>

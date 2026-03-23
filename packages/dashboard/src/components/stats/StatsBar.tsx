@@ -208,9 +208,9 @@ export function StatsBar({
           onClick={() => handleClick('bugs')}
         />
         <StatCard
-          label="Complex"
-          value={complexSolved}
-          icon={Brain}
+          label="Tasks"
+          value={totalMilestones}
+          icon={Layers}
           delay={0.35}
           clickable
           selected={selectedCard === 'complex'}
