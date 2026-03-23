@@ -114,7 +114,7 @@ export function createChildContext(
   return {
     promptId: `prompt_${randomUUID()}`,
     connectionId: parent.connectionId,
-    prevHash: parent.prevHash,
+    prevHash: "", // resolved at seal time from ctx.prevHash — not used at spawn
     startedAt: now,
     lastActivityTime: null,
     idleMs: 0,

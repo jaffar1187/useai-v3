@@ -217,7 +217,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
       const sessionData: Omit<Session, "hash" | "signature"> = {
         promptId: targetCtx.promptId,
         connectionId: targetCtx.connectionId,
-        prevHash: targetCtx.prevHash,
+        prevHash: ctx.prevHash, // always resolve from connection chain head, not child's stale copy
         client: targetCtx.client,
         taskType: task_type ?? targetCtx.taskType,
         title: targetCtx.title ?? "",
@@ -245,6 +245,10 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
 
       const key = await getPrivateKey();
       const { hash, signature } = buildSessionRecord(sessionData, key);
+
+      // Advance chain head SYNCHRONOUSLY before any async work — no race possible
+      ctx.prevHash = hash;
+
       const fullSession: Session = { ...sessionData, hash, signature };
 
       await appendSession(fullSession);
@@ -279,9 +283,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         };
       }
 
-      // Root session: full cleanup, carry prevHash forward for next session, maintain the chain.
-      ctx.prevHash = hash;
-
+      // Root session: chain head already advanced above.
       return {
         content: [
           {
