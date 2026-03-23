@@ -50,9 +50,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
       description:
         "End the current AI coding session and record milestones. " +
         'Each milestone needs a "title" (generic, no project/file names) and "category". ' +
-        "category must be one of: feature, bugfix, refactor, test, docs, setup, deployment, fix, testing, " +
-        "documentation, config, analysis, research, investigation, performance, cleanup, chore, security, " +
-        "migration, design, devops, other. " +
+        "category values are defined in the schema. " +
         'Also provide an "evaluation" object assessing the session: prompt_quality (1-5), context_provided (1-5), ' +
         "task_outcome (completed/partial/abandoned/blocked), iteration_count, independence_level (1-5), " +
         "scope_quality (1-5), and tools_leveraged count. For every scored metric, provide a *_reason field. " +

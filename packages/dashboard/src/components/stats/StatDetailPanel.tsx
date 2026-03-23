@@ -16,10 +16,10 @@ const PANEL_CONFIG: Record<MilestoneCardType, {
   accentColor: string;
 }> = {
   milestones: {
-    title: 'Tasks',
+    title: 'Milestones',
     icon: Target,
     filter: () => true,
-    emptyText: 'No tasks in this time window.',
+    emptyText: 'No milestones in this time window.',
     accentColor: '#60a5fa',
   },
   features: {
@@ -168,6 +168,7 @@ export function StatDetailPanel({ type, milestones, showPublic = false, onClose 
                 <h2 className="text-sm font-bold text-text-primary">{config.title}</h2>
                 <span className="text-[10px] font-mono text-text-muted">
                   {filtered.length} {filtered.length === 1 ? 'item' : 'items'} in window
+                  {type === 'milestones' && ' · user + AI'}
                 </span>
               </div>
               <button

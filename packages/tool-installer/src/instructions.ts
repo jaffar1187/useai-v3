@@ -34,7 +34,7 @@ export const INSTRUCTIONS_TEXT = [
   "  1. `languages` used, `files_touched_count`",
   "  2. `milestones`: array of objects each with `title` (generic — no project/file names), `category`, and optional `private_title` (detailed).",
   '     Example: `[{"title": "Implemented auth flow", "private_title": "Added OAuth2 to UserService in acme-api", "category": "feature"}]`',
-  "     Category values: feature, bugfix, refactor, test, docs, setup, deployment, fix, analysis, research, investigation, performance, cleanup, chore, security, migration, design, devops, config, other",
+  "     **Milestone quality**: only log milestones for actual deliverables — code shipped, bugs fixed, decisions made, or findings that change the plan. Do NOT log: investigations that confirm existing behavior (e.g. \"verified X works correctly\"), bug discoveries without a fix (identifying a bug is investigation, not a deliverable), or code reviews with no resulting changes. If a session was pure research/review with no actionable outcome, use an empty milestones array.",
   "  3. `evaluation` object: prompt_quality (1-5), context_provided (1-5), task_outcome, iteration_count, independence_level (1-5), scope_quality (1-5), tools_leveraged count. Include a `*_reason` for every scored field.",
   '  4. **calibrated framework**: provide `*_ideal` fields for every metric that is not 5/5 — this is mandatory, not optional. Only omit `*_ideal` when the score is exactly 5.',
   "- **Subagent tracking**: When spawning subagents, the agent prompt MUST include all of the following instructions explicitly:",
@@ -48,6 +48,7 @@ export const INSTRUCTIONS_TEXT = [
   "  8. **useai_end must be the last action**: Write all output and summaries BEFORE calling `useai_end`. Never write any text after the `useai_end` call — it must be the absolute last thing in the response.",
   "  9. **useai_end payload**: provide `languages`, `files_touched_count`, `milestones` (array with `title`, `category`, optional `private_title`), and `evaluation` (prompt_quality, context_provided, task_outcome, iteration_count, independence_level, scope_quality, tools_leveraged — include `*_reason` for every scored field).",
   '  10. **calibrated framework**: provide `*_ideal` fields for every metric that is not 5/5 — this is mandatory, not optional. Only omit `*_ideal` when the score is exactly 5.',
+  "  11. **Milestone quality**: only log milestones for actual deliverables — code shipped, bugs fixed, decisions made, or findings that change the plan. Do NOT log: investigations that confirm existing behavior, bug discoveries without a fix, or code reviews with no resulting changes. If the session was pure research/review with no actionable outcome, use an empty milestones array.",
   "  - **Long-running commands**: If a command will run longer than 4 minutes (builds, test suites, deployments, sleeps), break it into ≤4-minute chunks and call `useai_heartbeat` between each chunk. Gaps over 5 minutes without a heartbeat are counted as idle time.",
 ].join("\n");
 

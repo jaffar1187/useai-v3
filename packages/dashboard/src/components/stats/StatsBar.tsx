@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Clock, Bot, Rocket, Bug, Brain, Zap, Target, Layers, Timer } from 'lucide-react';
+import { Clock, Bot, Rocket, Bug, Zap, Target, Layers } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { StatCardType } from './StatDetailPanel';
 
@@ -83,7 +83,7 @@ function StatCard({
       className={`px-3 py-2 rounded-lg border flex items-center gap-2.5 group transition-all duration-300 ${
         isAccent
           ? 'shrink-0 bg-bg-surface-1 border-border/50 hover:border-accent/30'
-          : 'flex-1 min-w-[120px] bg-bg-surface-1 border-border/50 hover:border-accent/30'
+          : 'min-w-0 bg-bg-surface-1 border-border/50 hover:border-accent/30'
       } ${
         clickable && value > 0 ? 'cursor-pointer' : ''
       } ${
@@ -147,77 +147,65 @@ export function StatsBar({
   };
 
   return (
-    <div className="flex gap-2 mb-4">
-      <div className="grid grid-cols-3 lg:grid-cols-7 gap-2 flex-1">
-        <StatCard
-          label="Clock Time"
-          value={coveredHours}
-          formatter={formatHrMin}
-          icon={Clock}
-          delay={0.1}
-          clickable
-          selected={selectedCard === 'activeTime'}
-          onClick={() => handleClick('activeTime')}
-        />
-        <StatCard
-          label="AI Time"
-          value={totalHours}
-          formatter={formatHrMin}
-          icon={Bot}
-          delay={0.12}
-          clickable
-          selected={selectedCard === 'aiTime'}
-          onClick={() => handleClick('aiTime')}
-        />
-        <StatCard
-          label="Multiplier"
-          value={aiMultiplier}
-          suffix="x"
-          decimals={2}
-          icon={Layers}
-          delay={0.15}
-          clickable
-          selected={selectedCard === 'parallel'}
-          onClick={() => handleClick('parallel')}
-        />
-        <StatCard
-          label="Milestones"
-          value={totalMilestones}
-          icon={Target}
-          delay={0.2}
-          clickable
-          selected={selectedCard === 'milestones'}
-          onClick={() => handleClick('milestones')}
-        />
-        <StatCard
-          label="Features"
-          value={featuresShipped}
-          icon={Rocket}
-          delay={0.25}
-          clickable
-          selected={selectedCard === 'features'}
-          onClick={() => handleClick('features')}
-        />
-        <StatCard
-          label="Bugs Fixed"
-          value={bugsFixed}
-          icon={Bug}
-          delay={0.3}
-          clickable
-          selected={selectedCard === 'bugs'}
-          onClick={() => handleClick('bugs')}
-        />
-        <StatCard
-          label="Tasks"
-          value={totalMilestones}
-          icon={Layers}
-          delay={0.35}
-          clickable
-          selected={selectedCard === 'milestones'}
-          onClick={() => handleClick('milestones')}
-        />
-      </div>
-      <div className="w-px bg-border/30 self-stretch my-1" />
+    <div className="grid grid-cols-4 lg:grid-cols-7 gap-2 mb-4">
+      <StatCard
+        label="Clock Time"
+        value={coveredHours}
+        formatter={formatHrMin}
+        icon={Clock}
+        delay={0.1}
+        clickable
+        selected={selectedCard === 'activeTime'}
+        onClick={() => handleClick('activeTime')}
+      />
+      <StatCard
+        label="AI Time"
+        value={totalHours}
+        formatter={formatHrMin}
+        icon={Bot}
+        delay={0.12}
+        clickable
+        selected={selectedCard === 'aiTime'}
+        onClick={() => handleClick('aiTime')}
+      />
+      <StatCard
+        label="Multiplier"
+        value={aiMultiplier}
+        suffix="x"
+        decimals={2}
+        icon={Layers}
+        delay={0.15}
+        clickable
+        selected={selectedCard === 'parallel'}
+        onClick={() => handleClick('parallel')}
+      />
+      <StatCard
+        label="Milestones"
+        value={totalMilestones}
+        icon={Target}
+        delay={0.2}
+        clickable
+        selected={selectedCard === 'milestones'}
+        onClick={() => handleClick('milestones')}
+      />
+      <StatCard
+        label="Features"
+        value={featuresShipped}
+        icon={Rocket}
+        delay={0.25}
+        clickable
+        selected={selectedCard === 'features'}
+        onClick={() => handleClick('features')}
+      />
+      <StatCard
+        label="Bugs Fixed"
+        value={bugsFixed}
+        icon={Bug}
+        delay={0.3}
+        clickable
+        selected={selectedCard === 'bugs'}
+        onClick={() => handleClick('bugs')}
+      />
       <StatCard
         label="Streak"
         value={currentStreak}
