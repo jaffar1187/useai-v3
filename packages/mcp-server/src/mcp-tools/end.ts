@@ -30,6 +30,7 @@ import {
   resolveSession,
   removeChildSession,
   globalSessionRegistry,
+  ChainLockTimeoutError,
 } from "../core/prompt-context.js";
 import { coerceJsonString } from "../core/coerce.js";
 
@@ -214,10 +215,10 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
 
       const activeSegments = finalizeActiveSegments(targetCtx);
 
-      const sessionData: Omit<Session, "hash" | "signature"> = {
+      // Prepare everything that doesn't depend on prevHash before acquiring the lock
+      const sessionDataBase = {
         promptId: targetCtx.promptId,
         connectionId: targetCtx.connectionId,
-        prevHash: ctx.prevHash, // always resolve from connection chain head, not child's stale copy
         client: targetCtx.client,
         taskType: task_type ?? targetCtx.taskType,
         title: targetCtx.title ?? "",
@@ -244,14 +245,37 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
       };
 
       const key = await getPrivateKey();
-      const { hash, signature } = buildSessionRecord(sessionData, key);
 
-      // Advance chain head SYNCHRONOUSLY before any async work — no race possible
-      ctx.prevHash = hash;
-
-      const fullSession: Session = { ...sessionData, hash, signature };
-
-      await appendSession(fullSession);
+      // Acquire the chain lock — serializes prevHash read/compute/write across
+      // concurrent useai_end calls. Times out after 10s to prevent deadlocks.
+      let fullSession: Session;
+      try {
+        await ctx.chainLock.acquire();
+      } catch (err) {
+        if (err instanceof ChainLockTimeoutError) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Session seal timed out — another session is taking too long to finalize. Please retry.`,
+              },
+            ],
+          };
+        }
+        throw err;
+      }
+      try {
+        const sessionData: Omit<Session, "hash" | "signature"> = {
+          ...sessionDataBase,
+          prevHash: ctx.prevHash,
+        };
+        const { hash, signature } = buildSessionRecord(sessionData, key);
+        ctx.prevHash = hash;
+        fullSession = { ...sessionData, hash, signature };
+        await appendSession(fullSession);
+      } finally {
+        ctx.chainLock.release();
+      }
 
       // A child session is any targetCtx that is not the root ctx itself.
       // This covers both sessions still in concurrentChildren and orphaned sessions

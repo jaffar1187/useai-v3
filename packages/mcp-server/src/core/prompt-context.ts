@@ -3,6 +3,65 @@ import { randomUUID } from "node:crypto";
 /** Idle gap threshold: gaps longer than this between heartbeats are counted as idle time. */
 export const IDLE_GAP_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
+/** Default timeout for acquiring the chain lock (ms). */
+const CHAIN_LOCK_TIMEOUT_MS = 10_000;
+
+export class ChainLockTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Chain lock acquisition timed out after ${timeoutMs}ms`);
+    this.name = "ChainLockTimeoutError";
+  }
+}
+
+/**
+ * Async mutex that serializes access to the hash chain head (prevHash).
+ * Guarantees zero collision even when multiple useai_end calls are in flight.
+ */
+export class ChainLock {
+  private _queue: Array<{
+    resolve: () => void;
+    reject: (err: Error) => void;
+  }> = [];
+  private _locked = false;
+
+  async acquire(timeoutMs: number = CHAIN_LOCK_TIMEOUT_MS): Promise<void> {
+    if (!this._locked) {
+      this._locked = true;
+      return;
+    }
+    return new Promise<void>((resolve, reject) => {
+      const entry = { resolve, reject };
+      this._queue.push(entry);
+
+      const timer = setTimeout(() => {
+        const idx = this._queue.indexOf(entry);
+        if (idx !== -1) {
+          this._queue.splice(idx, 1);
+          reject(new ChainLockTimeoutError(timeoutMs));
+        }
+      }, timeoutMs);
+
+      // Allow the process to exit cleanly (e.g. SIGTERM) without waiting for this timeout
+      if (typeof timer === "object" && "unref" in timer) timer.unref();
+
+      const originalResolve = entry.resolve;
+      entry.resolve = () => {
+        clearTimeout(timer);
+        originalResolve();
+      };
+    });
+  }
+
+  release(): void {
+    const next = this._queue.shift();
+    if (next) {
+      next.resolve();
+    } else {
+      this._locked = false;
+    }
+  }
+}
+
 /**
  * Global registry of active child sessions keyed by promptId.
  * Child sessions are registered here when created so they remain findable
@@ -14,6 +73,8 @@ export interface PromptContext {
   promptId: string;
   connectionId: string;
   prevHash: string;
+  /** Mutex that serializes hash chain reads + writes across concurrent useai_end calls. */
+  chainLock: ChainLock;
   startedAt: Date | null;
   /** Timestamp (ms) of the last heartbeat call. Null if no heartbeat has fired yet. */
   lastActivityTime: number | null;
@@ -71,6 +132,7 @@ export function createPromptContext(): PromptContext {
     promptId: `prompt_${randomUUID()}`,
     connectionId: "",
     prevHash: "0".repeat(64),
+    chainLock: new ChainLock(),
     startedAt: null,
     lastActivityTime: null,
     idleMs: 0,
@@ -115,6 +177,7 @@ export function createChildContext(
     promptId: `prompt_${randomUUID()}`,
     connectionId: parent.connectionId,
     prevHash: "", // resolved at seal time from ctx.prevHash — not used at spawn
+    chainLock: parent.chainLock, // children share the parent's lock — same chain head
     startedAt: now,
     lastActivityTime: null,
     idleMs: 0,
