@@ -250,11 +250,13 @@ export function TimeScrubber({
   // Pre-parse sessions for efficient rendering
   const parsedSessions = useMemo(
     () =>
-      sessions.map((s) => ({
-        session: s,
-        start: parseTimestamp(s.started_at),
-        end: parseTimestamp(s.ended_at),
-      })),
+      sessions
+        .filter((s) => !!s.ended_at && s.duration_seconds > 0)
+        .map((s) => ({
+          session: s,
+          start: parseTimestamp(s.started_at),
+          end: parseTimestamp(s.ended_at),
+        })),
     [sessions],
   );
 

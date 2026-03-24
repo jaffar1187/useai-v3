@@ -93,7 +93,7 @@ export function ActivityStrip({
             <div key={entry.hour} className="flex-1 text-center">
               {entry.hour % 6 === 0 && (
                 <span className="text-[9px] text-text-muted font-bold font-mono uppercase">
-                  {entry.hour === 0 ? '12a' : entry.hour < 12 ? `${entry.hour}a` : entry.hour === 12 ? '12p' : `${entry.hour - 12}p`}
+                  {entry.hour === 0 ? '12am' : entry.hour < 12 ? `${entry.hour}am` : entry.hour === 12 ? '12pm' : `${entry.hour - 12}pm`}
                 </span>
               )}
             </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { RotateCcw, ChevronLeft, ChevronRight, Edit2, Calendar, Clock } from 'lucide-react';
+import { RotateCcw, ChevronLeft, ChevronRight, Calendar, Clock } from 'lucide-react';
 import { StatusBadge } from '../StatusBadge';
 import { TimeScrubber } from './TimeScrubber';
 import { SCALE_LABELS, ROLLING_SCALES, CALENDAR_SCALES, CALENDAR_SCRUB_MAP, SCRUB_CALENDAR_MAP, isCalendarScale, getTimeWindow, jumpScale, shouldSnapToLive } from './types';
@@ -16,42 +16,6 @@ interface TimeTravelPanelProps {
   showPublic?: boolean;
 }
 
-function parseTimeInput(input: string, referenceTimestamp: number): number | null {
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-
-  const date = new Date(referenceTimestamp);
-
-  // 12-hour format
-  const match12 = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
-  if (match12) {
-    let hours = parseInt(match12[1]!, 10);
-    const minutes = parseInt(match12[2]!, 10);
-    const seconds = match12[3] ? parseInt(match12[3]!, 10) : 0;
-    const period = match12[4]!.toUpperCase();
-
-    if (hours < 1 || hours > 12 || minutes > 59 || seconds > 59) return null;
-    if (period === 'AM' && hours === 12) hours = 0;
-    if (period === 'PM' && hours !== 12) hours += 12;
-
-    date.setHours(hours, minutes, seconds, 0);
-    return date.getTime();
-  }
-
-  // 24-hour format
-  const match24 = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-  if (match24) {
-    const hours = parseInt(match24[1]!, 10);
-    const minutes = parseInt(match24[2]!, 10);
-    const seconds = match24[3] ? parseInt(match24[3]!, 10) : 0;
-
-    if (hours > 23 || minutes > 59 || seconds > 59) return null;
-    date.setHours(hours, minutes, seconds, 0);
-    return date.getTime();
-  }
-
-  return null;
-}
 
 export function TimeTravelPanel({
   value,
@@ -99,12 +63,6 @@ export function TimeTravelPanel({
     return `${fmtDateShort(start)}, ${fmtTime(start)} – ${fmtDateShort(end)}, ${fmtTime(end)}`;
   }, [timeWindow, isLive]);
 
-  // Editing state
-  const [isEditingTime, setIsEditingTime] = useState(false);
-  const [timeInput, setTimeInput] = useState('');
-  const timeInputRef = useRef<HTMLInputElement>(null);
-  const wasLiveRef = useRef(false);
-  const originalTimeInputRef = useRef('');
 
   // Snap-to-live hysteresis (only for rolling scales)
   const snappedToLiveRef = useRef(false);
@@ -169,84 +127,6 @@ export function TimeTravelPanel({
     }
   };
 
-  const startEditingTime = () => {
-    wasLiveRef.current = isLive;
-    onChange(effectiveTime);
-    const formatted = new Date(effectiveTime).toLocaleTimeString([], {
-      hour12: true,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-    originalTimeInputRef.current = formatted;
-    setTimeInput(formatted);
-    setIsEditingTime(true);
-    requestAnimationFrame(() => timeInputRef.current?.select());
-  };
-
-  const commitTimeEdit = () => {
-    setIsEditingTime(false);
-    if (wasLiveRef.current && timeInput === originalTimeInputRef.current) {
-      onChange(null);
-      return;
-    }
-    const parsed = parseTimeInput(timeInput, effectiveTime);
-    if (parsed !== null) {
-      onChange(Math.min(parsed, Date.now()));
-    }
-  };
-
-  const handleTimeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      commitTimeEdit();
-      return;
-    }
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      setIsEditingTime(false);
-      if (wasLiveRef.current) onChange(null);
-      return;
-    }
-    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-
-    e.preventDefault();
-    const input = timeInputRef.current;
-    if (!input) return;
-
-    const cursorPos = input.selectionStart ?? 0;
-    const direction = e.key === 'ArrowUp' ? 1 : -1;
-    const parsed = parseTimeInput(timeInput, effectiveTime);
-    if (parsed === null) return;
-
-    const firstColon = timeInput.indexOf(':');
-    const secondColon = timeInput.indexOf(':', firstColon + 1);
-    const spacePos = timeInput.lastIndexOf(' ');
-
-    let deltaMs: number;
-    if (cursorPos <= firstColon) {
-      deltaMs = direction * 3_600_000;
-    } else if (secondColon > -1 && cursorPos <= secondColon) {
-      deltaMs = direction * 60_000;
-    } else if (spacePos > -1 && cursorPos <= spacePos) {
-      deltaMs = direction * 1_000;
-    } else {
-      deltaMs = direction * 12 * 3_600_000;
-    }
-
-    const newTime = Math.min(parsed + deltaMs, Date.now());
-    const formatted = new Date(newTime).toLocaleTimeString([], {
-      hour12: true,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-    setTimeInput(formatted);
-    onChange(newTime);
-
-    requestAnimationFrame(() => {
-      if (input) input.setSelectionRange(cursorPos, cursorPos);
-    });
-  };
 
   // Calendar period label for arrow tooltips
   const getJumpLabel = (direction: -1 | 1): string => {
@@ -267,51 +147,20 @@ export function TimeTravelPanel({
         <div className="flex flex-col items-start gap-0.5">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 h-8">
-              {isEditingTime ? (
-                <input
-                  ref={timeInputRef}
-                  type="text"
-                  value={timeInput}
-                  onChange={(e) => setTimeInput(e.target.value)}
-                  onBlur={commitTimeEdit}
-                  onKeyDown={handleTimeKeyDown}
-                  className={`text-xl font-mono font-bold tracking-tight bg-bg-surface-2 border rounded-lg px-2 -ml-2 w-[155px] outline-none text-text-primary ${isLive ? 'border-accent' : 'border-history'}`}
-                  style={{ boxShadow: isLive ? '0 0 10px rgba(var(--accent-rgb), 0.2)' : '0 0 10px rgba(var(--history-rgb), 0.2)' }}
-                />
-              ) : (
-                <button
-                  onClick={startEditingTime}
-                  className="group flex items-center gap-2 hover:bg-bg-surface-2/50 rounded-lg px-2 -ml-2 py-1 transition-all cursor-text"
-                  title="Click to edit time"
+              <div className="flex items-center gap-2 px-2 -ml-2 py-1">
+                <Clock className={`w-5 h-5 ${isLive ? 'text-text-muted' : 'text-history'}`} />
+                <span
+                  data-testid="time-display"
+                  className={`text-xl font-mono font-bold tracking-tight tabular-nums ${isLive ? 'text-text-primary' : 'text-history'}`}
                 >
-                  <Clock className={`w-5 h-5 ${isLive ? 'text-text-muted' : 'text-history'}`} />
-                  <span
-                    data-testid="time-display"
-                    className={`text-xl font-mono font-bold tracking-tight tabular-nums ${isLive ? 'text-text-primary' : 'text-history'}`}
-                  >
-                    {new Date(effectiveTime).toLocaleTimeString([], {
-                      hour12: true,
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    })}
-                  </span>
-                </button>
-              )}
-
-              <button
-                onClick={isEditingTime ? commitTimeEdit : startEditingTime}
-                className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${
-                  isEditingTime
-                    ? isLive
-                      ? 'bg-accent text-bg-base hover:bg-accent-bright'
-                      : 'bg-history text-white hover:brightness-110'
-                    : 'text-text-muted hover:text-text-primary hover:bg-bg-surface-2'
-                }`}
-                title={isEditingTime ? 'Confirm time' : 'Edit time'}
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-              </button>
+                  {new Date(effectiveTime).toLocaleTimeString([], {
+                    hour12: true,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })}
+                </span>
+              </div>
             </div>
 
             {isLive ? (

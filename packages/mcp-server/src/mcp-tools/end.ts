@@ -96,6 +96,20 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         )
           .optional()
           .describe("Array of milestones accomplished in this session."),
+        prompt_images: coerceJsonString(
+          z.array(
+            z.object({
+              type: z.literal("image"),
+              description: z
+                .string()
+                .describe("AI-generated description of the image"),
+            }),
+          ),
+        )
+          .optional()
+          .describe(
+            "Metadata for images attached to the prompt (description only, no binary data).",
+          ),
         evaluation: coerceJsonString(
           z.object({
             prompt_quality: z.number().min(1).max(5),
@@ -155,6 +169,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
       languages,
       files_touched_count,
       milestones: milestonesInput,
+      prompt_images,
       evaluation,
     }) => {
       const targetCtx = resolveSession(ctx, prompt_id);
@@ -231,11 +246,16 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         ...(targetCtx.project && { project: targetCtx.project }),
         ...(targetCtx.model && { model: targetCtx.model }),
         ...(targetCtx.prompt && { prompt: targetCtx.prompt }),
-        ...(targetCtx.promptImages &&
-          targetCtx.promptImages.length > 0 && {
-            promptImages: targetCtx.promptImages,
-            promptImageCount: targetCtx.promptImages.length,
-          }),
+        ...(() => {
+          const startImages = targetCtx.promptImages ?? [];
+          const endImages = prompt_images ?? [];
+          const allImages = [...startImages, ...endImages];
+          if (allImages.length === 0) return {};
+          return {
+            promptImages: allImages,
+            promptImageCount: allImages.length,
+          };
+        })(),
         ...(files_touched_count !== undefined && {
           filesTouchedCount: files_touched_count,
         }),

@@ -1,4 +1,7 @@
-import { motion } from 'motion/react';
+import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ListChecks, X } from 'lucide-react';
+import type { Milestone, SessionSeal } from '../../lib/api.js';
 
 const TASK_TYPE_COLORS: Record<string, string> = {
   coding: '#b4f82c',
@@ -31,57 +34,203 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-interface TaskTypeBreakdownProps {
-  byTaskType: Record<string, number>;
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-export function TaskTypeBreakdown({ byTaskType }: TaskTypeBreakdownProps) {
+interface TaskTypeBreakdownProps {
+  byTaskType: Record<string, number>;
+  sessions?: SessionSeal[];
+  milestones?: Milestone[];
+  showPublic?: boolean;
+}
+
+export function TaskTypeBreakdown({ byTaskType, sessions = [], milestones = [], showPublic = false }: TaskTypeBreakdownProps) {
   const entries = Object.entries(byTaskType)
     .filter(([, seconds]) => seconds > 0)
     .sort((a, b) => b[1] - a[1]);
+
+  const [selectedType, setSelectedType] = useState<string | null>(null);
 
   if (entries.length === 0) return null;
 
   const maxValue = entries[0]![1];
 
   return (
-    <div className="rounded-xl bg-bg-surface-1 border border-border/50 p-4 mb-8">
-      <h2 className="text-sm font-bold text-text-muted uppercase tracking-widest mb-4 px-1">
-        Task Types
-      </h2>
+    <>
+      <div className="rounded-xl bg-bg-surface-1 border border-border/50 p-4 mb-8">
+        <h2 className="text-sm font-bold text-text-muted uppercase tracking-widest mb-4 px-1">
+          Task Types
+        </h2>
 
-      <div className="space-y-2.5">
-        {entries.map(([type, seconds], index) => {
-          const color = TASK_TYPE_COLORS[type] ?? TASK_TYPE_COLORS.other!;
-          const widthPercent = (seconds / maxValue) * 100;
+        <div className="space-y-2.5">
+          {entries.map(([type, seconds], index) => {
+            const color = TASK_TYPE_COLORS[type] ?? TASK_TYPE_COLORS['other']!;
+            const widthPercent = (seconds / maxValue) * 100;
 
-          return (
-            <div key={type} className="flex items-center gap-3">
-              <span className="text-xs text-text-secondary font-medium w-24 text-right shrink-0">
-                {capitalize(type)}
-              </span>
+            return (
+              <button
+                key={type}
+                className="flex items-center gap-3 w-full text-left hover:bg-bg-surface-2/30 rounded-lg px-1 -mx-1 py-0.5 transition-colors cursor-pointer"
+                onClick={() => setSelectedType(type)}
+              >
+                <span className="text-xs text-text-secondary font-medium w-24 text-right shrink-0">
+                  {capitalize(type)}
+                </span>
 
-              <div className="flex-1 h-5 rounded bg-bg-surface-2/50 overflow-hidden">
-                <motion.div
-                  className="h-full rounded"
-                  style={{ backgroundColor: color }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${widthPercent}%` }}
-                  transition={{
-                    duration: 0.6,
-                    delay: index * 0.05,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                />
-              </div>
+                <div className="flex-1 h-5 rounded bg-bg-surface-2/50 overflow-hidden">
+                  <motion.div
+                    className="h-full rounded"
+                    style={{ backgroundColor: color }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${widthPercent}%` }}
+                    transition={{
+                      duration: 0.6,
+                      delay: index * 0.05,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                  />
+                </div>
 
-              <span className="text-xs text-text-muted font-mono w-12 text-right shrink-0">
-                {formatTime(seconds)}
-              </span>
-            </div>
-          );
-        })}
+                <span className="text-xs text-text-muted font-mono w-12 text-right shrink-0">
+                  {formatTime(seconds)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      <AnimatePresence>
+        {selectedType && (
+          <TaskTypeOverlay
+            taskType={selectedType}
+            sessions={sessions}
+            milestones={milestones}
+            showPublic={showPublic}
+            onClose={() => setSelectedType(null)}
+          />
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+function TaskTypeOverlay({
+  taskType,
+  sessions,
+  milestones,
+  showPublic,
+  onClose,
+}: {
+  taskType: string;
+  sessions: SessionSeal[];
+  milestones: Milestone[];
+  showPublic: boolean;
+  onClose: () => void;
+}) {
+  const color = TASK_TYPE_COLORS[taskType] ?? TASK_TYPE_COLORS['other']!;
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const sessionIdSet = useMemo(
+    () => new Set(sessions.filter(s => s.task_type === taskType).map(s => s.session_id)),
+    [sessions, taskType],
+  );
+
+  const filtered = useMemo(
+    () => milestones
+      .filter((m) => sessionIdSet.has(m.session_id))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    [milestones, sessionIdSet],
+  );
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="fixed inset-x-0 bottom-0 top-[53px] bg-black/40 backdrop-blur-sm z-40"
+        onClick={onClose}
+      />
+
+      <motion.div
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+        className="fixed top-[53px] right-0 h-[calc(100%-53px)] w-full max-w-md bg-bg-base border-l border-border/50 z-40 flex flex-col shadow-2xl"
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border/50">
+          <div
+            className="p-2 rounded-lg"
+            style={{ backgroundColor: `${color}15` }}
+          >
+            <ListChecks className="w-4 h-4" style={{ color }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-bold text-text-primary">{capitalize(taskType)}</h2>
+            <span className="text-[10px] font-mono text-text-muted">
+              {filtered.length} milestone{filtered.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md hover:bg-bg-surface-2 text-text-muted hover:text-text-primary transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Milestone list */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
+          {filtered.map((m, i) => {
+            const title = showPublic ? m.title : (m.private_title ?? m.title);
+            return (
+              <motion.div
+                key={m.id}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: Math.min(i * 0.02, 0.6) }}
+                className="flex items-start gap-2.5 py-2 px-2 rounded-lg hover:bg-bg-surface-1 transition-colors"
+              >
+                <div
+                  className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
+                  style={{ backgroundColor: color }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-text-secondary leading-snug">{title}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] font-mono text-text-muted">
+                      {formatDate(m.created_at)}
+                    </span>
+                    <span className="text-[10px] text-text-muted capitalize">{m.category}</span>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div className="text-center text-text-muted text-xs py-8 px-4 space-y-1">
+              <p>No milestones logged</p>
+              <p className="text-text-muted/60">Sessions focused on exploration or review may not produce milestones.</p>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </>
   );
 }

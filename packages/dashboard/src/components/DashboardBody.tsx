@@ -373,7 +373,7 @@ export function DashboardBody({
             milestones={filteredMilestones}
             filters={filters}
             globalShowPublic={globalShowPublic}
-            showFullDate={timeScale === 'week' || timeScale === '7d' || timeScale === 'month' || timeScale === '30d'}
+            showFullDate
             outsideWindowCounts={outsideWindowCounts}
             onNavigateNewer={handleNavigateNewer}
             onNavigateOlder={handleNavigateOlder}
@@ -398,11 +398,11 @@ export function DashboardBody({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ProjectAllocation sessions={displaySessions} byProject={stats.byProject} />
-            <ComplexityDistribution data={complexityData} />
+            <ComplexityDistribution data={complexityData} milestones={filteredMilestones} showPublic={globalShowPublic} />
             <SummaryChips stats={stats} />
           </div>
 
-          <TaskTypeBreakdown byTaskType={stats.byTaskType} />
+          <TaskTypeBreakdown byTaskType={stats.byTaskType} sessions={displaySessions} milestones={filteredMilestones} showPublic={globalShowPublic} />
 
           <ActivityStrip
             sessions={sessions}

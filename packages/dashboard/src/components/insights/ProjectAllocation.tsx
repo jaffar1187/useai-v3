@@ -91,14 +91,25 @@ export function ProjectAllocation({ sessions, byProject }: ProjectAllocationProp
 
     for (const s of sessions) {
       if (!s.project) continue;
-      const start = new Date(s.started_at).getTime();
-      const end = new Date(s.ended_at).getTime();
-      if (end <= start) continue;
-      const activeDurationMs = s.duration_seconds * 1000;
-      const activeEnd = Math.min(start + activeDurationMs, end);
-      if (activeEnd <= start) continue;
-      events.push({ time: start, project: s.project, delta: 1 });
-      events.push({ time: activeEnd, project: s.project, delta: -1 });
+      const sStart = new Date(s.started_at).getTime();
+      const sEnd = new Date(s.ended_at).getTime();
+      if (sEnd <= sStart) continue;
+
+      if (s.active_segments && s.active_segments.length > 0) {
+        for (const [segStart, segEnd] of s.active_segments) {
+          const t0 = new Date(segStart).getTime();
+          const t1 = new Date(segEnd).getTime();
+          if (t1 <= t0) continue;
+          events.push({ time: t0, project: s.project, delta: 1 });
+          events.push({ time: t1, project: s.project, delta: -1 });
+        }
+      } else {
+        const activeDurationMs = s.duration_seconds * 1000;
+        const activeEnd = Math.min(sStart + activeDurationMs, sEnd);
+        if (activeEnd <= sStart) continue;
+        events.push({ time: sStart, project: s.project, delta: 1 });
+        events.push({ time: activeEnd, project: s.project, delta: -1 });
+      }
     }
 
     // Sort by time; at same time, ends before starts
