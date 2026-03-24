@@ -180,7 +180,7 @@ export function calculateStreak(sessions: SessionSeal[]): number {
 
   const days = new Set<string>();
   for (const s of sessions) {
-    if (s.started_at) days.add(toLocalDate(s.started_at));
+    if (s.started_at && s.ended_at && s.duration_seconds > 0) days.add(toLocalDate(s.started_at));
   }
 
   const sorted = [...days].sort().reverse();
@@ -215,6 +215,7 @@ export function countSessionsOutsideWindow(
   let before = 0;
   let after = 0;
   for (const s of allSessions) {
+    if (!s.ended_at || s.duration_seconds <= 0) continue;
     const sEnd = parseTimestamp(s.ended_at);
     const sStart = parseTimestamp(s.started_at);
     if (sEnd < windowStart) before++;

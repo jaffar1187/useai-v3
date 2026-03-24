@@ -31,8 +31,6 @@ export const MilestoneCategorySchema = z.enum([
   "feature",
   "bugfix",
   "refactor",
-  "test",
-  "docs",
   "setup",
   "deployment",
   "fix",

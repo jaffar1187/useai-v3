@@ -227,10 +227,11 @@ export function DashboardBody({
     const evaluated = displaySessions.filter((s) => s.evaluation != null);
     if (evaluated.length === 0) return null;
     const n = evaluated.length;
+    const promptQuality = evaluated.reduce((sum, s) => sum + s.evaluation!.prompt_quality, 0) / n;
     const scope = evaluated.reduce((sum, s) => sum + s.evaluation!.scope_quality, 0) / n;
     const context = evaluated.reduce((sum, s) => sum + s.evaluation!.context_provided, 0) / n;
     const independence = evaluated.reduce((sum, s) => sum + s.evaluation!.independence_level, 0) / n;
-    return { scope, context, independence };
+    return { promptQuality, scope, context, independence };
   }, [displaySessions]);
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -304,6 +305,12 @@ export function DashboardBody({
               />
               {feedMetrics && (
                 <>
+                  <MetricChip
+                    value={feedMetrics.promptQuality.toFixed(1)}
+                    label="Prompt_Quality"
+                    title="Prompt Quality"
+                    description="How well-crafted were your prompts? Considers clarity, specificity, and whether they gave the AI everything needed to succeed on the first try."
+                  />
                   <MetricChip
                     value={feedMetrics.context.toFixed(1)}
                     label="Context"

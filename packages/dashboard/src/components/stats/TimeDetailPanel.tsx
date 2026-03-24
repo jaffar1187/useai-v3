@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { X, Clock, Bot, Layers, Zap, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { SessionSeal } from '../../lib/api';
@@ -335,7 +335,8 @@ function computeActiveDays(sessions: SessionSeal[]): {
 }
 
 function StreakContent({ allSessions, currentStreak }: { allSessions: SessionSeal[]; currentStreak: number }) {
-  const activeDays = computeActiveDays(allSessions);
+  const validSessions = useMemo(() => allSessions.filter(s => !!s.ended_at && s.duration_seconds > 0), [allSessions]);
+  const activeDays = computeActiveDays(validSessions);
 
   // Mark which days are part of the current streak (consecutive from today backwards)
   const streakDates = new Set<string>();
@@ -355,7 +356,6 @@ function StreakContent({ allSessions, currentStreak }: { allSessions: SessionSea
       <div className="rounded-lg border border-border/50 bg-bg-surface-1 divide-y divide-border/30">
         <CalcRow label="Current streak" value={`${currentStreak} day${currentStreak === 1 ? '' : 's'}`} />
         <CalcRow label="Total active days" value={String(activeDays.length)} />
-        <CalcRow label="Total prompts" value={String(allSessions.length)} tooltip="Inclusive of subagent prompts — when a main agent spawns subagents, each subagent prompt is counted separately" />
       </div>
 
       {activeDays.length > 0 && (
