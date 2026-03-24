@@ -228,7 +228,6 @@ function ActiveTimeContent({ stats, sessions }: { stats: TimeStats; sessions: Se
       <div className="rounded-lg border border-border/50 bg-bg-surface-1 divide-y divide-border/30">
         <CalcRow label="Clock time" value={formatHours(stats.coveredHours)} />
         <CalcRow label="AI time" value={formatHours(stats.totalHours)} />
-        <CalcRow label="Active periods" value={String(periods.length)} />
         <CalcRow label="Prompts" value={String(sessions.length)} tooltip="Inclusive of subagent prompts — when a main agent spawns subagents, each subagent prompt is counted separately" />
       </div>
 
@@ -251,7 +250,7 @@ function ActiveTimeContent({ stats, sessions }: { stats: TimeStats; sessions: Se
                   <div className="w-2 h-2 rounded-full bg-accent/60 flex-shrink-0" />
                   <span className="text-xs font-mono text-text-secondary flex-1">
                     {new Date(p.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
-                    {' \u2192 '}
+                    {' → '}
                     {new Date(p.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
                   </span>
                   <span className="text-xs font-mono font-bold text-text-primary">
