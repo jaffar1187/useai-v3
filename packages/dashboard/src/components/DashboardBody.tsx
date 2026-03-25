@@ -397,7 +397,7 @@ export function DashboardBody({
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ProjectAllocation sessions={displaySessions} byProject={stats.byProject} />
+            <ProjectAllocation byProjectClock={stats.byProjectClock} byProject={stats.byProject} />
             <ComplexityDistribution data={complexityData} milestones={filteredMilestones} showPublic={globalShowPublic} />
             <SummaryChips stats={stats} />
           </div>

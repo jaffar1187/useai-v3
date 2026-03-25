@@ -41,6 +41,8 @@ export interface ComputedStats {
   byLanguage: Record<string, number>;
   byTaskType: Record<string, number>;
   byProject: Record<string, number>;
+  /** Clock-time project breakdown via shared sweep-line */
+  byProjectClock: Record<string, number>;
   /** AI-time (sum of duration_seconds) breakdowns — no concurrency dedup */
   byClientAI: Record<string, number>;
   byLanguageAI: Record<string, number>;
@@ -152,9 +154,8 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
     totalSeconds += s.duration_seconds;
     filesTouched += s.files_touched;
 
-    if (s.project) {
-      byProject[s.project] = (byProject[s.project] ?? 0) + s.duration_seconds;
-    }
+    const project = s.project || 'other';
+    byProject[project] = (byProject[project] ?? 0) + s.duration_seconds;
 
     byClientAI[s.client] = (byClientAI[s.client] ?? 0) + s.duration_seconds;
     byTaskTypeAI[s.task_type] = (byTaskTypeAI[s.task_type] ?? 0) + s.duration_seconds;
@@ -177,6 +178,7 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
     return langs.length > 0 ? langs : ['other'];
   });
   const byTaskType = computeClockTimeBreakdown(sessions, (s) => [s.task_type]);
+  const byProjectClock = computeClockTimeBreakdown(sessions, (s) => [s.project || 'other']);
 
   // Actual time span, covered time, and peak concurrency (sweep-line)
   let actualSpanHours = 0;
@@ -264,6 +266,7 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
     byLanguage,
     byTaskType,
     byProject,
+    byProjectClock,
     byClientAI,
     byLanguageAI,
     byTaskTypeAI,

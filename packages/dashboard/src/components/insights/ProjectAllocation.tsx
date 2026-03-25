@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { FolderKanban, ChevronDown } from 'lucide-react';
-import type { SessionSeal } from '../../lib/api';
 
 const PROJECT_COLORS = [
   '#b4f82c',
@@ -28,7 +27,7 @@ function formatTime(seconds: number): string {
 }
 
 interface ProjectAllocationProps {
-  sessions: SessionSeal[];
+  byProjectClock: Record<string, number>;
   byProject: Record<string, number>;
 }
 
@@ -40,23 +39,24 @@ interface Segment {
 }
 
 function buildSegments(data: Record<string, number>): Segment[] {
+  // Separate 'other' (unassigned) from named entries — it always goes in the overflow bucket
+  let otherSeconds = data['other'] ?? 0;
   const entries = Object.entries(data)
-    .filter(([, s]) => s > 0)
+    .filter(([key, s]) => s > 0 && key !== 'other')
     .sort((a, b) => b[1] - a[1]);
 
-  if (entries.length === 0) return [];
+  if (entries.length === 0 && otherSeconds === 0) return [];
 
-  const total = entries.reduce((sum, [, s]) => sum + s, 0);
+  const total = entries.reduce((sum, [, s]) => sum + s, 0) + otherSeconds;
   const MAX_SLICES = 6;
 
   let visible: [string, number][];
-  let otherSeconds = 0;
 
   if (entries.length <= MAX_SLICES) {
     visible = entries;
   } else {
     visible = entries.slice(0, MAX_SLICES);
-    otherSeconds = entries.slice(MAX_SLICES).reduce((sum, [, s]) => sum + s, 0);
+    otherSeconds += entries.slice(MAX_SLICES).reduce((sum, [, s]) => sum + s, 0);
   }
 
   const result: Segment[] = visible.map(([name, seconds], i) => ({
@@ -78,80 +78,12 @@ function buildSegments(data: Record<string, number>): Segment[] {
   return result;
 }
 
-export function ProjectAllocation({ sessions, byProject }: ProjectAllocationProps) {
+export function ProjectAllocation({ byProjectClock, byProject }: ProjectAllocationProps) {
   const [timeMode, setTimeMode] = useState<TimeMode>('user');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
 
-  // Proportional time-sharing sweep-line: when N projects run concurrently,
-  // each gets 1/N of the wall-clock slice. This ensures per-project totals
-  // sum to the global "User Time" (coveredHours) shown in the StatsBar.
-  const byProjectUserTime = useMemo(() => {
-    type Event = { time: number; project: string; delta: 1 | -1 };
-    const events: Event[] = [];
-
-    for (const s of sessions) {
-      if (!s.project) continue;
-      const sStart = new Date(s.started_at).getTime();
-      const sEnd = new Date(s.ended_at).getTime();
-      if (sEnd <= sStart) continue;
-
-      if (s.active_segments && s.active_segments.length > 0) {
-        for (const [segStart, segEnd] of s.active_segments) {
-          const t0 = new Date(segStart).getTime();
-          const t1 = new Date(segEnd).getTime();
-          if (t1 <= t0) continue;
-          events.push({ time: t0, project: s.project, delta: 1 });
-          events.push({ time: t1, project: s.project, delta: -1 });
-        }
-      } else {
-        const activeDurationMs = s.duration_seconds * 1000;
-        const activeEnd = Math.min(sStart + activeDurationMs, sEnd);
-        if (activeEnd <= sStart) continue;
-        events.push({ time: sStart, project: s.project, delta: 1 });
-        events.push({ time: activeEnd, project: s.project, delta: -1 });
-      }
-    }
-
-    // Sort by time; at same time, ends before starts
-    events.sort((a, b) => a.time - b.time || a.delta - b.delta);
-
-    const map: Record<string, number> = {};
-    // Track how many sessions each project has running
-    const activeCount: Record<string, number> = {};
-    let totalActive = 0;
-    let prevTime = 0;
-
-    for (const e of events) {
-      // Distribute time from prevTime to e.time among active projects
-      if (totalActive > 0 && e.time > prevTime) {
-        const sliceMs = e.time - prevTime;
-        // Count distinct active projects
-        const activeProjects = Object.keys(activeCount).filter((p) => activeCount[p]! > 0);
-        const numProjects = activeProjects.length;
-        if (numProjects > 0) {
-          const share = sliceMs / numProjects;
-          for (const p of activeProjects) {
-            map[p] = (map[p] ?? 0) + share;
-          }
-        }
-      }
-
-      prevTime = e.time;
-      activeCount[e.project] = (activeCount[e.project] ?? 0) + e.delta;
-      if (activeCount[e.project] === 0) delete activeCount[e.project];
-      totalActive = Object.values(activeCount).reduce((sum, n) => sum + n, 0);
-    }
-
-    // Convert ms to seconds
-    const result: Record<string, number> = {};
-    for (const [project, ms] of Object.entries(map)) {
-      if (ms > 0) result[project] = ms / 1000;
-    }
-    return result;
-  }, [sessions]);
-
-  const data = timeMode === 'user' ? byProjectUserTime : byProject;
+  const data = timeMode === 'user' ? byProjectClock : byProject;
   const segments = useMemo(() => buildSegments(data), [data]);
 
   if (segments.length === 0) return null;

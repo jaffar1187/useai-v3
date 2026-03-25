@@ -51,23 +51,23 @@ function buildSegments(
   displayNames?: Record<string, string>,
   colorMap?: Record<string, string>,
 ): Segment[] {
+  let otherSeconds = data['other'] ?? 0;
   const entries = Object.entries(data)
-    .filter(([, s]) => s > 0)
+    .filter(([key, s]) => s > 0 && key !== 'other')
     .sort((a, b) => b[1] - a[1]);
 
-  if (entries.length === 0) return [];
+  if (entries.length === 0 && otherSeconds === 0) return [];
 
-  const total = entries.reduce((sum, [, s]) => sum + s, 0);
+  const total = entries.reduce((sum, [, s]) => sum + s, 0) + otherSeconds;
   const MAX_SLICES = 6;
 
   let visible: [string, number][];
-  let otherSeconds = 0;
 
   if (entries.length <= MAX_SLICES) {
     visible = entries;
   } else {
     visible = entries.slice(0, MAX_SLICES);
-    otherSeconds = entries.slice(MAX_SLICES).reduce((sum, [, s]) => sum + s, 0);
+    otherSeconds += entries.slice(MAX_SLICES).reduce((sum, [, s]) => sum + s, 0);
   }
 
   // Track which index-based colors have been used so we can skip duplicates
