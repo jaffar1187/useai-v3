@@ -324,8 +324,8 @@ export function touchActivity(
       const last = ctx.activeSegments[ctx.activeSegments.length - 1]!;
       last[1] = baseline;
     }
-    // // Start a new segment at the current time
-    // ctx.activeSegments.push([now, now]);
+    // Start a new segment at the current time
+    ctx.activeSegments.push([now, now]);
   } else if (ctx.activeSegments.length > 0) {
     // Extend the current segment
     ctx.activeSegments[ctx.activeSegments.length - 1]![1] = now;
