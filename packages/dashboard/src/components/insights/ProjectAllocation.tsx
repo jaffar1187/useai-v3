@@ -20,10 +20,11 @@ type TimeMode = 'user' | 'ai';
 
 function formatTime(seconds: number): string {
   if (seconds < 60) return '<1m';
-  const mins = Math.round(seconds / 60);
-  if (mins < 60) return `${mins}m`;
-  const h = (seconds / 3600).toFixed(1);
-  return `${h}h`;
+  const totalMins = Math.round(seconds / 60);
+  if (totalMins < 60) return `${totalMins}m`;
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return m > 0 ? `${h}h${m}m` : `${h}h`;
 }
 
 interface ProjectAllocationProps {

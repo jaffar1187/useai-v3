@@ -49,7 +49,6 @@ export function registerStartTool(server: McpServer, ctx: PromptContext): void {
           ),
         prompt: z
           .string()
-          .optional()
           .describe(
             "The user's full verbatim prompt text. Stored locally for self-review.",
           ),

@@ -231,7 +231,6 @@ export function SettingsPage() {
           value={draft.evaluation_framework}
           options={[
             { value: 'space', label: 'SPACE (weighted)' },
-            { value: 'raw', label: 'Raw (equal weight)' },
             { value: 'calibrated', label: 'Calibrated (gap analysis)' },
           ]}
           onChange={setFramework}

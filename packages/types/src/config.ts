@@ -15,7 +15,7 @@ export const UseaiConfigSchema = z.object({
   }).default({}),
 
   evaluation: z.object({
-    framework: z.enum(["space", "aps", "raw", "calibrated"]).default("space"),
+    framework: z.enum(["space", "aps", "raw", "calibrated"]).default("calibrated"),
   }).default({}),
 
   capture: z.object({

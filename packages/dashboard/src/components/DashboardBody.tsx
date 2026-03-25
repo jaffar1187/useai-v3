@@ -402,7 +402,7 @@ export function DashboardBody({
             <SummaryChips stats={stats} />
           </div>
 
-          <TaskTypeBreakdown byTaskType={stats.byTaskType} sessions={displaySessions} milestones={filteredMilestones} showPublic={globalShowPublic} />
+          <TaskTypeBreakdown byTaskType={stats.byTaskType} byTaskTypeAI={stats.byTaskTypeAI} sessions={filteredSessions} milestones={filteredMilestones} showPublic={globalShowPublic} />
 
           <ActivityStrip
             sessions={sessions}

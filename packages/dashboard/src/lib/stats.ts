@@ -41,6 +41,10 @@ export interface ComputedStats {
   byLanguage: Record<string, number>;
   byTaskType: Record<string, number>;
   byProject: Record<string, number>;
+  /** AI-time (sum of duration_seconds) breakdowns — no concurrency dedup */
+  byClientAI: Record<string, number>;
+  byLanguageAI: Record<string, number>;
+  byTaskTypeAI: Record<string, number>;
 }
 
 export function computeMilestoneStats(milestones: Milestone[]): {
@@ -61,30 +65,118 @@ export function computeMilestoneStats(milestones: Milestone[]): {
   return { featuresShipped, bugsFixed, complexSolved };
 }
 
+/**
+ * Sweep-line clock-time breakdown: distributes wall-clock time proportionally
+ * among distinct active keys. When N keys are active concurrently, each gets
+ * 1/N of the wall-clock slice.
+ *
+ * Uses active_segments when available; falls back to
+ * [started_at, started_at + duration_seconds] for older sessions.
+ */
+function computeClockTimeBreakdown(
+  sessions: SessionSeal[],
+  getKeys: (s: SessionSeal) => string[],
+): Record<string, number> {
+  type Event = { time: number; key: string; delta: 1 | -1 };
+  const events: Event[] = [];
+
+  for (const s of sessions) {
+    const keys = getKeys(s);
+    if (keys.length === 0) continue;
+
+    const sStart = parseTimestamp(s.started_at);
+    const sEnd = parseTimestamp(s.ended_at);
+    if (sEnd <= sStart) continue;
+
+    // Gather active time intervals
+    const segments: [number, number][] = [];
+    if (s.active_segments && s.active_segments.length > 0) {
+      for (const [segStart, segEnd] of s.active_segments) {
+        const t0 = parseTimestamp(segStart);
+        const t1 = parseTimestamp(segEnd);
+        if (t1 > t0) segments.push([t0, t1]);
+      }
+    } else {
+      // Backward compat: approximate with [start, start + duration]
+      const activeDurationMs = s.duration_seconds * 1000;
+      const activeEnd = Math.min(sStart + activeDurationMs, sEnd);
+      if (activeEnd > sStart) segments.push([sStart, activeEnd]);
+    }
+
+    for (const [t0, t1] of segments) {
+      for (const key of keys) {
+        events.push({ time: t0, key, delta: 1 });
+        events.push({ time: t1, key, delta: -1 });
+      }
+    }
+  }
+
+  events.sort((a, b) => a.time - b.time || a.delta - b.delta);
+
+  const map: Record<string, number> = {};
+  const activeCount: Record<string, number> = {};
+  let prevTime = 0;
+
+  for (const e of events) {
+    const activeKeys = Object.keys(activeCount).filter((k) => activeCount[k]! > 0);
+    if (activeKeys.length > 0 && e.time > prevTime) {
+      const sliceMs = e.time - prevTime;
+      const share = sliceMs / activeKeys.length;
+      for (const k of activeKeys) {
+        map[k] = (map[k] ?? 0) + share;
+      }
+    }
+
+    prevTime = e.time;
+    activeCount[e.key] = (activeCount[e.key] ?? 0) + e.delta;
+    if (activeCount[e.key] === 0) delete activeCount[e.key];
+  }
+
+  const result: Record<string, number> = {};
+  for (const [key, ms] of Object.entries(map)) {
+    if (ms > 0) result[key] = ms / 1000;
+  }
+  return result;
+}
+
+
 export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = []): ComputedStats {
   let totalSeconds = 0;
   let filesTouched = 0;
-  const byClient: Record<string, number> = {};
-  const byLanguage: Record<string, number> = {};
-  const byTaskType: Record<string, number> = {};
   const byProject: Record<string, number> = {};
+  const byClientAI: Record<string, number> = {};
+  const byLanguageAI: Record<string, number> = {};
+  const byTaskTypeAI: Record<string, number> = {};
 
   for (const s of sessions) {
     totalSeconds += s.duration_seconds;
     filesTouched += s.files_touched;
 
-    byClient[s.client] = (byClient[s.client] ?? 0) + s.duration_seconds;
-
-    for (const lang of s.languages) {
-      byLanguage[lang] = (byLanguage[lang] ?? 0) + s.duration_seconds;
-    }
-
-    byTaskType[s.task_type] = (byTaskType[s.task_type] ?? 0) + s.duration_seconds;
-
     if (s.project) {
       byProject[s.project] = (byProject[s.project] ?? 0) + s.duration_seconds;
     }
+
+    byClientAI[s.client] = (byClientAI[s.client] ?? 0) + s.duration_seconds;
+    byTaskTypeAI[s.task_type] = (byTaskTypeAI[s.task_type] ?? 0) + s.duration_seconds;
+
+    const langs = s.languages.map((l) => l.toLowerCase());
+    if (langs.length > 0) {
+      const share = s.duration_seconds / langs.length;
+      for (const lang of langs) {
+        byLanguageAI[lang] = (byLanguageAI[lang] ?? 0) + share;
+      }
+    } else {
+      byLanguageAI['other'] = (byLanguageAI['other'] ?? 0) + s.duration_seconds;
+    }
   }
+
+  // Clock-time breakdowns via sweep-line (uses active_segments, falls back to duration_seconds)
+  const byClient = computeClockTimeBreakdown(sessions, (s) => [s.client]);
+  const byLanguage = computeClockTimeBreakdown(sessions, (s) => {
+    const langs = s.languages.map((l) => l.toLowerCase());
+    return langs.length > 0 ? langs : ['other'];
+  });
+  const byTaskType = computeClockTimeBreakdown(sessions, (s) => [s.task_type]);
 
   // Actual time span, covered time, and peak concurrency (sweep-line)
   let actualSpanHours = 0;
@@ -172,6 +264,9 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
     byLanguage,
     byTaskType,
     byProject,
+    byClientAI,
+    byLanguageAI,
+    byTaskTypeAI,
   };
 }
 
@@ -416,6 +511,60 @@ export function getTimeContextLabel(windowStart: number, windowEnd: number, isLi
   return midDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
+/** Merge overlapping/adjacent time intervals into non-overlapping spans */
+function mergeIntervals(intervals: [number, number][]): [number, number][] {
+  if (intervals.length === 0) return [];
+  intervals.sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [intervals[0]!];
+  for (let i = 1; i < intervals.length; i++) {
+    const [start, end] = intervals[i]!;
+    const last = merged[merged.length - 1]!;
+    if (start <= last[1]) {
+      last[1] = Math.max(last[1], end);
+    } else {
+      merged.push([start, end]);
+    }
+  }
+  return merged;
+}
+
+/** Collect active intervals for a session, clamped to a time window.
+ *  Uses active_segments when available; falls back to duration-capped range. */
+function collectSessionIntervals(
+  s: SessionSeal,
+  windowStart: number,
+  windowEnd: number,
+): [number, number][] {
+  const sStart = parseTimestamp(s.started_at);
+  const sEnd = parseTimestamp(s.ended_at);
+  const intervals: [number, number][] = [];
+
+  if (s.active_segments && s.active_segments.length > 0) {
+    for (const [segStart, segEnd] of s.active_segments) {
+      const t0 = parseTimestamp(segStart);
+      const t1 = parseTimestamp(segEnd);
+      if (t1 <= t0 || t1 < windowStart || t0 > windowEnd) continue;
+      intervals.push([Math.max(t0, windowStart), Math.min(t1, windowEnd)]);
+    }
+  } else {
+    // Backward compat: cap to [start, start + duration] to avoid inflation
+    const durationMs = (s.duration_seconds ?? 0) * 1000;
+    const wallClockMs = sEnd - sStart;
+    const gapThresholdMs = 10 * 60 * 1000;
+
+    if (durationMs === 0 && wallClockMs > gapThresholdMs) return [];
+
+    const effectiveEnd = durationMs > 0 && wallClockMs > durationMs + gapThresholdMs
+      ? sStart + durationMs
+      : sEnd;
+
+    if (effectiveEnd <= sStart || effectiveEnd < windowStart || sStart > windowEnd) return [];
+    intervals.push([Math.max(sStart, windowStart), Math.min(effectiveEnd, windowEnd)]);
+  }
+
+  return intervals;
+}
+
 /** Get hourly activity for a given day — returns 24 entries with minutes per hour */
 export function getHourlyActivity(sessions: SessionSeal[], date: string): { hour: number; minutes: number }[] {
   const dayStart = new Date(`${date}T00:00:00`).getTime();
@@ -426,26 +575,12 @@ export function getHourlyActivity(sessions: SessionSeal[], date: string): { hour
     result.push({ hour: h, minutes: 0 });
   }
 
+  const intervals: [number, number][] = [];
   for (const s of sessions) {
-    const sStart = parseTimestamp(s.started_at);
-    const sEnd = parseTimestamp(s.ended_at);
+    intervals.push(...collectSessionIntervals(s, dayStart, dayEnd));
+  }
 
-    // Cap effective end to started_at + duration_seconds when the wall-clock span
-    // is much larger than the actual active duration. This prevents sessions that
-    // were paused overnight (e.g., parent session restored in the morning) from
-    // inflating the hourly chart with a multi-hour bar for a few minutes of work.
-    const durationMs = (s.duration_seconds ?? 0) * 1000;
-    const wallClockMs = sEnd - sStart;
-    const gapThresholdMs = 10 * 60 * 1000; // 10 min buffer
-    const effectiveEnd = durationMs > 0 && wallClockMs > durationMs + gapThresholdMs
-      ? sStart + durationMs
-      : sEnd;
-
-    if (effectiveEnd < dayStart || sStart > dayEnd) continue;
-
-    const clampedStart = Math.max(sStart, dayStart);
-    const clampedEnd = Math.min(effectiveEnd, dayEnd);
-
+  for (const [clampedStart, clampedEnd] of mergeIntervals(intervals)) {
     for (let h = 0; h < 24; h++) {
       const hourStart = dayStart + h * 3600000;
       const hourEnd = hourStart + 3600000;
@@ -460,8 +595,56 @@ export function getHourlyActivity(sessions: SessionSeal[], date: string): { hour
   return result;
 }
 
-/** Get daily hours for last N days */
+/** Get daily hours for last N days — uses active_segments with backward compat */
 export function getDailyActivity(sessions: SessionSeal[], days: number): { date: string; hours: number }[] {
+  const now = new Date();
+  const result: { date: string; hours: number }[] = [];
+
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dateStr = toLocalDate(d);
+    const dayStart = new Date(`${dateStr}T00:00:00`).getTime();
+    const dayEnd = dayStart + 86400000;
+
+    const intervals: [number, number][] = [];
+    for (const s of sessions) {
+      intervals.push(...collectSessionIntervals(s, dayStart, dayEnd));
+    }
+
+    let totalMs = 0;
+    for (const [start, end] of mergeIntervals(intervals)) {
+      totalMs += end - start;
+    }
+
+    result.push({ date: dateStr, hours: totalMs / 3600000 });
+  }
+
+  return result;
+}
+
+/** AI-time hourly activity — sums duration_seconds per hour (no dedup) */
+export function getHourlyActivityAI(sessions: SessionSeal[], date: string): { hour: number; minutes: number }[] {
+  const dayStart = new Date(`${date}T00:00:00`).getTime();
+  const dayEnd = dayStart + 86400000;
+
+  const result: { hour: number; minutes: number }[] = [];
+  for (let h = 0; h < 24; h++) {
+    result.push({ hour: h, minutes: 0 });
+  }
+
+  for (const s of sessions) {
+    const sStart = parseTimestamp(s.started_at);
+    if (sStart < dayStart || sStart >= dayEnd) continue;
+    const hour = new Date(sStart).getHours();
+    result[hour]!.minutes += s.duration_seconds / 60;
+  }
+
+  return result;
+}
+
+/** AI-time daily activity — sums duration_seconds per day (no dedup) */
+export function getDailyActivityAI(sessions: SessionSeal[], days: number): { date: string; hours: number }[] {
   const now = new Date();
   const result: { date: string; hours: number }[] = [];
 
@@ -472,8 +655,7 @@ export function getDailyActivity(sessions: SessionSeal[], days: number): { date:
 
     let seconds = 0;
     for (const s of sessions) {
-      const sDate = s.started_at ? toLocalDate(s.started_at) : undefined;
-      if (sDate && sDate === dateStr) {
+      if (toLocalDate(s.started_at) === dateStr) {
         seconds += s.duration_seconds;
       }
     }

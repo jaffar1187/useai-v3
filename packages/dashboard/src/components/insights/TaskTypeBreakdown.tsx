@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ListChecks, X } from 'lucide-react';
+import { ListChecks, X, ChevronDown } from 'lucide-react';
 import type { Milestone, SessionSeal } from '../../lib/api.js';
 
 const TASK_TYPE_COLORS: Record<string, string> = {
@@ -22,12 +22,20 @@ const TASK_TYPE_COLORS: Record<string, string> = {
   other: '#94a3b8',
 };
 
+type TimeMode = 'user' | 'ai';
+
+const TIME_LABELS: Record<TimeMode, string> = {
+  user: 'Clock Time',
+  ai: 'AI Time',
+};
+
 function formatTime(seconds: number): string {
   if (seconds < 60) return '<1m';
-  const mins = Math.round(seconds / 60);
-  if (mins < 60) return `${mins}m`;
-  const h = (seconds / 3600).toFixed(1);
-  return `${h}h`;
+  const totalMins = Math.round(seconds / 60);
+  if (totalMins < 60) return `${totalMins}m`;
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return m > 0 ? `${h}h${m}m` : `${h}h`;
 }
 
 function capitalize(s: string): string {
@@ -41,13 +49,19 @@ function formatDate(iso: string): string {
 
 interface TaskTypeBreakdownProps {
   byTaskType: Record<string, number>;
+  byTaskTypeAI?: Record<string, number>;
   sessions?: SessionSeal[];
   milestones?: Milestone[];
   showPublic?: boolean;
 }
 
-export function TaskTypeBreakdown({ byTaskType, sessions = [], milestones = [], showPublic = false }: TaskTypeBreakdownProps) {
-  const entries = Object.entries(byTaskType)
+export function TaskTypeBreakdown({ byTaskType, byTaskTypeAI, sessions = [], milestones = [], showPublic = false }: TaskTypeBreakdownProps) {
+  const [timeMode, setTimeMode] = useState<TimeMode>('user');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const data = timeMode === 'user' || !byTaskTypeAI ? byTaskType : byTaskTypeAI;
+
+  const entries = Object.entries(data)
     .filter(([, seconds]) => seconds > 0)
     .sort((a, b) => b[1] - a[1]);
 
@@ -60,9 +74,41 @@ export function TaskTypeBreakdown({ byTaskType, sessions = [], milestones = [], 
   return (
     <>
       <div className="rounded-xl bg-bg-surface-1 border border-border/50 p-4 mb-8">
-        <h2 className="text-sm font-bold text-text-muted uppercase tracking-widest mb-4 px-1">
-          Task Types
-        </h2>
+        <div className="flex items-center justify-between mb-4 px-1">
+          <h2 className="text-sm font-bold text-text-muted uppercase tracking-widest">
+            Task Types
+          </h2>
+
+          <div className="relative">
+            <button
+              onClick={() => setDropdownOpen((v) => !v)}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border/50 bg-bg-surface-2 text-[11px] text-text-secondary font-medium hover:border-text-muted/50 transition-colors"
+            >
+              {TIME_LABELS[timeMode]}
+              <ChevronDown className="w-3 h-3 text-text-muted" />
+            </button>
+            {dropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 z-20 min-w-[120px] rounded-lg border border-border/50 bg-bg-surface-1 shadow-lg py-1">
+                  {(Object.entries(TIME_LABELS) as [TimeMode, string][]).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      onClick={() => { setTimeMode(mode); setDropdownOpen(false); }}
+                      className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                        mode === timeMode
+                          ? 'text-accent bg-accent/10 font-medium'
+                          : 'text-text-secondary hover:bg-bg-surface-2'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
 
         <div className="space-y-2.5">
           {entries.map(([type, seconds], index) => {
@@ -71,7 +117,7 @@ export function TaskTypeBreakdown({ byTaskType, sessions = [], milestones = [], 
 
             return (
               <button
-                key={type}
+                key={`${timeMode}-${type}`}
                 className="flex items-center gap-3 w-full text-left hover:bg-bg-surface-2/30 rounded-lg px-1 -mx-1 py-0.5 transition-colors cursor-pointer"
                 onClick={() => setSelectedType(type)}
               >

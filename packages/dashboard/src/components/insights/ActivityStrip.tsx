@@ -1,8 +1,25 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { SessionSeal } from '../../lib/api';
-import { getDailyActivity, getHourlyActivity } from '../../lib/stats';
+import { getDailyActivity, getDailyActivityAI, getHourlyActivity, getHourlyActivityAI } from '../../lib/stats';
 import type { TimeScale } from '../time-travel/types';
 import { motion } from 'motion/react';
+import { ChevronDown } from 'lucide-react';
+
+type TimeMode = 'user' | 'ai';
+
+const TIME_LABELS: Record<TimeMode, string> = {
+  user: 'Clock Time',
+  ai: 'AI Time',
+};
+
+function formatTime(hours: number): string {
+  const totalMins = Math.round(hours * 60);
+  if (totalMins < 1) return '<1m';
+  if (totalMins < 60) return `${totalMins}m`;
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return m > 0 ? `${h}h${m}m` : `${h}h`;
+}
 
 interface ActivityStripProps {
   sessions: SessionSeal[];
@@ -21,23 +38,58 @@ export function ActivityStrip({
   onDayClick,
   highlightDate,
 }: ActivityStripProps) {
+  const [timeMode, setTimeMode] = useState<TimeMode>('user');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
   const useHourly = timeScale === 'day' || timeScale === '24h' || timeScale === '12h' || timeScale === '6h';
   const ed = new Date(effectiveTime);
   const effectiveDate = `${ed.getFullYear()}-${String(ed.getMonth() + 1).padStart(2, '0')}-${String(ed.getDate()).padStart(2, '0')}`;
 
   const hourlyData = useMemo(
-    () => (useHourly ? getHourlyActivity(sessions, effectiveDate) : []),
-    [sessions, effectiveDate, useHourly],
+    () => (useHourly ? (timeMode === 'user' ? getHourlyActivity(sessions, effectiveDate) : getHourlyActivityAI(sessions, effectiveDate)) : []),
+    [sessions, effectiveDate, useHourly, timeMode],
   );
 
   const dailyData = useMemo(
-    () => (useHourly ? [] : getDailyActivity(sessions, 7)),
-    [sessions, useHourly],
+    () => (useHourly ? [] : (timeMode === 'user' ? getDailyActivity(sessions, 7) : getDailyActivityAI(sessions, 7))),
+    [sessions, useHourly, timeMode],
   );
 
   const title = useHourly
     ? `Hourly — ${new Date(effectiveTime).toLocaleDateString([], { month: 'short', day: 'numeric' })}`
     : 'Last 7 Days';
+
+  const dropdown = (
+    <div className="relative">
+      <button
+        onClick={() => setDropdownOpen((v) => !v)}
+        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border/50 bg-bg-surface-2 text-[11px] text-text-secondary font-medium hover:border-text-muted/50 transition-colors"
+      >
+        {TIME_LABELS[timeMode]}
+        <ChevronDown className="w-3 h-3 text-text-muted" />
+      </button>
+      {dropdownOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-20 min-w-[120px] rounded-lg border border-border/50 bg-bg-surface-1 shadow-lg py-1">
+            {(Object.entries(TIME_LABELS) as [TimeMode, string][]).map(([mode, label]) => (
+              <button
+                key={mode}
+                onClick={() => { setTimeMode(mode); setDropdownOpen(false); }}
+                className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                  mode === timeMode
+                    ? 'text-accent bg-accent/10 font-medium'
+                    : 'text-text-secondary hover:bg-bg-surface-2'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 
   if (useHourly) {
     const maxMinutes = Math.max(...hourlyData.map((d) => d.minutes), 1);
@@ -48,9 +100,7 @@ export function ActivityStrip({
           <div className="text-xs text-text-muted uppercase tracking-widest font-bold">
             {title}
           </div>
-          <div className="text-[10px] text-text-muted font-mono bg-bg-surface-2 px-2 py-0.5 rounded">
-            {maxMinutes.toFixed(0)}m peak
-          </div>
+          {dropdown}
         </div>
         <div className="flex items-end gap-[3px] h-16">
           {hourlyData.map((entry, idx) => {
@@ -112,9 +162,7 @@ export function ActivityStrip({
         <div className="text-xs text-text-muted uppercase tracking-widest font-bold">
           {title}
         </div>
-        <div className="text-[10px] text-text-muted font-mono bg-bg-surface-2 px-2 py-0.5 rounded">
-          Last 7 days
-        </div>
+        {dropdown}
       </div>
       <div className="flex items-end gap-2 h-16">
         {dailyData.map((day, idx) => {
@@ -128,7 +176,7 @@ export function ActivityStrip({
               <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
                 <div className="bg-bg-surface-3 text-text-primary text-[10px] font-mono px-2 py-1.5 rounded-lg shadow-xl whitespace-nowrap border border-border flex flex-col items-center">
                   <span className="font-bold">{day.date}</span>
-                  <span className="text-accent">{day.hours.toFixed(1)}h active</span>
+                  <span className="text-accent">{formatTime(day.hours)} active</span>
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-bg-surface-3 border-r border-b border-border rotate-45" />
                 </div>
               </div>

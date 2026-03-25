@@ -1,3 +1,10 @@
+function fmtDuration(ms: number): string {
+  const mins = Math.round(ms / 60000);
+  if (mins > 0) return `${mins}min`;
+  const secs = Math.round(ms / 1000);
+  return `${secs}s`;
+}
+
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
@@ -312,7 +319,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
             content: [
               {
                 type: "text" as const,
-                text: `Session ${fullSession.promptId} sealed. Duration: ${Math.round(durationMs / 60000)}min, Score: ${Math.round(score.overall * 100)}%. Resumed parent session (depth ${ctx.sessionDepth}).`,
+                text: `Session ${fullSession.promptId} sealed. Duration: ${fmtDuration(durationMs)}, Score: ${Math.round(score.overall * 100)}%. Resumed parent session (depth ${ctx.sessionDepth}).`,
               },
             ],
           };
@@ -322,7 +329,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
           content: [
             {
               type: "text" as const,
-              text: `Session ${fullSession.promptId} sealed. Duration: ${Math.round(durationMs / 60000)}min, Score: ${Math.round(score.overall * 100)}%`,
+              text: `Session ${fullSession.promptId} sealed. Duration: ${fmtDuration(durationMs)}, Score: ${Math.round(score.overall * 100)}%`,
             },
           ],
         };
@@ -333,7 +340,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         content: [
           {
             type: "text" as const,
-            text: `Session ${fullSession.promptId} sealed. Duration: ${Math.round(durationMs / 60000)}min, Score: ${Math.round(score.overall * 100)}%`,
+            text: `Session ${fullSession.promptId} sealed. Duration: ${fmtDuration(durationMs)}, Score: ${Math.round(score.overall * 100)}%`,
           },
         ],
       };
