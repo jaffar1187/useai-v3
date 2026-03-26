@@ -84,7 +84,7 @@ function ScoreNum({ score, decimal }: { score: number; decimal?: boolean }) {
   );
 }
 
-function SessionMetaRow({ model }: { model?: string }) {
+function SessionMetaRow({ model }: { model?: string | undefined }) {
   if (!model) return null;
   return (
     <div className="flex flex-wrap items-center gap-4">
@@ -104,7 +104,7 @@ function EvaluationDetail({
 }: {
   evaluation: SessionEvaluation;
   showPublic?: boolean;
-  model?: string;
+  model?: string | undefined;
 }) {
   const hasMeta = !!model;
   const metrics = [
@@ -182,7 +182,7 @@ function EvaluationDetail({
   );
 }
 
-function PromptDisplay({ prompt, imageCount, images }: { prompt: string; imageCount?: number; images?: Array<{ type: 'image'; description: string }> }) {
+function PromptDisplay({ prompt, imageCount, images }: { prompt: string; imageCount?: number | undefined; images?: Array<{ type: 'image'; description: string }> | undefined }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = prompt.length > 300;
   const displayText = isLong && !expanded ? prompt.slice(0, 300) + '…' : prompt;
@@ -229,14 +229,14 @@ interface SessionCardProps {
   session: SessionSeal;
   milestones: Milestone[];
   defaultExpanded?: boolean;
-  externalShowPublic?: boolean;
+  externalShowPublic?: boolean | undefined;
   contextLabel?: string;
   hideClientAvatar?: boolean;
   hideProject?: boolean;
-  showFullDate?: boolean;
-  highlightWords?: string[];
-  onDeleteSession?: (sessionId: string) => void;
-  onDeleteMilestone?: (milestoneId: string) => void;
+  showFullDate?: boolean | undefined;
+  highlightWords?: string[] | undefined;
+  onDeleteSession?: ((sessionId: string) => void) | undefined;
+  onDeleteMilestone?: ((milestoneId: string) => void) | undefined;
 }
 
 export const SessionCard = memo(function SessionCard({ session, milestones, defaultExpanded = false, externalShowPublic, contextLabel, hideClientAvatar = false, hideProject = false, showFullDate = false, highlightWords, onDeleteSession, onDeleteMilestone }: SessionCardProps) {

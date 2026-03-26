@@ -63,7 +63,7 @@ function ScoreNum({ score, decimal }: { score: number; decimal?: boolean }) {
   );
 }
 
-const ConversationCard = memo(function ConversationCard({ group, defaultExpanded, globalShowPublic, showFullDate, highlightWords, onDeleteSession, onDeleteMilestone, onDeleteConversation }: { group: ConversationGroup; defaultExpanded: boolean; globalShowPublic?: boolean; showFullDate?: boolean; highlightWords?: string[]; onDeleteSession?: (id: string) => void; onDeleteMilestone?: (id: string) => void; onDeleteConversation?: (id: string) => void }) {
+const ConversationCard = memo(function ConversationCard({ group, defaultExpanded, globalShowPublic, showFullDate, highlightWords, onDeleteSession, onDeleteMilestone, onDeleteConversation }: { group: ConversationGroup; defaultExpanded: boolean; globalShowPublic?: boolean | undefined; showFullDate?: boolean | undefined; highlightWords?: string[] | undefined; onDeleteSession?: ((id: string) => void) | undefined; onDeleteMilestone?: ((id: string) => void) | undefined; onDeleteConversation?: ((id: string) => void) | undefined }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [localShowPublic, setLocalShowPublic] = useState(false);
   const showPublic = globalShowPublic || localShowPublic;
@@ -298,15 +298,15 @@ interface SessionListProps {
   sessions: SessionSeal[];
   milestones: Milestone[];
   filters: Filters;
-  globalShowPublic?: boolean;
-  showFullDate?: boolean;
-  highlightWords?: string[];
-  outsideWindowCounts?: { before: number; after: number; newerLabel?: string; olderLabel?: string };
-  onNavigateNewer?: () => void;
-  onNavigateOlder?: () => void;
-  onDeleteSession?: (sessionId: string) => void;
-  onDeleteConversation?: (conversationId: string) => void;
-  onDeleteMilestone?: (milestoneId: string) => void;
+  globalShowPublic?: boolean | undefined;
+  showFullDate?: boolean | undefined;
+  highlightWords?: string[] | undefined;
+  outsideWindowCounts?: { before: number; after: number; newerLabel?: string; olderLabel?: string } | undefined;
+  onNavigateNewer?: (() => void) | undefined;
+  onNavigateOlder?: (() => void) | undefined;
+  onDeleteSession?: ((sessionId: string) => void) | undefined;
+  onDeleteConversation?: ((conversationId: string) => void) | undefined;
+  onDeleteMilestone?: ((milestoneId: string) => void) | undefined;
 }
 
 const BATCH_SIZE = 25;

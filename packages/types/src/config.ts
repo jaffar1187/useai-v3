@@ -3,7 +3,7 @@ import { z } from "zod";
 const AuthUserSchema = z.object({
   id: z.string(),
   email: z.string(),
-  username: z.string().optional(),
+  username: z.string().nullable().optional(),
 });
 
 export const UseaiConfigSchema = z.object({
@@ -30,6 +30,8 @@ export const UseaiConfigSchema = z.object({
     enabled: z.boolean().default(false),
     autoSync: z.boolean().default(false),
     intervalMinutes: z.number().default(30),
+    includeStats: z.boolean().default(true),
+    includeDetails: z.boolean().default(true),
   }).default({}),
 
   lastSyncAt: z.string().optional(),

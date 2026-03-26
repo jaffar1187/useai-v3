@@ -26,8 +26,8 @@ interface ActivityStripProps {
   timeScale: TimeScale;
   effectiveTime: number;
   isLive: boolean;
-  onDayClick?: (date: string) => void;
-  highlightDate?: string;
+  onDayClick?: ((date: string) => void) | undefined;
+  highlightDate?: string | undefined;
 }
 
 export function ActivityStrip({

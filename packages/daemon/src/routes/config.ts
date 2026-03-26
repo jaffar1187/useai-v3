@@ -43,6 +43,8 @@ configRoutes.get("/full", async (c) => {
     sync: {
       enabled: config.sync.enabled,
       interval_hours: config.sync.intervalMinutes / 60,
+      include_stats: config.sync.includeStats,
+      include_details: config.sync.includeDetails,
     },
   };
 
@@ -86,10 +88,14 @@ configRoutes.patch("/", async (c) => {
     const sync = bodySync as Record<string, unknown>;
     const enabled = sync["enabled"];
     const intervalHours = sync["interval_hours"];
+    const includeStats = sync["include_stats"];
+    const includeDetails = sync["include_details"];
     current.sync = {
       ...current.sync,
       ...(typeof enabled === "boolean" && { enabled }),
       ...(typeof intervalHours === "number" && { intervalMinutes: intervalHours * 60 }),
+      ...(typeof includeStats === "boolean" && { includeStats }),
+      ...(typeof includeDetails === "boolean" && { includeDetails }),
     };
   }
 
@@ -122,6 +128,8 @@ configRoutes.patch("/", async (c) => {
     sync: {
       enabled: current.sync.enabled,
       interval_hours: current.sync.intervalMinutes / 60,
+      include_stats: current.sync.includeStats,
+      include_details: current.sync.includeDetails,
     },
     instructions_updated: [] as string[],
   };

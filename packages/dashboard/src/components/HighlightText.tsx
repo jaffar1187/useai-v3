@@ -2,7 +2,7 @@
  * Highlights matching search words within text.
  * Words are matched case-insensitively as substrings.
  */
-export function HighlightText({ text, words }: { text: string; words?: string[] }) {
+export function HighlightText({ text, words }: { text: string; words?: string[] | undefined }) {
   if (!words?.length || !text) return <>{text}</>;
 
   const escaped = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));

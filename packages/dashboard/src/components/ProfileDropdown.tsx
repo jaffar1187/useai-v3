@@ -203,6 +203,7 @@ export const ProfileDropdown = forwardRef<ProfileDropdownHandle, ProfileDropdown
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
 
@@ -220,7 +221,11 @@ export const ProfileDropdown = forwardRef<ProfileDropdownHandle, ProfileDropdown
   useEffect(() => {
     if (!open) return;
     const handleClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        dropdownRef.current && !dropdownRef.current.contains(target)
+      ) {
         setOpen(false);
       }
     };
@@ -261,7 +266,12 @@ export const ProfileDropdown = forwardRef<ProfileDropdownHandle, ProfileDropdown
       onRefresh();
       setOpen(false);
     } catch (err) {
-      setMsg((err as Error).message);
+      const message = (err as Error).message;
+      setMsg(message);
+      if (/no valid otp|request a new code/i.test(message)) {
+        setStep('email');
+        setOtp('');
+      }
     } finally {
       setLoading(false);
     }
@@ -336,6 +346,7 @@ export const ProfileDropdown = forwardRef<ProfileDropdownHandle, ProfileDropdown
       {/* Dropdown panel — rendered via portal to escape header's stacking context */}
       {open && createPortal(
         <div
+          ref={dropdownRef}
           className="fixed z-[9999] w-80 rounded-lg border shadow-xl"
           style={{ top: dropdownPos.top, right: dropdownPos.right, backgroundColor: 'var(--bg-surface-1)', borderColor: 'var(--border)' }}
         >

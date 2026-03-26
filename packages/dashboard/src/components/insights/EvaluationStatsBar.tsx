@@ -72,8 +72,8 @@ function EvalStatCard({
       transition={{ delay }}
       className="flex-1 min-w-[100px] px-3 py-2.5 rounded-lg border border-border/50 bg-bg-surface-1 hover:border-accent/30 flex items-center gap-2.5 group transition-all duration-300"
     >
-      <div className={`p-1.5 rounded-md transition-colors ${iconBgMap[color] ?? iconBgMap.default}`}>
-        <Icon className={`w-3.5 h-3.5 transition-colors ${iconColorMap[color] ?? iconColorMap.default}`} />
+      <div className={`p-1.5 rounded-md transition-colors ${iconBgMap[color] ?? iconBgMap['default']}`}>
+        <Icon className={`w-3.5 h-3.5 transition-colors ${iconColorMap[color] ?? iconColorMap['default']}`} />
       </div>
       <div className="flex flex-col min-w-0">
         <div className="flex items-baseline gap-0.5">

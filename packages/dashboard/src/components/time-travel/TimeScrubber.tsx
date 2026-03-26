@@ -10,9 +10,9 @@ interface TimeScrubberProps {
   onChange: (newValue: number) => void;
   scale: TimeScale;
   /** For calendar scales, the fixed window boundaries. When set, the scrubber shows this range instead of computing from value. */
-  window?: { start: number; end: number };
-  sessions?: SessionSeal[];
-  milestones?: Milestone[];
+  window?: { start: number; end: number } | undefined;
+  sessions?: SessionSeal[] | undefined;
+  milestones?: Milestone[] | undefined;
   showPublic?: boolean;
 }
 

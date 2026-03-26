@@ -136,7 +136,7 @@ export function StatsBar({
   aiMultiplier,
   featuresShipped,
   bugsFixed,
-  complexSolved,
+  complexSolved: _complexSolved,
   currentStreak,
   totalMilestones,
   selectedCard,

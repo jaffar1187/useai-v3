@@ -11,11 +11,12 @@ async function get<T>(path: string): Promise<T> {
 }
 
 async function post<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    method: 'POST',
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const opts: RequestInit = { method: 'POST' };
+  if (body) {
+    opts.headers = { 'Content-Type': 'application/json' };
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(`${API}${path}`, opts);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error((data as { message?: string }).message ?? `${res.status} ${res.statusText}`);
@@ -30,11 +31,10 @@ async function patch<T>(path: string, body?: unknown): Promise<T> {
     const token = localStorage.getItem('useai_dev_token');
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
-  const res = await fetch(`${API}${path}`, {
-    method: 'PATCH',
-    headers: Object.keys(headers).length > 0 ? headers : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const opts: RequestInit = { method: 'PATCH' };
+  if (Object.keys(headers).length > 0) opts.headers = headers;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${API}${path}`, opts);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error((data as { message?: string }).message ?? `${res.status} ${res.statusText}`);
@@ -257,9 +257,9 @@ export async function checkUsername(username: string): Promise<{ available: bool
   const encoded = encodeURIComponent(username);
   if (isDev) {
     const token = localStorage.getItem('useai_dev_token');
-    const res = await fetch(`${API}/cloud-api/api/users/check-username/${encoded}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    });
+    const opts: RequestInit = {};
+    if (token) opts.headers = { Authorization: `Bearer ${token}` };
+    const res = await fetch(`${API}/cloud-api/api/users/check-username/${encoded}`, opts);
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     return res.json() as Promise<{ available: boolean; reason?: string }>;
   }
@@ -314,10 +314,45 @@ export interface FullConfig {
   sync: {
     enabled: boolean;
     interval_hours: number;
+    include_stats: boolean;
+    include_details: boolean;
   };
   evaluation_framework: string;
   authenticated: boolean;
   email: string | null;
+}
+
+// ── Organizations ─────────────────────────────────────────────────────────
+
+export interface UserOrg {
+  org: { id: string; name: string; slug: string };
+  role: string;
+}
+
+export function fetchMyOrgs(): Promise<UserOrg[]> {
+  if (isDev) return get('/cloud-api/api/orgs');
+  return get('/api/local/orgs');
+}
+
+// ── Sync Logs ─────────────────────────────────────────────────────────────
+
+export interface SyncLogEntry {
+  id: string;
+  timestamp: string;
+  event: 'sync' | 'auto_sync' | 'login' | 'logout' | 'cloud_pull';
+  status: 'success' | 'error' | 'info';
+  message: string;
+  details?: {
+    sessions_synced?: number;
+    milestones_published?: number;
+    dates_synced?: number;
+    error?: string;
+    [key: string]: unknown;
+  };
+}
+
+export function fetchLogs(): Promise<SyncLogEntry[]> {
+  return get('/api/local/logs');
 }
 
 export function fetchFullConfig(): Promise<FullConfig> {

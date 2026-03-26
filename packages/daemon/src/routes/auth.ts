@@ -1,6 +1,14 @@
 import { Hono } from "hono";
-import { sendOtp, verifyOtp } from "@devness/useai-cloud";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { sendOtp, verifyOtp, CloudAuthError } from "@devness/useai-cloud";
 import { getConfig, patchConfig } from "@devness/useai-storage";
+
+function errorResponse(err: unknown): { message: string; status: ContentfulStatusCode } {
+  if (err instanceof CloudAuthError) {
+    return { message: err.message, status: (err.status ?? 500) as ContentfulStatusCode };
+  }
+  return { message: err instanceof Error ? err.message : "Unknown error", status: 500 };
+}
 
 export const authRoutes = new Hono();
 
@@ -10,7 +18,8 @@ authRoutes.post("/send-otp", async (c) => {
     await sendOtp(email);
     return c.json({ ok: true });
   } catch (err) {
-    return c.json({ ok: false, error: String(err) }, 500);
+    const { message, status } = errorResponse(err);
+    return c.json({ ok: false, message }, status);
   }
 });
 
@@ -21,7 +30,8 @@ authRoutes.post("/verify-otp", async (c) => {
     await patchConfig({ auth: { token: result.token, user: result.user } });
     return c.json({ ok: true, data: { user: result.user } });
   } catch (err) {
-    return c.json({ ok: false, error: String(err) }, 400);
+    const { message, status } = errorResponse(err);
+    return c.json({ ok: false, message }, status);
   }
 });
 

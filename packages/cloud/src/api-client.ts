@@ -1,5 +1,4 @@
-export const API_URL =
-  process.env["USEAI_API_URL"] ?? "https://api.useai.dev";
+export const API_URL = "http://localhost:3010";
 
 export interface RequestOptions {
   method?: string;
@@ -39,7 +38,7 @@ export async function apiFetch<T>(
     let error = `HTTP ${status}`;
     try {
       const json = (await res.json()) as { error?: string; message?: string };
-      error = json.error ?? json.message ?? error;
+      error = json.message ?? json.error ?? error;
     } catch {
       // ignore parse error
     }

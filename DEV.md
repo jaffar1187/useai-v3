@@ -14,3 +14,7 @@
 # Notes for Devs
 
 - Casing should be snake_Case for mcp inputSchema, and function code should be camelCase, as this is the standard.
+
+# ENV vars
+
+- If needed set env vars in paths.ts file of storage package.
