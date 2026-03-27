@@ -207,6 +207,14 @@ export const ProfileDropdown = forwardRef<ProfileDropdownHandle, ProfileDropdown
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
 
+  // Reset auth form state when auth status changes (e.g. sign out)
+  useEffect(() => {
+    setStep('email');
+    setOtp('');
+    setMsg(null);
+    setLoading(false);
+  }, [config?.authenticated]);
+
   useImperativeHandle(ref, () => ({
     open: () => {
       if (triggerRef.current) {

@@ -1,4 +1,4 @@
-export const API_URL = "http://localhost:3010";
+export const API_URL = process.env["USEAI_API_URL"] ?? "https://api.useai.dev";
 
 export interface RequestOptions {
   method?: string;

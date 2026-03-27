@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { DashboardBody } from './components/DashboardBody';
 import { SearchOverlay } from './components/SearchOverlay';
 import { SettingsPage } from './components/SettingsPage';
+import { FaqsPage } from './components/FaqsPage';
 
 export function App() {
   const {
@@ -66,8 +67,10 @@ export function App() {
     <div className="min-h-screen bg-bg-base selection:bg-accent/30 selection:text-text-primary">
       <Header health={health} updateInfo={updateInfo} onSearchOpen={() => setSearchOpen(true)} activeTab={activeTab} onTabChange={setActiveTab} config={config} onRefresh={loadAll} />
       <div className="max-w-[1240px] mx-auto px-4 sm:px-6 pb-6">
-        {activeTab === 'settings' ? (
-          <SettingsPage />
+        {activeTab === 'faqs' ? (
+          <FaqsPage />
+        ) : activeTab === 'settings' ? (
+          <SettingsPage onTabChange={setActiveTab} />
         ) : (
           <>
             <SearchOverlay

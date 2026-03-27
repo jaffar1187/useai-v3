@@ -71,10 +71,11 @@ export function Header({ health, updateInfo, onSearchOpen, activeTab, onTabChang
   const profileRef = useRef<ProfileDropdownHandle>(null);
 
   const webLinks = useMemo<ExternalNavLink[]>(() => {
+    if (!config?.authenticated) return [];
     const links: ExternalNavLink[] = [LEADERBOARD_LINK];
     if (config?.username) links.push({ label: 'Profile', href: `https://useai.dev/${config.username}` });
     return links;
-  }, [config?.username]);
+  }, [config?.authenticated, config?.username]);
 
   return (
     <header className="sticky top-0 z-50 bg-bg-base/80 backdrop-blur-md border-b border-border mb-6">

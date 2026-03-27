@@ -7,6 +7,16 @@ export type SanitizedSession = Omit<Session, "prompt">;
 export interface SyncPayload {
   date: string;
   total_seconds: number;
+  /** Wall-clock user time — union of active intervals, concurrent sessions deduped (seconds) */
+  user_time_seconds?: number;
+  /** Total AI time — sum of all session durations, no dedup (seconds) */
+  ai_time_seconds?: number;
+  /** AI time / user time ratio. >= 1.0 when sessions overlap. */
+  multiplier?: number;
+  /** Number of prompts (sessions) for this day */
+  prompt_count?: number;
+  /** Current consecutive-day streak as of this sync */
+  streak_days?: number;
   clients: Record<string, number>;
   task_types: Record<string, number>;
   languages: Record<string, number>;

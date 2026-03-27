@@ -114,6 +114,80 @@ function filterValidSessions(sessions: Session[]): Session[] {
 }
 
 // ---------------------------------------------------------------------------
+// User time — union of active intervals (concurrent sessions deduped)
+// ---------------------------------------------------------------------------
+
+function computeUserTimeSeconds(sessions: SanitizedSession[]): number {
+  const intervals: [number, number][] = [];
+
+  for (const s of sessions) {
+    const sStart = new Date(s.startedAt).getTime();
+    const sEnd = new Date(s.endedAt).getTime();
+    if (sEnd <= sStart) continue;
+
+    if (s.activeSegments && s.activeSegments.length > 0) {
+      for (const [segStart, segEnd] of s.activeSegments) {
+        const t0 = new Date(segStart).getTime();
+        const t1 = new Date(segEnd).getTime();
+        if (t1 > t0) intervals.push([t0, t1]);
+      }
+    } else {
+      // Backward compat: approximate with [start, start + duration]
+      const durationMs = s.durationMs;
+      const activeEnd = Math.min(sStart + durationMs, sEnd);
+      if (activeEnd > sStart) intervals.push([sStart, activeEnd]);
+    }
+  }
+
+  if (intervals.length === 0) return 0;
+
+  // Merge overlapping intervals
+  intervals.sort((a, b) => a[0] - b[0]);
+  const merged: [number, number][] = [intervals[0]!];
+  for (let i = 1; i < intervals.length; i++) {
+    const [start, end] = intervals[i]!;
+    const last = merged[merged.length - 1]!;
+    if (start <= last[1]) {
+      last[1] = Math.max(last[1], end);
+    } else {
+      merged.push([start, end]);
+    }
+  }
+
+  let totalMs = 0;
+  for (const [start, end] of merged) {
+    totalMs += end - start;
+  }
+  return Math.round(totalMs / 1000);
+}
+
+// ---------------------------------------------------------------------------
+// Streak — consecutive days with at least one session
+// ---------------------------------------------------------------------------
+
+function computeStreakDays(allDates: string[]): number {
+  if (allDates.length === 0) return 0;
+
+  const days = [...new Set(allDates)].sort().reverse();
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+  if (days[0] !== today && days[0] !== yesterday) return 0;
+
+  let streak = 1;
+  for (let i = 1; i < days.length; i++) {
+    const prev = new Date(days[i - 1]!).getTime();
+    const curr = new Date(days[i]!).getTime();
+    if (prev - curr === 86400000) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+// ---------------------------------------------------------------------------
 // Group by date
 // ---------------------------------------------------------------------------
 
@@ -156,6 +230,10 @@ export async function syncSessions(
   // 4. Group by date and send per-date payloads
   const byDate = groupByDate(sanitized);
 
+  // Collect all dates for streak calculation
+  const allDates = [...byDate.keys()];
+  const streakDays = computeStreakDays(allDates);
+
   for (const [date, daySessions] of byDate) {
     let totalSeconds = 0;
     const clients: Record<string, number> = {};
@@ -172,9 +250,20 @@ export async function syncSessions(
       }
     }
 
+    const userTimeSeconds = computeUserTimeSeconds(daySessions);
+    const aiTimeSeconds = totalSeconds;
+    const multiplier = userTimeSeconds > 0
+      ? Math.round((aiTimeSeconds / userTimeSeconds) * 100) / 100
+      : 0;
+
     const payload: SyncPayload = {
       date,
       total_seconds: totalSeconds,
+      user_time_seconds: userTimeSeconds,
+      ai_time_seconds: aiTimeSeconds,
+      multiplier,
+      prompt_count: daySessions.length,
+      streak_days: streakDays,
       clients,
       task_types: taskTypes,
       languages,

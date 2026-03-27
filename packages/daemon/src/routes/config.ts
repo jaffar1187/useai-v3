@@ -37,7 +37,8 @@ configRoutes.get("/full", async (c) => {
       prompt: config.capture.prompt,
       prompt_images: config.capture.promptImages,
       evaluation: config.capture.evaluation,
-      evaluation_reasons: reasonsMap[config.capture.reasonsLevel] ?? "below_perfect",
+      evaluation_reasons:
+        reasonsMap[config.capture.reasonsLevel] ?? "below_perfect",
       milestones: config.capture.milestones,
     },
     sync: {
@@ -53,7 +54,7 @@ configRoutes.get("/full", async (c) => {
 
 // PATCH /api/local/config — accepts dashboard-shaped updates and translates to v3
 configRoutes.patch("/", async (c) => {
-  const body = await c.req.json() as Record<string, unknown>;
+  const body = (await c.req.json()) as Record<string, unknown>;
   const current = await getConfig();
 
   // Map dashboard evaluation_reasons → v3 reasonsLevel
@@ -93,14 +94,20 @@ configRoutes.patch("/", async (c) => {
     current.sync = {
       ...current.sync,
       ...(typeof enabled === "boolean" && { enabled }),
-      ...(typeof intervalHours === "number" && { intervalMinutes: intervalHours * 60 }),
+      ...(typeof intervalHours === "number" && {
+        intervalMinutes: intervalHours * 60,
+      }),
       ...(typeof includeStats === "boolean" && { includeStats }),
       ...(typeof includeDetails === "boolean" && { includeDetails }),
     };
   }
 
+  //aps and raw are for backward compatibility, not in use right now.
   const fw = body["evaluation_framework"];
-  if (typeof fw === "string" && (fw === "space" || fw === "aps" || fw === "raw" || fw === "calibrated")) {
+  if (
+    typeof fw === "string" &&
+    (fw === "space" || fw === "aps" || fw === "raw" || fw === "calibrated")
+  ) {
     current.evaluation = { ...current.evaluation, framework: fw };
   }
 
@@ -122,7 +129,8 @@ configRoutes.patch("/", async (c) => {
       prompt: current.capture.prompt,
       prompt_images: current.capture.promptImages,
       evaluation: current.capture.evaluation,
-      evaluation_reasons: reasonsMap[current.capture.reasonsLevel] ?? "below_perfect",
+      evaluation_reasons:
+        reasonsMap[current.capture.reasonsLevel] ?? "below_perfect",
       milestones: current.capture.milestones,
     },
     sync: {
