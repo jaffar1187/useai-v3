@@ -136,6 +136,108 @@ export function fetchMilestones(): Promise<Milestone[]> {
   return get('/api/local/milestones');
 }
 
+// ── New server-side computed endpoints ────────────────────────────────────────
+
+export interface DashboardResponse {
+  window: { start: number; end: number; scale: string };
+  stats: {
+    totalHours: number;
+    totalSessions: number;
+    actualSpanHours: number;
+    coveredHours: number;
+    aiMultiplier: number;
+    peakConcurrency: number;
+    currentStreak: number;
+    filesTouched: number;
+    featuresShipped: number;
+    bugsFixed: number;
+    complexSolved: number;
+    totalMilestones: number;
+    completionRate: number;
+    activeProjects: number;
+    byClient: Record<string, number>;
+    byLanguage: Record<string, number>;
+    byTaskType: Record<string, number>;
+    byProject: Record<string, number>;
+    byProjectClock: Record<string, number>;
+    byClientAI: Record<string, number>;
+    byLanguageAI: Record<string, number>;
+    byTaskTypeAI: Record<string, number>;
+  };
+  evaluation: {
+    session_count: number;
+    prompt_quality: number;
+    context_provided: number;
+    scope_quality: number;
+    independence_level: number;
+  } | null;
+  daily_summaries: Array<{
+    date: string;
+    sessions: number;
+    total_hours: number;
+    clients: Record<string, number>;
+    task_types: Record<string, number>;
+  }>;
+  session_count: number;
+  milestone_count: number;
+}
+
+export interface FeedConversation {
+  conversationId: string | null;
+  sessions: Array<{
+    session: SessionSeal;
+    milestones: Milestone[];
+  }>;
+  aggregateEval: {
+    prompt_quality: number;
+    context_provided: number;
+    independence_level: number;
+    scope_quality: number;
+    tools_leveraged: number;
+    total_iterations: number;
+    outcomes: Record<string, number>;
+    session_count: number;
+  } | null;
+  totalDuration: number;
+  totalMilestones: number;
+  startedAt: string;
+  endedAt: string;
+  lastSessionAt: string;
+}
+
+export interface FeedResponse {
+  total: number;
+  conversations: FeedConversation[];
+  has_more: boolean;
+}
+
+export function fetchDashboard(scale: string, time?: number): Promise<DashboardResponse> {
+  const params = new URLSearchParams({ scale });
+  if (time != null) params.set('time', String(time));
+  return get(`/api/local/dashboard?${params}`);
+}
+
+export function fetchFeed(params: {
+  scale: string;
+  time?: number | undefined;
+  offset?: number | undefined;
+  limit?: number | undefined;
+  client?: string | undefined;
+  language?: string | undefined;
+  project?: string | undefined;
+  search?: string | undefined;
+}): Promise<FeedResponse> {
+  const qs = new URLSearchParams({ scale: params.scale });
+  if (params.time != null) qs.set('time', String(params.time));
+  if (params.offset != null) qs.set('offset', String(params.offset));
+  if (params.limit != null) qs.set('limit', String(params.limit));
+  if (params.client) qs.set('client', params.client);
+  if (params.language) qs.set('language', params.language);
+  if (params.project) qs.set('project', params.project);
+  if (params.search) qs.set('search', params.search);
+  return get(`/api/local/sessions/feed?${qs}`);
+}
+
 export async function fetchConfig(): Promise<LocalConfig> {
   const config = await get<LocalConfig>('/api/local/config');
   // In dev mode, auth goes directly to cloud API and state is in localStorage

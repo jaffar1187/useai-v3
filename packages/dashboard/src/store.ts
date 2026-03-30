@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import type { SessionSeal, Milestone, LocalConfig, HealthInfo, UpdateInfo } from './lib/api';
-import { fetchSessions, fetchMilestones, fetchConfig, fetchHealth, fetchUpdateCheck, deleteSession as apiDeleteSession, deleteConversation as apiDeleteConversation, deleteMilestone as apiDeleteMilestone } from './lib/api';
+import type { SessionSeal, Milestone, LocalConfig, HealthInfo, UpdateInfo, DashboardResponse, FeedResponse } from './lib/api';
+import { fetchSessions, fetchMilestones, fetchConfig, fetchHealth, fetchUpdateCheck, fetchDashboard, fetchFeed, deleteSession as apiDeleteSession, deleteConversation as apiDeleteConversation, deleteMilestone as apiDeleteMilestone } from './lib/api';
 import type { TimeScale } from './components/time-travel/types';
 import { ALL_SCALES, SCALE_MS } from './components/time-travel/types';
 import type { Filters, ActiveTab } from './lib/types';
 
-export type { TimeScale, Filters, ActiveTab };
+export type { TimeScale, Filters, ActiveTab, DashboardResponse, FeedResponse };
 export { SCALE_MS };
 
 export interface DashboardState {
@@ -20,9 +20,16 @@ export interface DashboardState {
   filters: Filters;
   activeTab: ActiveTab;
 
+  // Server-computed data
+  dashboardData: DashboardResponse | null;
+  feedData: FeedResponse | null;
+  feedLoading: boolean;
+
   loadAll: () => Promise<void>;
   loadHealth: () => Promise<void>;
   loadUpdateCheck: () => Promise<void>;
+  loadDashboard: () => Promise<void>;
+  loadFeed: (params?: { offset?: number; append?: boolean }) => Promise<void>;
   setTimeTravelTime: (t: number | null) => void;
   setTimeScale: (s: TimeScale) => void;
   setFilter: (key: keyof Filters, value: string) => void;
@@ -42,6 +49,9 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   health: null,
   updateInfo: null,
   loading: true,
+  dashboardData: null,
+  feedData: null,
+  feedLoading: false,
   timeTravelTime: null,
   timeScale: (() => {
     try {
@@ -75,6 +85,47 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
       });
     } catch {
       set({ loading: false });
+    }
+  },
+
+  loadDashboard: async () => {
+    const { timeScale, timeTravelTime } = get();
+    try {
+      const data = await fetchDashboard(timeScale, timeTravelTime ?? undefined);
+      set({ dashboardData: data });
+    } catch {
+      // Fall back to client-side computation (old behavior still works)
+    }
+  },
+
+  loadFeed: async (params) => {
+    const { timeScale, timeTravelTime, filters, feedData } = get();
+    const offset = params?.offset ?? 0;
+    const append = params?.append ?? false;
+    set({ feedLoading: true });
+    try {
+      const data = await fetchFeed({
+        scale: timeScale,
+        time: timeTravelTime ?? undefined,
+        offset,
+        limit: 50,
+        client: filters.client !== 'all' ? filters.client : undefined,
+        language: filters.language !== 'all' ? filters.language : undefined,
+        project: filters.project !== 'all' ? filters.project : undefined,
+      });
+      if (append && feedData) {
+        set({
+          feedData: {
+            ...data,
+            conversations: [...feedData.conversations, ...data.conversations],
+          },
+          feedLoading: false,
+        });
+      } else {
+        set({ feedData: data, feedLoading: false });
+      }
+    } catch {
+      set({ feedLoading: false });
     }
   },
 

@@ -12,6 +12,8 @@ import { syncRouteRoutes } from "../routes/sync-route.js";
 import { updateRoutes } from "../routes/update.js";
 import { orgsRoutes } from "../routes/orgs.js";
 import { usersRoutes } from "../routes/users.js";
+import { dashboardRoutes } from "../routes/dashboard.js";
+import { feedRoutes } from "../routes/feed.js";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -31,6 +33,8 @@ export function createApp(): Hono {
   app.route("/api/local/sync", syncRouteRoutes);
   app.route("/api/local/orgs", orgsRoutes);
   app.route("/api/local/users", usersRoutes);
+  app.route("/api/local/dashboard", dashboardRoutes);
+  app.route("/api/local/sessions/feed", feedRoutes);
   app.route("/api/local/update-check", updateRoutes);
   app.route("/", healthRoutes);
 

@@ -97,7 +97,8 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
         client = (record.data["client"] as string) ?? undefined;
         taskType = (record.data["task_type"] as string) ?? undefined;
       } else if (record.type === "session_seal") {
-        seal = record.data["seal"] as Record<string, unknown> | undefined;
+        const rawSeal = record.data["seal"];
+        seal = typeof rawSeal === "string" ? JSON.parse(rawSeal) as Record<string, unknown> : rawSeal as Record<string, unknown> | undefined;
       } else if (record.type === "milestone") {
         milestones.push(record.data);
       }
@@ -135,6 +136,7 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
     seal_signature: (seal["seal_signature"] as string) ?? "",
   };
 
+  const endedAt = (seal["ended_at"] as string) ?? "";
   const enrichedMilestones = milestones.map((m) => ({
     ...m,
     session_id: id,
@@ -142,6 +144,7 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
     client: sealClient,
     languages,
     duration_minutes: Math.round(durationSeconds / 60),
+    created_at: endedAt,
   }));
 
   return { session, milestones: enrichedMilestones };
