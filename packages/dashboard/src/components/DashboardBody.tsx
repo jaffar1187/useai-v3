@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Filter, Eye, EyeOff, Info } from 'lucide-react';
-import type { SessionSeal, Milestone } from '../lib/api';
+import type { SessionSeal, Milestone, DashboardResponse } from '../lib/api';
+import { fetchDashboard } from '../lib/api';
 import type { StatCardType } from './stats/StatDetailPanel';
 import type { Filters, ActiveTab } from '../lib/types';
 import type { TimeScale } from './time-travel/types';
 import { ALL_SCALES, SCALE_LABELS, SCRUB_CALENDAR_MAP, isCalendarScale, getTimeWindow, jumpScale, shouldSnapToLive } from './time-travel/types';
-import { computeStats, calculateStreak, filterSessionsByWindow, filterMilestonesByWindow, countSessionsOutsideWindow } from '../lib/stats';
+import { filterSessionsByWindow, filterMilestonesByWindow } from '../lib/stats';
 import { StatsBar } from './stats/StatsBar';
 import { StatDetailPanel } from './stats/StatDetailPanel';
 import { TimeDetailPanel } from './stats/TimeDetailPanel';
@@ -28,7 +29,6 @@ export interface DashboardBodyProps {
   onDeleteConversation?: (id: string) => void;
   onDeleteMilestone?: (id: string) => void;
   defaultTimeScale?: TimeScale;
-  /** Controlled tab mode — when provided, DashboardBody won't render its own TabBar */
   activeTab?: ActiveTab;
   onActiveTabChange?: (tab: ActiveTab) => void;
 }
@@ -75,6 +75,15 @@ function writeLocalStorage(key: string, value: string) {
   try { localStorage.setItem(key, value); } catch { /* ignore */ }
 }
 
+const EMPTY_STATS: DashboardResponse['stats'] = {
+  totalHours: 0, totalSessions: 0, actualSpanHours: 0, coveredHours: 0,
+  aiMultiplier: 0, peakConcurrency: 0, currentStreak: 0, filesTouched: 0,
+  featuresShipped: 0, bugsFixed: 0, complexSolved: 0, totalMilestones: 0,
+  completionRate: 0, activeProjects: 0,
+  byClient: {}, byLanguage: {}, byTaskType: {}, byProject: {},
+  byProjectClock: {}, byClientAI: {}, byLanguageAI: {}, byTaskTypeAI: {},
+};
+
 export function DashboardBody({
   sessions,
   milestones,
@@ -97,6 +106,7 @@ export function DashboardBody({
   const [selectedStatCard, setSelectedStatCard] = useState<StatCardType>(null);
   const [globalShowPublic, setGlobalShowPublic] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [serverData, setServerData] = useState<DashboardResponse | null>(null);
 
   // Controlled vs uncontrolled tab
   const isControlledTab = controlledTab !== undefined;
@@ -119,7 +129,7 @@ export function DashboardBody({
     setFilters((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  // Restore calendar scale when returning to live from a scrub-rolling scale (e.g. 24h → day)
+  // Restore calendar scale when returning to live
   useEffect(() => {
     if (timeTravelTime === null) {
       const calendarScale = SCRUB_CALENDAR_MAP[timeScale];
@@ -129,11 +139,26 @@ export function DashboardBody({
     }
   }, [timeTravelTime, timeScale, setTimeScale]);
 
-  // ── Derived values ──────────────────────────────────────────────────────
+  // ── Fetch server-computed data ──────────────────────────────────────────
+  useEffect(() => {
+    fetchDashboard(timeScale, timeTravelTime ?? undefined)
+      .then(setServerData)
+      .catch(() => setServerData(null));
+  }, [timeScale, timeTravelTime, sessions.length]);
+
+  // ── Server data (all stats come from server) ───────────────────────────
+  const stats = serverData?.stats ?? EMPTY_STATS;
+  const evaluation = serverData?.evaluation ?? null;
+  const outsideWindow = serverData?.outside_window ?? { before: 0, after: 0 };
+  const complexityData = serverData?.complexity ?? { simple: 0, medium: 0, complex: 0 };
+  const displaySessionCount = serverData?.display_session_count ?? 0;
+
+  // ── Derived values (only what server can't provide) ────────────────────
   const isLive = timeTravelTime === null;
   const effectiveTime = timeTravelTime ?? Date.now();
   const { start: windowStart, end: windowEnd } = getTimeWindow(timeScale, effectiveTime);
 
+  // Raw filtered sessions — still needed for SessionList, ActivityStrip, TimeTravelPanel
   const filteredSessions = useMemo(
     () => filterSessionsByWindow(sessions, windowStart, windowEnd),
     [sessions, windowStart, windowEnd],
@@ -149,16 +174,9 @@ export function DashboardBody({
     [filteredSessions],
   );
 
-  const stats = useMemo(
-    () => computeStats(filteredSessions, filteredMilestones),
-    [filteredSessions, filteredMilestones],
-  );
-
-  const globalStreak = useMemo(() => calculateStreak(sessions), [sessions]);
-
+  // Navigation labels
   const outsideWindowCounts = useMemo(() => {
-    const counts = countSessionsOutsideWindow(sessions, windowStart, windowEnd);
-    if (isLive && counts.before === 0) return undefined;
+    if (isLive && outsideWindow.before === 0) return undefined;
     const scaleLabel = SCALE_LABELS[timeScale];
     const fmt = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
     const fmtDate = (ts: number) => {
@@ -168,21 +186,20 @@ export function DashboardBody({
     const isMultiDay = isCalendarScale(timeScale) || (windowEnd - windowStart) >= 86400000;
     const label = isMultiDay ? fmtDate : fmt;
 
-    // For older window, jump back and compute that window
     const olderRef = jumpScale(timeScale, effectiveTime, -1);
     const olderWindow = getTimeWindow(timeScale, olderRef);
     const olderLabel = `View prev ${scaleLabel} · ${label(olderWindow.start)} – ${label(olderWindow.end)}`;
     if (isLive) {
-      return { before: counts.before, after: 0, olderLabel };
+      return { before: outsideWindow.before, after: 0, olderLabel };
     }
     const newerRef = jumpScale(timeScale, effectiveTime, 1);
     const newerWindow = getTimeWindow(timeScale, newerRef);
     return {
-      ...counts,
+      ...outsideWindow,
       newerLabel: `View next ${scaleLabel} · ${label(newerWindow.start)} – ${label(newerWindow.end)}`,
       olderLabel,
     };
-  }, [sessions, windowStart, windowEnd, effectiveTime, isLive, timeScale]);
+  }, [outsideWindow, effectiveTime, isLive, timeScale, windowStart, windowEnd]);
 
   const handleNavigateNewer = useCallback(() => {
     const next = jumpScale(timeScale, effectiveTime, 1);
@@ -204,17 +221,6 @@ export function DashboardBody({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, [isLive, effectiveTime]);
 
-
-  const complexityData = useMemo(() => {
-    let simple = 0, medium = 0, complex = 0;
-    for (const m of filteredMilestones) {
-      if (m.complexity === 'simple') simple++;
-      else if (m.complexity === 'medium') medium++;
-      else if (m.complexity === 'complex') complex++;
-    }
-    return { simple, medium, complex };
-  }, [filteredMilestones]);
-
   const handleDayClick = useCallback((date: string) => {
     const midday = new Date(`${date}T12:00:00`).getTime();
     setTimeTravelTime(midday);
@@ -223,16 +229,16 @@ export function DashboardBody({
 
   const hasActiveFilter = filters.client !== 'all' || filters.language !== 'all' || filters.project !== 'all';
 
+  // Feed metrics from server evaluation
   const feedMetrics = useMemo(() => {
-    const evaluated = displaySessions.filter((s) => s.evaluation != null);
-    if (evaluated.length === 0) return null;
-    const n = evaluated.length;
-    const promptQuality = evaluated.reduce((sum, s) => sum + s.evaluation!.prompt_quality, 0) / n;
-    const scope = evaluated.reduce((sum, s) => sum + s.evaluation!.scope_quality, 0) / n;
-    const context = evaluated.reduce((sum, s) => sum + s.evaluation!.context_provided, 0) / n;
-    const independence = evaluated.reduce((sum, s) => sum + s.evaluation!.independence_level, 0) / n;
-    return { promptQuality, scope, context, independence };
-  }, [displaySessions]);
+    if (!evaluation || evaluation.session_count === 0) return null;
+    return {
+      promptQuality: evaluation.prompt_quality,
+      scope: evaluation.scope_quality,
+      context: evaluation.context_provided,
+      independence: evaluation.independence_level,
+    };
+  }, [evaluation]);
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (
@@ -254,7 +260,7 @@ export function DashboardBody({
         coveredHours={stats.coveredHours}
         aiMultiplier={stats.aiMultiplier}
         peakConcurrency={stats.peakConcurrency}
-        currentStreak={globalStreak}
+        currentStreak={stats.currentStreak}
         filesTouched={stats.filesTouched}
         featuresShipped={stats.featuresShipped}
         bugsFixed={stats.bugsFixed}
@@ -277,7 +283,7 @@ export function DashboardBody({
         type={selectedStatCard}
         sessions={displaySessions}
         allSessions={sessions}
-        currentStreak={globalStreak}
+        currentStreak={stats.currentStreak}
         stats={{
           totalHours: stats.totalHours,
           coveredHours: stats.coveredHours,
@@ -298,7 +304,7 @@ export function DashboardBody({
                 Activity Feed
               </h2>
               <MetricChip
-                value={`${displaySessions.length}`}
+                value={`${displaySessionCount}`}
                 label="Prompts"
                 title="Prompts"
                 description="Your direct messages to the AI plus any subagent calls it spawned — each one counts as a prompt."
@@ -341,7 +347,6 @@ export function DashboardBody({
                     : 'bg-bg-surface-1 border-border/50 text-text-muted hover:text-text-primary hover:border-text-muted/50'
                 }`}
                 title={globalShowPublic ? 'Showing public titles' : 'Showing private titles'}
-                aria-label={globalShowPublic ? 'Switch to private titles' : 'Switch to public titles'}
               >
                 {globalShowPublic ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                 <span className="hidden sm:inline text-xs font-medium">
@@ -355,8 +360,6 @@ export function DashboardBody({
                     ? 'bg-accent/10 border-accent/30 text-accent'
                     : 'bg-bg-surface-1 border-border/50 text-text-muted hover:text-text-primary hover:border-text-muted/50'
                 }`}
-                title={showFilters ? 'Hide filters' : 'Show filters'}
-                aria-label={showFilters ? 'Hide filters' : 'Show filters'}
               >
                 <Filter className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline text-xs font-medium">Filters</span>

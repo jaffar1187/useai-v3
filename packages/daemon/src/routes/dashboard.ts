@@ -210,6 +210,31 @@ dashboardRoutes.get("/", async (c) => {
       };
     });
 
+  // Outside window counts
+  let beforeCount = 0;
+  let afterCount = 0;
+  for (const s of allSessions) {
+    if (!s.ended_at || s.duration_seconds <= 0) continue;
+    const sEnd = new Date(s.ended_at).getTime();
+    const sStart = new Date(s.started_at).getTime();
+    if (sEnd < windowStart) beforeCount++;
+    else if (sStart > windowEnd) afterCount++;
+  }
+
+  // Complexity distribution
+  let simple = 0, medium = 0, complex = 0;
+  for (const m of filteredMilestones) {
+    const c = (m as unknown as Record<string, unknown>)["complexity"] as string ?? "medium";
+    if (c === "simple") simple++;
+    else if (c === "medium") medium++;
+    else if (c === "complex") complex++;
+  }
+
+  // Display sessions (with valid ended_at and duration)
+  const displaySessions = filteredSessions.filter(
+    (s) => !!s.ended_at && s.duration_seconds > 0,
+  );
+
   return c.json({
     window: { start: windowStart, end: windowEnd, scale },
     stats,
@@ -217,6 +242,9 @@ dashboardRoutes.get("/", async (c) => {
     daily_summaries: dailySummaries,
     session_count: filteredSessions.length,
     milestone_count: filteredMilestones.length,
+    display_session_count: displaySessions.length,
+    outside_window: { before: beforeCount, after: afterCount },
+    complexity: { simple, medium, complex },
   });
 });
 

@@ -180,6 +180,9 @@ export interface DashboardResponse {
   }>;
   session_count: number;
   milestone_count: number;
+  display_session_count: number;
+  outside_window: { before: number; after: number };
+  complexity: { simple: number; medium: number; complex: number };
 }
 
 export interface FeedConversation {
