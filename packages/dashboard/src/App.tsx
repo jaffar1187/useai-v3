@@ -8,8 +8,6 @@ import { FaqsPage } from './components/FaqsPage';
 
 export function App() {
   const {
-    sessions,
-    milestones,
     config,
     health,
     updateInfo,
@@ -76,8 +74,6 @@ export function App() {
             <SearchOverlay
               open={searchOpen}
               onClose={() => setSearchOpen(false)}
-              sessions={sessions}
-              milestones={milestones}
               onDeleteSession={deleteSession}
               onDeleteConversation={deleteConversation}
               onDeleteMilestone={deleteMilestone}

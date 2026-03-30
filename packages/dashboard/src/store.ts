@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { SessionSeal, Milestone, LocalConfig, HealthInfo, UpdateInfo, DashboardResponse, FeedResponse } from './lib/api';
-import { fetchSessions, fetchMilestones, fetchConfig, fetchHealth, fetchUpdateCheck, fetchDashboard, fetchFeed, deleteSession as apiDeleteSession, deleteConversation as apiDeleteConversation, deleteMilestone as apiDeleteMilestone } from './lib/api';
+import type { LocalConfig, HealthInfo, UpdateInfo, DashboardResponse, FeedResponse } from './lib/api';
+import { fetchConfig, fetchHealth, fetchUpdateCheck, fetchDashboard, fetchFeed, deleteSession as apiDeleteSession, deleteConversation as apiDeleteConversation, deleteMilestone as apiDeleteMilestone } from './lib/api';
 import type { TimeScale } from './components/time-travel/types';
 import { ALL_SCALES, SCALE_MS } from './components/time-travel/types';
 import type { Filters, ActiveTab } from './lib/types';
@@ -9,8 +9,6 @@ export type { TimeScale, Filters, ActiveTab, DashboardResponse, FeedResponse };
 export { SCALE_MS };
 
 export interface DashboardState {
-  sessions: SessionSeal[];
-  milestones: Milestone[];
   config: LocalConfig | null;
   health: HealthInfo | null;
   updateInfo: UpdateInfo | null;
@@ -39,12 +37,7 @@ export interface DashboardState {
   deleteMilestone: (milestoneId: string) => Promise<void>;
 }
 
-// Track IDs with in-flight delete operations so loadAll doesn't resurrect them
-let pendingDeletes = new Set<string>();
-
 export const useDashboardStore = create<DashboardState>((set, get) => ({
-  sessions: [],
-  milestones: [],
   config: null,
   health: null,
   updateInfo: null,
@@ -71,18 +64,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   })(),
   loadAll: async () => {
     try {
-      const [sessions, milestones, config] = await Promise.all([
-        fetchSessions(),
-        fetchMilestones(),
-        fetchConfig(),
-      ]);
-      // Filter out sessions/milestones with in-flight deletes so auto-refresh doesn't resurrect them
-      set({
-        sessions: pendingDeletes.size > 0 ? sessions.filter(s => !pendingDeletes.has(s.session_id)) : sessions,
-        milestones: pendingDeletes.size > 0 ? milestones.filter(m => !pendingDeletes.has(m.session_id)) : milestones,
-        config,
-        loading: false,
-      });
+      const config = await fetchConfig();
+      set({ config, loading: false });
     } catch {
       set({ loading: false });
     }
@@ -159,46 +142,26 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   },
 
   deleteSession: async (sessionId) => {
-    pendingDeletes.add(sessionId);
-    set({
-      sessions: get().sessions.filter(s => s.session_id !== sessionId),
-      milestones: get().milestones.filter(m => m.session_id !== sessionId),
-    });
     try {
       await apiDeleteSession(sessionId);
     } catch (err) {
       console.error('Failed to delete session:', sessionId, err);
-      // Re-fetch to get the actual server state instead of blindly reverting
-      get().loadAll();
-    } finally {
-      pendingDeletes.delete(sessionId);
     }
   },
 
   deleteConversation: async (conversationId) => {
-    const sessionIds = new Set(get().sessions.filter(s => s.conversation_id === conversationId).map(s => s.session_id));
-    for (const id of sessionIds) pendingDeletes.add(id);
-    set({
-      sessions: get().sessions.filter(s => s.conversation_id !== conversationId),
-      milestones: get().milestones.filter(m => !sessionIds.has(m.session_id)),
-    });
     try {
       await apiDeleteConversation(conversationId);
     } catch (err) {
       console.error('Failed to delete conversation:', conversationId, err);
-      get().loadAll();
-    } finally {
-      for (const id of sessionIds) pendingDeletes.delete(id);
     }
   },
 
   deleteMilestone: async (milestoneId) => {
-    set({ milestones: get().milestones.filter(m => m.id !== milestoneId) });
     try {
       await apiDeleteMilestone(milestoneId);
     } catch (err) {
       console.error('Failed to delete milestone:', milestoneId, err);
-      get().loadAll();
     }
   },
 }));
