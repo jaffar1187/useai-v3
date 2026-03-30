@@ -2,7 +2,7 @@ const API = '';
 
 // In dev mode (Vite on :5174), cloud API calls go through /cloud-api proxy → localhost:3010
 // In production (embedded in daemon on :19200), they go through the daemon's /api/local/* handlers
-const isDev = import.meta.env.DEV;
+const isDev = typeof import.meta !== 'undefined' && typeof import.meta.env !== 'undefined' && import.meta.env.DEV;
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${API}${path}`);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Filter, Eye, EyeOff, Info } from 'lucide-react';
-import type { SessionSeal, Milestone, DashboardResponse, FeedConversation } from '../lib/api';
+import type { SessionSeal, DashboardResponse, FeedConversation } from '../lib/api';
 import { fetchDashboard, fetchFeed } from '../lib/api';
 import type { StatCardType } from './stats/StatDetailPanel';
 import type { Filters, ActiveTab } from '../lib/types';
@@ -21,17 +21,20 @@ import { ActivityStrip } from './insights/ActivityStrip';
 import { RecentMilestones } from './insights/RecentMilestones';
 import { SummaryChips } from './insights/SummaryChips';
 
+export type DashboardFetcher = typeof fetchDashboard;
+export type FeedFetcher = typeof fetchFeed;
+
 export interface DashboardBodyProps {
-  /** @deprecated Raw sessions — kept for backward compat, ignored when server data loads */
-  sessions?: SessionSeal[];
-  /** @deprecated Raw milestones — kept for backward compat, ignored when server data loads */
-  milestones?: Milestone[];
   onDeleteSession?: (id: string) => void;
   onDeleteConversation?: (id: string) => void;
   onDeleteMilestone?: (id: string) => void;
   defaultTimeScale?: TimeScale;
   activeTab?: ActiveTab;
   onActiveTabChange?: (tab: ActiveTab) => void;
+  /** Custom fetch function for dashboard data. Defaults to local daemon endpoint. */
+  dashboardFetcher?: DashboardFetcher | undefined;
+  /** Custom fetch function for session feed. Defaults to local daemon endpoint. */
+  feedFetcher?: FeedFetcher | undefined;
 }
 
 type ChipColor = 'default' | 'blue' | 'amber' | 'purple' | 'green';
@@ -92,6 +95,8 @@ export function DashboardBody({
   defaultTimeScale = 'day',
   activeTab: controlledTab,
   onActiveTabChange,
+  dashboardFetcher = fetchDashboard,
+  feedFetcher = fetchFeed,
 }: DashboardBodyProps) {
   // ── UI state ────────────────────────────────────────────────────────────
   const [timeTravelTime, setTimeTravelTime] = useState<number | null>(null);
@@ -146,7 +151,7 @@ export function DashboardBody({
 
   // ── Fetch all server data ──────────────────────────────────────────────
   useEffect(() => {
-    fetchDashboard(timeScale, timeTravelTime ?? undefined)
+    dashboardFetcher(timeScale, timeTravelTime ?? undefined)
       .then(setServerData)
       .catch(() => setServerData(null));
   }, [timeScale, timeTravelTime, dataVersion]);
@@ -154,7 +159,7 @@ export function DashboardBody({
   useEffect(() => {
     setFeedConversations([]);
     setFeedLoading(true);
-    fetchFeed({
+    feedFetcher({
       scale: timeScale,
       time: timeTravelTime ?? undefined,
       offset: 0,
@@ -174,7 +179,7 @@ export function DashboardBody({
   const handleLoadMore = useCallback(() => {
     if (feedLoading || !feedHasMore) return;
     setFeedLoading(true);
-    fetchFeed({
+    feedFetcher({
       scale: timeScale,
       time: timeTravelTime ?? undefined,
       offset: feedConversations.length,
