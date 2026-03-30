@@ -290,12 +290,13 @@ export const ProfileDropdown = forwardRef<ProfileDropdownHandle, ProfileDropdown
     setMsg(null);
     try {
       const data = await postSync();
-      if (data.success) {
+      const d = data as Record<string, unknown>;
+      if (d["success"] || d["ok"]) {
         setMsg('Synced!');
         onRefresh();
         setTimeout(() => setMsg(null), 3000);
       } else {
-        setMsg(data.error ?? 'Sync failed');
+        setMsg((d["error"] as string) ?? 'Sync failed');
       }
     } catch (err) {
       setMsg((err as Error).message);

@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Camera, BarChart3, Cloud, AlertTriangle, ChevronDown, Save, Check, Loader2, HardDrive, CloudUpload, Globe, Lock, ScrollText, Info } from 'lucide-react';
+import { Camera, BarChart3, Cloud, AlertTriangle, ChevronDown, Save, Check, Loader2, HardDrive, CloudUpload, ScrollText, Info } from 'lucide-react';
 import type { FullConfig, UserOrg } from '../lib/api';
 import { fetchFullConfig, patchConfig, fetchMyOrgs } from '../lib/api';
 import { useDashboardStore } from '../store';
 
 // ── Inline sub-components ───────────────────────────────────────────────────
 
-function InfoTooltip({ fields, example }: { fields: string[]; example?: string }) {
+function InfoTooltip({ fields, example }: { fields: string[]; example?: string | undefined }) {
   const [show, setShow] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
 
@@ -274,15 +274,13 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
               <p className="text-[11px] text-text-muted mb-1">Sign in first to configure sync settings.</p>
             )}
             {draft.authenticated && <div className="divide-y divide-border/30 rounded-lg border border-blue/15 bg-blue/[0.03] px-3">
-              <SettingToggle
-                label="Stats"
-                description="Daily totals — always included with sync."
-                info={['total_seconds', 'user_time_seconds', 'ai_time_seconds', 'multiplier', 'prompt_count', 'streak_days', 'languages', 'task_types', 'clients']}
-                example="ai_time_seconds: 7200, user_time_seconds: 3600, multiplier: 2.0"
-                checked={true}
-                onChange={() => {}}
-                disabled
-              />
+              <div className="py-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-xs font-medium text-text-primary">Stats</span>
+                  <InfoTooltip fields={['total_seconds', 'user_time_seconds', 'ai_time_seconds', 'multiplier', 'prompt_count', 'streak_days', 'languages', 'task_types', 'clients']} example="ai_time_seconds: 7200, user_time_seconds: 3600, multiplier: 2.0" />
+                </div>
+                <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">Daily totals — always included with sync.</div>
+              </div>
               <SettingToggle
                 label="Evaluation scores"
                 description="Numeric ratings for each prompt."

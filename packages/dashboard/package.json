@@ -9,6 +9,7 @@
     "./components/time-travel/*": "./src/components/time-travel/*.ts",
     "./lib/*": "./src/lib/*.ts",
     "./constants/*": "./src/constants/*.ts",
+    "./constants/frameworks": "./src/constants/frameworks.ts",
     "./store": "./src/store.ts"
   },
   "scripts": {

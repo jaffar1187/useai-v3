@@ -70,7 +70,7 @@ export function App() {
         {activeTab === 'faqs' ? (
           <FaqsPage />
         ) : activeTab === 'settings' ? (
-          <SettingsPage onTabChange={setActiveTab} />
+          <SettingsPage onTabChange={setActiveTab as (tab: string) => void} />
         ) : (
           <>
             <SearchOverlay
