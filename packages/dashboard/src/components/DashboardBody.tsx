@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Filter, Eye, EyeOff, Info } from 'lucide-react';
-import type { SessionSeal, Milestone, DashboardResponse } from '../lib/api';
-import { fetchDashboard } from '../lib/api';
+import type { SessionSeal, Milestone, DashboardResponse, FeedConversation } from '../lib/api';
+import { fetchDashboard, fetchFeed } from '../lib/api';
 import type { StatCardType } from './stats/StatDetailPanel';
 import type { Filters, ActiveTab } from '../lib/types';
 import type { TimeScale } from './time-travel/types';
@@ -107,6 +107,10 @@ export function DashboardBody({
   const [globalShowPublic, setGlobalShowPublic] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [serverData, setServerData] = useState<DashboardResponse | null>(null);
+  const [feedConversations, setFeedConversations] = useState<FeedConversation[]>([]);
+  const [_feedTotal, setFeedTotal] = useState(0);
+  const [feedHasMore, setFeedHasMore] = useState(false);
+  const [feedLoading, setFeedLoading] = useState(false);
 
   // Controlled vs uncontrolled tab
   const isControlledTab = controlledTab !== undefined;
@@ -145,6 +149,48 @@ export function DashboardBody({
       .then(setServerData)
       .catch(() => setServerData(null));
   }, [timeScale, timeTravelTime, sessions.length]);
+
+  // ── Fetch session feed ───────────────────────────────────────────────────
+  useEffect(() => {
+    setFeedConversations([]);
+    setFeedLoading(true);
+    fetchFeed({
+      scale: timeScale,
+      time: timeTravelTime ?? undefined,
+      offset: 0,
+      limit: 50,
+      client: filters.client !== 'all' ? filters.client : undefined,
+      language: filters.language !== 'all' ? filters.language : undefined,
+      project: filters.project !== 'all' ? filters.project : undefined,
+    })
+      .then((data) => {
+        setFeedConversations(data.conversations);
+        setFeedTotal(data.total);
+        setFeedHasMore(data.has_more);
+        setFeedLoading(false);
+      })
+      .catch(() => setFeedLoading(false));
+  }, [timeScale, timeTravelTime, filters, sessions.length]);
+
+  const handleLoadMore = useCallback(() => {
+    if (feedLoading || !feedHasMore) return;
+    setFeedLoading(true);
+    fetchFeed({
+      scale: timeScale,
+      time: timeTravelTime ?? undefined,
+      offset: feedConversations.length,
+      limit: 50,
+      client: filters.client !== 'all' ? filters.client : undefined,
+      language: filters.language !== 'all' ? filters.language : undefined,
+      project: filters.project !== 'all' ? filters.project : undefined,
+    })
+      .then((data) => {
+        setFeedConversations((prev) => [...prev, ...data.conversations]);
+        setFeedHasMore(data.has_more);
+        setFeedLoading(false);
+      })
+      .catch(() => setFeedLoading(false));
+  }, [timeScale, timeTravelTime, filters, feedConversations.length, feedLoading, feedHasMore]);
 
   // ── Server data (all stats come from server) ───────────────────────────
   const stats = serverData?.stats ?? EMPTY_STATS;
@@ -372,8 +418,7 @@ export function DashboardBody({
           )}
 
           <SessionList
-            sessions={displaySessions}
-            milestones={filteredMilestones}
+            preGrouped={feedConversations as unknown as import('../lib/stats').ConversationGroup[]}
             filters={filters}
             globalShowPublic={globalShowPublic}
             showFullDate
@@ -383,6 +428,8 @@ export function DashboardBody({
             onDeleteSession={onDeleteSession}
             onDeleteConversation={onDeleteConversation}
             onDeleteMilestone={onDeleteMilestone}
+            onLoadMore={handleLoadMore}
+            hasMore={feedHasMore}
           />
         </div>
       )}

@@ -295,8 +295,12 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
 });
 
 interface SessionListProps {
-  sessions: SessionSeal[];
-  milestones: Milestone[];
+  /** Raw sessions — used when preGrouped is not provided (legacy/search mode) */
+  sessions?: SessionSeal[] | undefined;
+  /** Raw milestones — used when preGrouped is not provided (legacy/search mode) */
+  milestones?: Milestone[] | undefined;
+  /** Pre-grouped conversations from server feed endpoint */
+  preGrouped?: ConversationGroup[] | undefined;
   filters: Filters;
   globalShowPublic?: boolean | undefined;
   showFullDate?: boolean | undefined;
@@ -307,32 +311,32 @@ interface SessionListProps {
   onDeleteSession?: ((sessionId: string) => void) | undefined;
   onDeleteConversation?: ((conversationId: string) => void) | undefined;
   onDeleteMilestone?: ((milestoneId: string) => void) | undefined;
+  /** Called when user scrolls near the bottom — for server-side infinite scroll */
+  onLoadMore?: (() => void) | undefined;
+  hasMore?: boolean | undefined;
 }
 
 const BATCH_SIZE = 25;
 
-export function SessionList({ sessions, milestones, filters, globalShowPublic, showFullDate, highlightWords, outsideWindowCounts, onNavigateNewer, onNavigateOlder, onDeleteSession, onDeleteConversation, onDeleteMilestone }: SessionListProps) {
-  // Filter sessions by client, language, project
-  const filtered = useMemo(() => {
-    return sessions.filter((s) => {
+export function SessionList({ sessions = [], milestones = [], preGrouped, filters, globalShowPublic, showFullDate, highlightWords, outsideWindowCounts, onNavigateNewer, onNavigateOlder, onDeleteSession, onDeleteConversation, onDeleteMilestone, onLoadMore, hasMore }: SessionListProps) {
+  // If pre-grouped conversations are provided, use them directly
+  // Otherwise compute from raw sessions/milestones (legacy/search mode)
+  const conversations = useMemo(() => {
+    if (preGrouped) return preGrouped;
+
+    // Legacy: filter + group client-side
+    const filtered = sessions.filter((s) => {
       if (filters.client !== 'all' && s.client !== filters.client) return false;
       if (filters.language !== 'all' && !s.languages.includes(filters.language)) return false;
       if (filters.project !== 'all' && (s.project ?? '') !== filters.project) return false;
       return true;
     });
-  }, [sessions, filters]);
-
-  // Filter milestones by category
-  const filteredMilestones = useMemo(() => {
-    if (filters.category === 'all') return milestones;
-    return milestones.filter((m) => m.category === filters.category);
-  }, [milestones, filters.category]);
-
-  // Group sessions with milestones, then group into conversations
-  const conversations = useMemo(() => {
+    const filteredMilestones = filters.category === 'all'
+      ? milestones
+      : milestones.filter((m) => m.category === filters.category);
     const groups = groupSessionsWithMilestones(filtered, filteredMilestones);
     return groupIntoConversations(groups);
-  }, [filtered, filteredMilestones]);
+  }, [preGrouped, sessions, milestones, filters]);
 
   // Progressive rendering — show conversations in batches
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
@@ -350,14 +354,20 @@ export function SessionList({ sessions, milestones, filters, globalShowPublic, s
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry?.isIntersecting) {
-          setVisibleCount((prev) => prev + BATCH_SIZE);
+          if (preGrouped && hasMore && onLoadMore) {
+            // Server-side pagination — fetch next page
+            onLoadMore();
+          } else {
+            // Client-side progressive rendering
+            setVisibleCount((prev) => prev + BATCH_SIZE);
+          }
         }
       },
       { rootMargin: '200px' },
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [conversations, visibleCount]);
+  }, [conversations, visibleCount, preGrouped, hasMore, onLoadMore]);
 
   if (conversations.length === 0) {
     const hasBefore = outsideWindowCounts && outsideWindowCounts.before > 0;
