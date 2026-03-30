@@ -281,35 +281,13 @@ export async function syncSessions(
     if (res.ok) {
       result.synced += daySessions.length;
     } else {
+      console.error(`[sync] Failed for ${date}: ${res.error} (status ${res.status})`);
       result.errors += daySessions.length;
     }
   }
 
-  // 5. Publish milestones
-  const allMilestones = valid.flatMap((s) =>
-    s.milestones.map((m) => ({
-      id: m.id,
-      session_id: s.promptId,
-      title: includeDetails ? m.title : m.title,
-      ...(includeDetails && m.privateTitle ? { private_title: m.privateTitle } : {}),
-      category: m.category,
-      complexity: m.complexity ?? "medium",
-      duration_minutes: Math.round(s.durationMs / 60000),
-      languages: s.languages ?? [],
-      client: s.client,
-      chain_hash: s.hash,
-    })),
-  );
-
-  if (allMilestones.length > 0) {
-    await apiFetch("/api/publish", {
-      method: "POST",
-      token,
-      body: { milestones: allMilestones },
-    }).catch(() => {
-      // Milestone publish failure is non-fatal
-    });
-  }
+  // Milestones are synced via _milestones embedded in each session — the cloud
+  // /api/sync endpoint extracts and upserts them. No separate publish needed.
 
   return result;
 }
@@ -394,3 +372,4 @@ export async function syncV1Sessions(
 
   return result;
 }
+

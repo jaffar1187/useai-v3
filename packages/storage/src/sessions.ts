@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import type { Session } from "@devness/useai-types";
 import { DATA_DIR } from "./paths.js";
@@ -60,28 +60,144 @@ export async function writeSessionsForDate(date: string, sessions: Session[]): P
   );
 }
 
-const V1_SESSIONS_FILE = join(DATA_DIR, "sessions.json");
-const V1_MILESTONES_FILE = join(DATA_DIR, "milestones.json");
+const SEALED_DIR = join(DATA_DIR, "sealed");
 
+interface SealedChainData {
+  session: Record<string, unknown>;
+  milestones: Record<string, unknown>[];
+}
+
+/**
+ * Parse a single sealed UUID.jsonl chain file.
+ * Extracts the session seal and milestones.
+ */
+function parseSealedChain(file: string, raw: string): SealedChainData | null {
+  const lines = raw.trim().split("\n").filter(Boolean);
+
+  let sessionId: string | undefined;
+  let startTimestamp: string | undefined;
+  let client: string | undefined;
+  let taskType: string | undefined;
+  let seal: Record<string, unknown> | undefined;
+  const milestones: Record<string, unknown>[] = [];
+
+  for (const line of lines) {
+    try {
+      const record = JSON.parse(line) as {
+        type: string;
+        session_id?: string;
+        timestamp?: string;
+        data: Record<string, unknown>;
+        hash?: string;
+      };
+
+      if (record.type === "session_start") {
+        sessionId = record.session_id;
+        startTimestamp = record.timestamp;
+        client = (record.data["client"] as string) ?? undefined;
+        taskType = (record.data["task_type"] as string) ?? undefined;
+      } else if (record.type === "session_seal") {
+        seal = record.data["seal"] as Record<string, unknown> | undefined;
+      } else if (record.type === "milestone") {
+        milestones.push(record.data);
+      }
+    } catch {
+      // skip malformed lines
+    }
+  }
+
+  if (!seal) return null;
+
+  const chainHash = (seal["chain_end_hash"] as string) ?? "";
+  const durationSeconds = (seal["duration_seconds"] as number) ?? 0;
+  const languages = (seal["languages"] as string[]) ?? [];
+  const sealClient = (seal["client"] as string) ?? client ?? "unknown";
+  const id = sessionId ?? file.replace(".jsonl", "");
+
+  const session: Record<string, unknown> = {
+    session_id: id,
+    client: sealClient,
+    task_type: (seal["task_type"] as string) ?? taskType ?? "other",
+    started_at: (seal["started_at"] as string) ?? startTimestamp ?? "",
+    ended_at: (seal["ended_at"] as string) ?? "",
+    duration_seconds: durationSeconds,
+    languages,
+    files_touched: (seal["files_touched"] as number) ?? 0,
+    title: (seal["title"] as string) ?? undefined,
+    private_title: (seal["private_title"] as string) ?? undefined,
+    project: (seal["project"] as string) ?? undefined,
+    model: (seal["model"] as string) ?? undefined,
+    evaluation: seal["evaluation"] ?? undefined,
+    heartbeat_count: (seal["heartbeat_count"] as number) ?? 0,
+    record_count: (seal["record_count"] as number) ?? 0,
+    chain_start_hash: (seal["chain_start_hash"] as string) ?? "",
+    chain_end_hash: chainHash,
+    seal_signature: (seal["seal_signature"] as string) ?? "",
+  };
+
+  const enrichedMilestones = milestones.map((m) => ({
+    ...m,
+    session_id: id,
+    chain_hash: chainHash,
+    client: sealClient,
+    languages,
+    duration_minutes: Math.round(durationSeconds / 60),
+  }));
+
+  return { session, milestones: enrichedMilestones };
+}
+
+/**
+ * Read v1 sessions from sealed UUID.jsonl chain files.
+ * Milestones are embedded in each session as `milestones` array
+ * so the cloud /api/sync can extract them.
+ */
 export async function readV1Sessions(): Promise<Record<string, unknown>[]> {
-  if (!existsSync(V1_SESSIONS_FILE)) return [];
+  if (!existsSync(SEALED_DIR)) return [];
   try {
-    const raw = await readFile(V1_SESSIONS_FILE, "utf-8");
-    return JSON.parse(raw) as Record<string, unknown>[];
+    const files = await readdir(SEALED_DIR);
+    const jsonlFiles = files.filter((f) => f.endsWith(".jsonl"));
+    const sessions: Record<string, unknown>[] = [];
+
+    for (const file of jsonlFiles) {
+      const raw = await readFile(join(SEALED_DIR, file), "utf-8");
+      const parsed = parseSealedChain(file, raw);
+      if (parsed) {
+        // Embed milestones in session so cloud can extract via _milestones
+        parsed.session["milestones"] = parsed.milestones;
+        sessions.push(parsed.session);
+      }
+    }
+
+    return sessions;
   } catch {
     return [];
   }
 }
 
+/**
+ * Read v1 milestones from sealed UUID.jsonl chain files.
+ */
 export async function readV1Milestones(): Promise<Record<string, unknown>[]> {
-  if (!existsSync(V1_MILESTONES_FILE)) return [];
+  if (!existsSync(SEALED_DIR)) return [];
   try {
-    const raw = await readFile(V1_MILESTONES_FILE, "utf-8");
-    return JSON.parse(raw) as Record<string, unknown>[];
+    const files = await readdir(SEALED_DIR);
+    const jsonlFiles = files.filter((f) => f.endsWith(".jsonl"));
+    const milestones: Record<string, unknown>[] = [];
+
+    for (const file of jsonlFiles) {
+      const raw = await readFile(join(SEALED_DIR, file), "utf-8");
+      const parsed = parseSealedChain(file, raw);
+      if (parsed) milestones.push(...parsed.milestones);
+    }
+
+    return milestones;
   } catch {
     return [];
   }
 }
+
+export const readV1SealedMilestones = readV1Milestones;
 
 export async function deleteSession(promptId: string): Promise<void> {
   const dates = getLast(30);
