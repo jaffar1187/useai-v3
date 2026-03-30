@@ -128,15 +128,7 @@ export interface LocalConfig {
   auto_sync: boolean;
 }
 
-export function fetchSessions(): Promise<SessionSeal[]> {
-  return get('/api/local/sessions');
-}
-
-export function fetchMilestones(): Promise<Milestone[]> {
-  return get('/api/local/milestones');
-}
-
-// ── New server-side computed endpoints ────────────────────────────────────────
+// ── Server-side computed endpoints ────────────────────────────────────────
 
 export interface DashboardResponse {
   window: { start: number; end: number; scale: string };
@@ -302,59 +294,6 @@ export async function postVerifyOtp(email: string, code: string): Promise<{ succ
 }
 
 export async function postSync(): Promise<{ success: boolean; last_sync_at?: string; error?: string }> {
-  if (isDev) {
-    // In dev: fetch data from daemon, sync directly to local cloud API
-    const token = localStorage.getItem('useai_dev_token');
-    if (!token) throw new Error('Not authenticated');
-
-    const [sessions, milestones] = await Promise.all([fetchSessions(), fetchMilestones()]);
-    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
-
-    // Group sessions by date
-    const byDate = new Map<string, SessionSeal[]>();
-    for (const s of sessions) {
-      const sd = new Date(s.started_at);
-      const date = `${sd.getFullYear()}-${String(sd.getMonth() + 1).padStart(2, '0')}-${String(sd.getDate()).padStart(2, '0')}`;
-      const arr = byDate.get(date);
-      if (arr) arr.push(s);
-      else byDate.set(date, [s]);
-    }
-
-    for (const [date, daySessions] of byDate) {
-      let totalSeconds = 0;
-      const clients: Record<string, number> = {};
-      const taskTypes: Record<string, number> = {};
-      const languages: Record<string, number> = {};
-
-      for (const s of daySessions) {
-        totalSeconds += s.duration_seconds;
-        clients[s.client] = (clients[s.client] ?? 0) + s.duration_seconds;
-        taskTypes[s.task_type] = (taskTypes[s.task_type] ?? 0) + s.duration_seconds;
-        for (const lang of s.languages) {
-          languages[lang] = (languages[lang] ?? 0) + s.duration_seconds;
-        }
-      }
-
-      const res = await fetch('/cloud-api/api/sync', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ date, total_seconds: totalSeconds, clients, task_types: taskTypes, languages, sessions: daySessions.map(({ prompt, prompt_images, ...rest }) => rest), sync_signature: '' }),
-      });
-      if (!res.ok) throw new Error(`Sync failed (${date}): ${res.status}`);
-    }
-
-    // Publish milestones
-    if (milestones.length > 0) {
-      const res = await fetch('/cloud-api/api/publish', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ milestones }),
-      });
-      if (!res.ok) throw new Error(`Milestones publish failed: ${res.status}`);
-    }
-
-    return { success: true, last_sync_at: new Date().toISOString() };
-  }
   return post('/api/local/sync');
 }
 
