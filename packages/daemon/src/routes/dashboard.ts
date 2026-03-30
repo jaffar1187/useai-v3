@@ -122,6 +122,40 @@ function normalizeV1Milestone(m: Record<string, unknown>) {
   };
 }
 
+// ── Projection helpers ───────────────────────────────────────────────────────
+
+function toFilteredSession(s: SessionSeal) {
+  return {
+    session_id: s.session_id,
+    client: s.client,
+    task_type: s.task_type,
+    title: s.title,
+    ...(s.private_title && { private_title: s.private_title }),
+    ...(s.project && { project: s.project }),
+    started_at: s.started_at,
+    ended_at: s.ended_at,
+    duration_seconds: s.duration_seconds,
+    languages: s.languages,
+    ...(s.evaluation && { evaluation: s.evaluation }),
+    ...(s.active_segments && { active_segments: s.active_segments }),
+    ...(s.conversation_id && { conversation_id: s.conversation_id }),
+    files_touched: s.files_touched,
+    ...(s.model && { model: s.model }),
+  };
+}
+
+function toLightSession(s: SessionSeal) {
+  return {
+    session_id: s.session_id,
+    started_at: s.started_at,
+    ended_at: s.ended_at,
+    duration_seconds: s.duration_seconds,
+    ...(s.active_segments && { active_segments: s.active_segments }),
+    client: s.client,
+    languages: s.languages,
+  };
+}
+
 // ── Route ────────────────────────────────────────────────────────────────────
 
 dashboardRoutes.get("/", async (c) => {
@@ -245,6 +279,9 @@ dashboardRoutes.get("/", async (c) => {
     display_session_count: displaySessions.length,
     outside_window: { before: beforeCount, after: afterCount },
     complexity: { simple, medium, complex },
+    filtered_sessions: displaySessions.map(toFilteredSession),
+    filtered_milestones: filteredMilestones,
+    all_sessions_light: allSessions.map(toLightSession),
   });
 });
 

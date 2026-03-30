@@ -183,6 +183,17 @@ export interface DashboardResponse {
   display_session_count: number;
   outside_window: { before: number; after: number };
   complexity: { simple: number; medium: number; complex: number };
+  filtered_sessions: SessionSeal[];
+  filtered_milestones: Milestone[];
+  all_sessions_light: Array<{
+    session_id: string;
+    started_at: string;
+    ended_at: string;
+    duration_seconds: number;
+    active_segments?: [string, string][];
+    client: string;
+    languages: string[];
+  }>;
 }
 
 export interface FeedConversation {

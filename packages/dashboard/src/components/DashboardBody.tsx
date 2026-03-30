@@ -6,7 +6,6 @@ import type { StatCardType } from './stats/StatDetailPanel';
 import type { Filters, ActiveTab } from '../lib/types';
 import type { TimeScale } from './time-travel/types';
 import { ALL_SCALES, SCALE_LABELS, SCRUB_CALENDAR_MAP, isCalendarScale, getTimeWindow, jumpScale, shouldSnapToLive } from './time-travel/types';
-import { filterSessionsByWindow, filterMilestonesByWindow } from '../lib/stats';
 import { StatsBar } from './stats/StatsBar';
 import { StatDetailPanel } from './stats/StatDetailPanel';
 import { TimeDetailPanel } from './stats/TimeDetailPanel';
@@ -23,8 +22,10 @@ import { RecentMilestones } from './insights/RecentMilestones';
 import { SummaryChips } from './insights/SummaryChips';
 
 export interface DashboardBodyProps {
-  sessions: SessionSeal[];
-  milestones: Milestone[];
+  /** @deprecated Raw sessions — kept for backward compat, ignored when server data loads */
+  sessions?: SessionSeal[];
+  /** @deprecated Raw milestones — kept for backward compat, ignored when server data loads */
+  milestones?: Milestone[];
   onDeleteSession?: (id: string) => void;
   onDeleteConversation?: (id: string) => void;
   onDeleteMilestone?: (id: string) => void;
@@ -85,8 +86,6 @@ const EMPTY_STATS: DashboardResponse['stats'] = {
 };
 
 export function DashboardBody({
-  sessions,
-  milestones,
   onDeleteSession,
   onDeleteConversation,
   onDeleteMilestone,
@@ -106,11 +105,13 @@ export function DashboardBody({
   const [selectedStatCard, setSelectedStatCard] = useState<StatCardType>(null);
   const [globalShowPublic, setGlobalShowPublic] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+
+  // ── Server data state ──────────────────────────────────────────────────
   const [serverData, setServerData] = useState<DashboardResponse | null>(null);
   const [feedConversations, setFeedConversations] = useState<FeedConversation[]>([]);
-  const [_feedTotal, setFeedTotal] = useState(0);
   const [feedHasMore, setFeedHasMore] = useState(false);
   const [feedLoading, setFeedLoading] = useState(false);
+  const [dataVersion, setDataVersion] = useState(0); // bump to trigger re-fetch after delete
 
   // Controlled vs uncontrolled tab
   const isControlledTab = controlledTab !== undefined;
@@ -143,14 +144,13 @@ export function DashboardBody({
     }
   }, [timeTravelTime, timeScale, setTimeScale]);
 
-  // ── Fetch server-computed data ──────────────────────────────────────────
+  // ── Fetch all server data ──────────────────────────────────────────────
   useEffect(() => {
     fetchDashboard(timeScale, timeTravelTime ?? undefined)
       .then(setServerData)
       .catch(() => setServerData(null));
-  }, [timeScale, timeTravelTime, sessions.length]);
+  }, [timeScale, timeTravelTime, dataVersion]);
 
-  // ── Fetch session feed ───────────────────────────────────────────────────
   useEffect(() => {
     setFeedConversations([]);
     setFeedLoading(true);
@@ -165,12 +165,11 @@ export function DashboardBody({
     })
       .then((data) => {
         setFeedConversations(data.conversations);
-        setFeedTotal(data.total);
         setFeedHasMore(data.has_more);
         setFeedLoading(false);
       })
       .catch(() => setFeedLoading(false));
-  }, [timeScale, timeTravelTime, filters, sessions.length]);
+  }, [timeScale, timeTravelTime, filters, dataVersion]);
 
   const handleLoadMore = useCallback(() => {
     if (feedLoading || !feedHasMore) return;
@@ -192,35 +191,38 @@ export function DashboardBody({
       .catch(() => setFeedLoading(false));
   }, [timeScale, timeTravelTime, filters, feedConversations.length, feedLoading, feedHasMore]);
 
-  // ── Server data (all stats come from server) ───────────────────────────
+  // Wrap delete handlers to re-fetch after delete
+  const handleDeleteSession = useCallback(async (id: string) => {
+    await onDeleteSession?.(id);
+    setDataVersion((v) => v + 1);
+  }, [onDeleteSession]);
+
+  const handleDeleteConversation = useCallback(async (id: string) => {
+    await onDeleteConversation?.(id);
+    setDataVersion((v) => v + 1);
+  }, [onDeleteConversation]);
+
+  const handleDeleteMilestone = useCallback(async (id: string) => {
+    await onDeleteMilestone?.(id);
+    setDataVersion((v) => v + 1);
+  }, [onDeleteMilestone]);
+
+  // ── All data from server ───────────────────────────────────────────────
   const stats = serverData?.stats ?? EMPTY_STATS;
   const evaluation = serverData?.evaluation ?? null;
   const outsideWindow = serverData?.outside_window ?? { before: 0, after: 0 };
   const complexityData = serverData?.complexity ?? { simple: 0, medium: 0, complex: 0 };
   const displaySessionCount = serverData?.display_session_count ?? 0;
+  const filteredSessions = serverData?.filtered_sessions ?? [];
+  const filteredMilestones = serverData?.filtered_milestones ?? [];
+  const allSessionsLight = serverData?.all_sessions_light ?? [];
 
-  // ── Derived values (only what server can't provide) ────────────────────
+  // ── Derived values (pure UI logic, no data computation) ────────────────
   const isLive = timeTravelTime === null;
   const effectiveTime = timeTravelTime ?? Date.now();
   const { start: windowStart, end: windowEnd } = getTimeWindow(timeScale, effectiveTime);
 
-  // Raw filtered sessions — still needed for SessionList, ActivityStrip, TimeTravelPanel
-  const filteredSessions = useMemo(
-    () => filterSessionsByWindow(sessions, windowStart, windowEnd),
-    [sessions, windowStart, windowEnd],
-  );
-
-  const filteredMilestones = useMemo(
-    () => filterMilestonesByWindow(milestones, windowStart, windowEnd),
-    [milestones, windowStart, windowEnd],
-  );
-
-  const displaySessions = useMemo(
-    () => filteredSessions.filter(s => !!s.ended_at && s.duration_seconds > 0),
-    [filteredSessions],
-  );
-
-  // Navigation labels
+  // Navigation labels from server outside_window counts
   const outsideWindowCounts = useMemo(() => {
     if (isLive && outsideWindow.before === 0) return undefined;
     const scaleLabel = SCALE_LABELS[timeScale];
@@ -286,6 +288,9 @@ export function DashboardBody({
     };
   }, [evaluation]);
 
+  // Cast light sessions to SessionSeal shape for components that expect it
+  const allSessionsForStrip = allSessionsLight as unknown as SessionSeal[];
+
   // ── Render ──────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3">
@@ -294,8 +299,8 @@ export function DashboardBody({
         onChange={setTimeTravelTime}
         scale={timeScale}
         onScaleChange={setTimeScale}
-        sessions={sessions}
-        milestones={milestones}
+        sessions={allSessionsForStrip}
+        milestones={filteredMilestones}
         showPublic={globalShowPublic}
       />
 
@@ -327,8 +332,8 @@ export function DashboardBody({
 
       <TimeDetailPanel
         type={selectedStatCard}
-        sessions={displaySessions}
-        allSessions={sessions}
+        sessions={filteredSessions}
+        allSessions={allSessionsForStrip}
         currentStreak={stats.currentStreak}
         stats={{
           totalHours: stats.totalHours,
@@ -357,30 +362,10 @@ export function DashboardBody({
               />
               {feedMetrics && (
                 <>
-                  <MetricChip
-                    value={feedMetrics.promptQuality.toFixed(1)}
-                    label="Prompt_Quality"
-                    title="Prompt Quality"
-                    description="How well-crafted were your prompts? Considers clarity, specificity, and whether they gave the AI everything needed to succeed on the first try."
-                  />
-                  <MetricChip
-                    value={feedMetrics.context.toFixed(1)}
-                    label="Context"
-                    title="Context"
-                    description="Did you give the AI enough detail in your prompt — like file names, error messages, or what you've already tried?"
-                  />
-                  <MetricChip
-                    value={feedMetrics.scope.toFixed(1)}
-                    label="Scope"
-                    title="Scope"
-                    description="Did the AI clearly know what to work on — which files, which feature, which boundaries — without having to guess?"
-                  />
-                  <MetricChip
-                    value={feedMetrics.independence.toFixed(1)}
-                    label="Independence"
-                    title="Independence"
-                    description="How much did the AI handle on its own? High means it completed the task without needing corrections or follow-ups."
-                  />
+                  <MetricChip value={feedMetrics.promptQuality.toFixed(1)} label="Prompt_Quality" title="Prompt Quality" description="How well-crafted were your prompts?" />
+                  <MetricChip value={feedMetrics.context.toFixed(1)} label="Context" title="Context" description="Did you give the AI enough detail?" />
+                  <MetricChip value={feedMetrics.scope.toFixed(1)} label="Scope" title="Scope" description="Did the AI know what to work on?" />
+                  <MetricChip value={feedMetrics.independence.toFixed(1)} label="Independence" title="Independence" description="How much did the AI handle on its own?" />
                 </>
               )}
             </div>
@@ -425,9 +410,9 @@ export function DashboardBody({
             outsideWindowCounts={outsideWindowCounts}
             onNavigateNewer={handleNavigateNewer}
             onNavigateOlder={handleNavigateOlder}
-            onDeleteSession={onDeleteSession}
-            onDeleteConversation={onDeleteConversation}
-            onDeleteMilestone={onDeleteMilestone}
+            onDeleteSession={handleDeleteSession}
+            onDeleteConversation={handleDeleteConversation}
+            onDeleteMilestone={handleDeleteMilestone}
             onLoadMore={handleLoadMore}
             hasMore={feedHasMore}
           />
@@ -437,13 +422,13 @@ export function DashboardBody({
       {activeTab === 'insights' && (
         <div className="space-y-4 pt-2">
           <DailyRecap
-            sessions={displaySessions}
+            sessions={filteredSessions}
             milestones={filteredMilestones}
             isLive={isLive}
             windowStart={windowStart}
             windowEnd={windowEnd}
-            allSessions={sessions}
-            allMilestones={milestones}
+            allSessions={allSessionsForStrip}
+            allMilestones={filteredMilestones}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -455,7 +440,7 @@ export function DashboardBody({
           <TaskTypeBreakdown byTaskType={stats.byTaskType} byTaskTypeAI={stats.byTaskTypeAI} sessions={filteredSessions} milestones={filteredMilestones} showPublic={globalShowPublic} />
 
           <ActivityStrip
-            sessions={sessions}
+            sessions={allSessionsForStrip}
             timeScale={timeScale}
             effectiveTime={effectiveTime}
             isLive={isLive}

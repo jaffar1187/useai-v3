@@ -84,8 +84,6 @@ export function App() {
             />
 
             <DashboardBody
-              sessions={sessions}
-              milestones={milestones}
               onDeleteSession={deleteSession}
               onDeleteConversation={deleteConversation}
               onDeleteMilestone={deleteMilestone}
