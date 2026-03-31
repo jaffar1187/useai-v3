@@ -199,7 +199,8 @@ dashboardRoutes.get("/", async (c) => {
   });
 
   // Filter to the time window
-  const filteredSessions = filterSessionsByWindow(allSessions, windowStart, windowEnd);
+  const filteredSessions = filterSessionsByWindow(allSessions, windowStart, windowEnd)
+    .filter((s) => !!s.ended_at && s.duration_seconds > 0);
   const filteredMilestones = filterMilestonesByWindow(allMilestones, windowStart, windowEnd);
 
   // Compute stats
