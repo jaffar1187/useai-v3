@@ -24,14 +24,14 @@ function formatDuration(seconds: number): string {
 }
 
 function computeUserTimeSeconds(session: SessionSeal): number {
-  if (session.active_segments && session.active_segments.length > 0) {
+  if (session.activeSegments && session.activeSegments.length > 0) {
     let totalMs = 0;
-    for (const [start, end] of session.active_segments) {
+    for (const [start, end] of session.activeSegments) {
       totalMs += new Date(end).getTime() - new Date(start).getTime();
     }
     return Math.round(totalMs / 1000);
   }
-  return session.duration_seconds;
+  return Math.round(session.durationMs / 1000);
 }
 
 function fmtMinutes(mins: number): string {
@@ -265,10 +265,10 @@ export const SessionCard = memo(function SessionCard({ session, milestones, defa
 
   const milestoneFallback = isUntitled && firstMilestone ? firstMilestone.title : rawProject;
   const privateMilestoneFallback = isUntitled && firstMilestone
-    ? (firstMilestone.private_title || firstMilestone.title)
+    ? (firstMilestone.privateTitle || firstMilestone.title)
     : rawProject;
 
-  let privateTitle = session.private_title || session.title || privateMilestoneFallback || 'Untitled Session';
+  let privateTitle = session.privateTitle || session.title || privateMilestoneFallback || 'Untitled Session';
   let publicTitle = session.title || milestoneFallback || 'Untitled Session';
 
   const hasPrivacyDifference = privateTitle !== publicTitle;
@@ -354,20 +354,20 @@ export const SessionCard = memo(function SessionCard({ session, milestones, defa
                   </span>
                   <span className="flex items-center gap-1.5" title="AI time">
                     <Bot className="w-3 h-3 opacity-75" />
-                    {formatDuration(session.duration_seconds)}
+                    {formatDuration(Math.round(session.durationMs / 1000))}
                   </span>
                 </>
               ) : (
                 <span className="flex items-center gap-1.5">
                   <Clock className="w-3 h-3 opacity-75" />
-                  {formatDuration(session.duration_seconds)}
+                  {formatDuration(Math.round(session.durationMs / 1000))}
                 </span>
               )}
 
 
               <span className="text-text-secondary/80 font-mono tracking-tight">
-                {showFullDate && `${new Date(session.started_at).toLocaleDateString([], { month: 'short', day: 'numeric' })} · `}
-                {formatTimeRange(session.started_at, session.ended_at)}
+                {showFullDate && `${new Date(session.startedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })} · `}
+                {formatTimeRange(session.startedAt, session.endedAt)}
               </span>
 
               {!showPublic && !isUntitled && !hideProject && (
@@ -395,7 +395,7 @@ export const SessionCard = memo(function SessionCard({ session, milestones, defa
           <div className="flex items-center px-2.5 gap-1.5 border-l border-border/30 h-9 self-center">
             {onDeleteSession && (
               <DeleteButton
-                onDelete={() => onDeleteSession(session.session_id)}
+                onDelete={() => onDeleteSession(session.promptId)}
                 className="opacity-0 group-hover/card:opacity-100 focus-within:opacity-100"
               />
             )}
@@ -444,7 +444,7 @@ export const SessionCard = memo(function SessionCard({ session, milestones, defa
               <div className="h-px bg-border/20 mb-2 mx-1" />
 
               {!showPublic && session.prompt && (
-                <PromptDisplay prompt={session.prompt} imageCount={session.prompt_image_count} images={session.prompt_images} />
+                <PromptDisplay prompt={session.prompt} imageCount={session.promptImageCount} images={session.promptImages} />
               )}
 
               {session.evaluation && (
@@ -458,8 +458,8 @@ export const SessionCard = memo(function SessionCard({ session, milestones, defa
 
               {milestones.length > 0 && <div className="space-y-0.5">
                 {milestones.map((m) => {
-                  const displayTitle = (showPublic ? m.title : (m.private_title || m.title));
-                  const dur = fmtMinutes(m.duration_minutes);
+                  const displayTitle = (showPublic ? m.title : (m.privateTitle || m.title));
+                  const dur = fmtMinutes(m.durationMinutes);
 
                   return (
                     <div

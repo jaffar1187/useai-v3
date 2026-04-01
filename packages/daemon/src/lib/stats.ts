@@ -1,74 +1,32 @@
 /**
  * Server-side stats computation — ported from dashboard/src/lib/stats.ts
- * Types are inlined to avoid cross-package dependency on the dashboard.
+ * Uses Session type from @devness/useai-types as the canonical session shape.
  */
 
-// ── Inlined types ─────────────────────────────────────────────────────────────
+import type { Session } from "@devness/useai-types";
 
-export interface SessionEvaluation {
-  prompt_quality: number;
-  prompt_quality_reason?: string;
-  prompt_quality_ideal?: string;
-  context_provided: number;
-  context_provided_reason?: string;
-  context_provided_ideal?: string;
-  task_outcome: 'completed' | 'partial' | 'abandoned' | 'blocked';
-  task_outcome_reason?: string;
-  task_outcome_ideal?: string;
-  iteration_count: number;
-  independence_level: number;
-  independence_level_reason?: string;
-  independence_level_ideal?: string;
-  scope_quality: number;
-  scope_quality_reason?: string;
-  scope_quality_ideal?: string;
-  tools_leveraged: number;
-}
+// ── Backward-compat alias ────────────────────────────────────────────────────
 
-export interface SessionSeal {
-  session_id: string;
-  conversation_id?: string;
-  conversation_index?: number;
-  client: string;
-  task_type: string;
-  languages: string[];
-  files_touched: number;
-  project?: string;
-  title?: string;
-  private_title?: string;
-  prompt?: string;
-  prompt_image_count?: number;
-  prompt_images?: Array<{ type: 'image'; description: string }>;
-  prompt_word_count?: number;
-  model?: string;
-  evaluation?: SessionEvaluation;
-  started_at: string;
-  ended_at: string;
-  duration_seconds: number;
-  /** Active time segments as [isoStart, isoEnd] pairs. When present, used for accurate User Time union. */
-  active_segments?: [string, string][];
-  heartbeat_count: number;
-  record_count: number;
-  chain_start_hash: string;
-  chain_end_hash: string;
-  seal_signature: string;
-}
+/** @deprecated Use `Session` from `@devness/useai-types` directly */
+export type SessionSeal = Session;
+
+// ── Inlined display types ────────────────────────────────────────────────────
 
 export interface Milestone {
   id: string;
-  session_id: string;
+  sessionId: string;
   title: string;
-  private_title?: string;
+  privateTitle?: string;
   project?: string;
   category: string;
   complexity: string;
-  duration_minutes: number;
+  durationMinutes: number;
   languages: string[];
   client: string;
-  created_at: string;
+  createdAt: string;
   published: boolean;
-  published_at: string | null;
-  chain_hash: string;
+  publishedAt: string | null;
+  chainHash: string;
 }
 
 // ── Computed types ────────────────────────────────────────────────────────────
@@ -98,18 +56,18 @@ export interface ComputedStats {
   byProject: Record<string, number>;
   /** Clock-time project breakdown via shared sweep-line */
   byProjectClock: Record<string, number>;
-  /** AI-time (sum of duration_seconds) breakdowns — no concurrency dedup */
+  /** AI-time (sum of durationMs) breakdowns — no concurrency dedup */
   byClientAI: Record<string, number>;
   byLanguageAI: Record<string, number>;
   byTaskTypeAI: Record<string, number>;
 }
 
 export interface SessionGroup {
-  session: SessionSeal;
+  session: Session;
   milestones: Milestone[];
 }
 
-/** A conversation is a group of sessions sharing the same conversation_id */
+/** A conversation is a group of sessions sharing the same connectionId */
 export interface ConversationGroup {
   conversationId: string | null;
   sessions: SessionGroup[];
@@ -138,8 +96,8 @@ export interface AggregateEvaluation {
 
 /** Convert an ISO timestamp (or Date) to a local YYYY-MM-DD string */
 function toLocalDate(iso: string | Date): string {
-  const d = typeof iso === 'string' ? new Date(iso) : iso;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const d = typeof iso === "string" ? new Date(iso) : iso;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 // Module-level timestamp cache — avoids repeated new Date(iso).getTime()
@@ -151,6 +109,11 @@ export function parseTimestamp(iso: string): number {
     _tsCache.set(iso, v);
   }
   return v;
+}
+
+/** Helper: get duration in seconds from a Session (durationMs → seconds) */
+function durationSec(s: Session): number {
+  return Math.round(s.durationMs / 1000);
 }
 
 // ── Milestone stats ───────────────────────────────────────────────────────────
@@ -165,9 +128,9 @@ export function computeMilestoneStats(milestones: Milestone[]): {
   let complexSolved = 0;
 
   for (const m of milestones) {
-    if (m.category === 'feature') featuresShipped++;
-    if (m.category === 'bugfix') bugsFixed++;
-    if (m.complexity === 'complex') complexSolved++;
+    if (m.category === "feature") featuresShipped++;
+    if (m.category === "bugfix") bugsFixed++;
+    if (m.complexity === "complex") complexSolved++;
   }
 
   return { featuresShipped, bugsFixed, complexSolved };
@@ -180,12 +143,12 @@ export function computeMilestoneStats(milestones: Milestone[]): {
  * among distinct active keys. When N keys are active concurrently, each gets
  * 1/N of the wall-clock slice.
  *
- * Uses active_segments when available; falls back to
- * [started_at, started_at + duration_seconds] for older sessions.
+ * Uses activeSegments when available; falls back to
+ * [startedAt, startedAt + durationMs] for older sessions.
  */
 export function computeClockTimeBreakdown(
-  sessions: SessionSeal[],
-  getKeys: (s: SessionSeal) => string[],
+  sessions: Session[],
+  getKeys: (s: Session) => string[],
 ): Record<string, number> {
   type Event = { time: number; key: string; delta: 1 | -1 };
   const events: Event[] = [];
@@ -194,21 +157,21 @@ export function computeClockTimeBreakdown(
     const keys = getKeys(s);
     if (keys.length === 0) continue;
 
-    const sStart = parseTimestamp(s.started_at);
-    const sEnd = parseTimestamp(s.ended_at);
+    const sStart = parseTimestamp(s.startedAt);
+    const sEnd = parseTimestamp(s.endedAt);
     if (sEnd <= sStart) continue;
 
     // Gather active time intervals
     const segments: [number, number][] = [];
-    if (s.active_segments && s.active_segments.length > 0) {
-      for (const [segStart, segEnd] of s.active_segments) {
+    if (s.activeSegments && s.activeSegments.length > 0) {
+      for (const [segStart, segEnd] of s.activeSegments) {
         const t0 = parseTimestamp(segStart);
         const t1 = parseTimestamp(segEnd);
         if (t1 > t0) segments.push([t0, t1]);
       }
     } else {
       // Backward compat: approximate with [start, start + duration]
-      const activeDurationMs = s.duration_seconds * 1000;
+      const activeDurationMs = s.durationMs;
       const activeEnd = Math.min(sStart + activeDurationMs, sEnd);
       if (activeEnd > sStart) segments.push([sStart, activeEnd]);
     }
@@ -228,7 +191,9 @@ export function computeClockTimeBreakdown(
   let prevTime = 0;
 
   for (const e of events) {
-    const activeKeys = Object.keys(activeCount).filter((k) => activeCount[k]! > 0);
+    const activeKeys = Object.keys(activeCount).filter(
+      (k) => activeCount[k]! > 0,
+    );
     if (activeKeys.length > 0 && e.time > prevTime) {
       const sliceMs = e.time - prevTime;
       const share = sliceMs / activeKeys.length;
@@ -251,7 +216,10 @@ export function computeClockTimeBreakdown(
 
 // ── Main computeStats ─────────────────────────────────────────────────────────
 
-export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = []): ComputedStats {
+export function computeStats(
+  sessions: Session[],
+  milestones: Milestone[] = [],
+): ComputedStats {
   let totalSeconds = 0;
   let filesTouched = 0;
   const byProject: Record<string, number> = {};
@@ -260,34 +228,38 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
   const byTaskTypeAI: Record<string, number> = {};
 
   for (const s of sessions) {
-    totalSeconds += s.duration_seconds;
-    filesTouched += s.files_touched;
+    const durSec = durationSec(s);
+    totalSeconds += durSec;
+    filesTouched += s.filesTouchedCount ?? 0;
 
-    const project = s.project || 'other';
-    byProject[project] = (byProject[project] ?? 0) + s.duration_seconds;
+    const project = s.project || "other";
+    byProject[project] = (byProject[project] ?? 0) + durSec;
 
-    byClientAI[s.client] = (byClientAI[s.client] ?? 0) + s.duration_seconds;
-    byTaskTypeAI[s.task_type] = (byTaskTypeAI[s.task_type] ?? 0) + s.duration_seconds;
+    byClientAI[s.client] = (byClientAI[s.client] ?? 0) + durSec;
+    byTaskTypeAI[s.taskType] =
+      (byTaskTypeAI[s.taskType] ?? 0) + durSec;
 
-    const langs = s.languages.map((l) => l.toLowerCase());
+    const langs = (s.languages ?? []).map((l) => l.toLowerCase());
     if (langs.length > 0) {
-      const share = s.duration_seconds / langs.length;
+      const share = durSec / langs.length;
       for (const lang of langs) {
         byLanguageAI[lang] = (byLanguageAI[lang] ?? 0) + share;
       }
     } else {
-      byLanguageAI['other'] = (byLanguageAI['other'] ?? 0) + s.duration_seconds;
+      byLanguageAI["other"] = (byLanguageAI["other"] ?? 0) + durSec;
     }
   }
 
-  // Clock-time breakdowns via sweep-line (uses active_segments, falls back to duration_seconds)
+  // Clock-time breakdowns via sweep-line (uses activeSegments, falls back to durationMs)
   const byClient = computeClockTimeBreakdown(sessions, (s) => [s.client]);
   const byLanguage = computeClockTimeBreakdown(sessions, (s) => {
-    const langs = s.languages.map((l) => l.toLowerCase());
-    return langs.length > 0 ? langs : ['other'];
+    const langs = (s.languages ?? []).map((l) => l.toLowerCase());
+    return langs.length > 0 ? langs : ["other"];
   });
-  const byTaskType = computeClockTimeBreakdown(sessions, (s) => [s.task_type]);
-  const byProjectClock = computeClockTimeBreakdown(sessions, (s) => [s.project || 'other']);
+  const byTaskType = computeClockTimeBreakdown(sessions, (s) => [s.taskType]);
+  const byProjectClock = computeClockTimeBreakdown(sessions, (s) => [
+    s.project || "other",
+  ]);
 
   // Actual time span, covered time, and peak concurrency (sweep-line)
   let actualSpanHours = 0;
@@ -301,20 +273,20 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
     const events: { time: number; delta: number }[] = [];
 
     for (const s of sessions) {
-      const sStart = parseTimestamp(s.started_at);
-      const sEnd = parseTimestamp(s.ended_at);
+      const sStart = parseTimestamp(s.startedAt);
+      const sEnd = parseTimestamp(s.endedAt);
       if (sStart < minStart) minStart = sStart;
       if (sEnd > maxEnd) maxEnd = sEnd;
 
-      if (s.active_segments && s.active_segments.length > 0) {
+      if (s.activeSegments && s.activeSegments.length > 0) {
         // Use actual active segments for accurate union
-        for (const [segStart, segEnd] of s.active_segments) {
+        for (const [segStart, segEnd] of s.activeSegments) {
           events.push({ time: parseTimestamp(segStart), delta: 1 });
           events.push({ time: parseTimestamp(segEnd), delta: -1 });
         }
       } else {
         // Fallback: approximate with [startedAt, startedAt + duration]
-        const activeDurationMs = s.duration_seconds * 1000;
+        const activeDurationMs = s.durationMs;
         const activeEnd = Math.min(sStart + activeDurationMs, sEnd);
         events.push({ time: sStart, delta: 1 });
         events.push({ time: activeEnd, delta: -1 });
@@ -345,15 +317,20 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
     coveredHours = coveredMs / 3600000;
     // Multiplier = total AI time / time where AI was active (not the full span)
     // 1.0x = no parallelism, 2.0x = avg 2 sessions running when active
-    aiMultiplier = coveredHours > 0 ? (totalSeconds / 3600) / coveredHours : 0;
+    aiMultiplier = coveredHours > 0 ? totalSeconds / 3600 / coveredHours : 0;
   }
 
   const milestoneStats = computeMilestoneStats(milestones);
 
   // Completion rate from sessions with evaluations
-  const evaluated = sessions.filter((s) => s.evaluation && typeof s.evaluation === 'object');
-  const completed = evaluated.filter((s) => s.evaluation!.task_outcome === 'completed').length;
-  const completionRate = evaluated.length > 0 ? Math.round((completed / evaluated.length) * 100) : 0;
+  const evaluated = sessions.filter(
+    (s) => s.evaluation && typeof s.evaluation === "object",
+  );
+  const completed = evaluated.filter(
+    (s) => s.evaluation!.task_outcome === "completed",
+  ).length;
+  const completionRate =
+    evaluated.length > 0 ? Math.round((completed / evaluated.length) * 100) : 0;
 
   // Active projects
   const activeProjects = Object.keys(byProject).length;
@@ -384,12 +361,13 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
 
 // ── Streak calculation ────────────────────────────────────────────────────────
 
-export function calculateStreak(sessions: SessionSeal[]): number {
+export function calculateStreak(sessions: Session[]): number {
   if (sessions.length === 0) return 0;
 
   const days = new Set<string>();
   for (const s of sessions) {
-    if (s.started_at && s.ended_at && s.duration_seconds > 0) days.add(toLocalDate(s.started_at));
+    if (s.startedAt && s.endedAt && s.durationMs > 0)
+      days.add(toLocalDate(s.startedAt));
   }
 
   const sorted = [...days].sort().reverse();
@@ -419,16 +397,16 @@ export function calculateStreak(sessions: SessionSeal[]): number {
 
 /** Count sessions that fall entirely outside a time window */
 export function countSessionsOutsideWindow(
-  allSessions: SessionSeal[],
+  allSessions: Session[],
   windowStart: number,
   windowEnd: number,
 ): { before: number; after: number } {
   let before = 0;
   let after = 0;
   for (const s of allSessions) {
-    if (!s.ended_at || s.duration_seconds <= 0) continue;
-    const sEnd = parseTimestamp(s.ended_at);
-    const sStart = parseTimestamp(s.started_at);
+    if (!s.endedAt || s.durationMs <= 0) continue;
+    const sEnd = parseTimestamp(s.endedAt);
+    const sStart = parseTimestamp(s.startedAt);
     if (sEnd < windowStart) before++;
     else if (sStart > windowEnd) after++;
   }
@@ -437,13 +415,13 @@ export function countSessionsOutsideWindow(
 
 /** Filter sessions that overlap with a time window */
 export function filterSessionsByWindow(
-  sessions: SessionSeal[],
+  sessions: Session[],
   start: number,
   end: number,
-): SessionSeal[] {
+): Session[] {
   return sessions.filter((s) => {
-    const sStart = parseTimestamp(s.started_at);
-    const sEnd = parseTimestamp(s.ended_at);
+    const sStart = parseTimestamp(s.startedAt);
+    const sEnd = parseTimestamp(s.endedAt);
     return sStart <= end && sEnd >= start;
   });
 }
@@ -455,7 +433,7 @@ export function filterMilestonesByWindow(
   end: number,
 ): Milestone[] {
   return milestones.filter((m) => {
-    const t = parseTimestamp(m.created_at);
+    const t = parseTimestamp(m.createdAt);
     return t >= start && t <= end;
   });
 }
@@ -464,36 +442,46 @@ export function filterMilestonesByWindow(
 
 /** Group ALL sessions with their milestones attached (empty array if none) */
 export function groupSessionsWithMilestones(
-  sessions: SessionSeal[],
+  sessions: Session[],
   milestones: Milestone[],
 ): SessionGroup[] {
   const milestoneMap = new Map<string, Milestone[]>();
   for (const m of milestones) {
-    const existing = milestoneMap.get(m.session_id);
+    const existing = milestoneMap.get(m.sessionId);
     if (existing) {
       existing.push(m);
     } else {
-      milestoneMap.set(m.session_id, [m]);
+      milestoneMap.set(m.sessionId, [m]);
     }
   }
 
   const result: SessionGroup[] = sessions.map((session) => ({
     session,
-    milestones: milestoneMap.get(session.session_id) ?? [],
+    milestones: milestoneMap.get(session.promptId) ?? [],
   }));
 
   // Sort by session end time, most recent first
-  result.sort((a, b) => parseTimestamp(b.session.ended_at) - parseTimestamp(a.session.ended_at));
+  result.sort(
+    (a, b) =>
+      parseTimestamp(b.session.endedAt) - parseTimestamp(a.session.endedAt),
+  );
 
   return result;
 }
 
 /** Compute aggregate evaluation from multiple sessions */
-export function computeAggregateEval(sessions: SessionGroup[]): AggregateEvaluation | null {
+export function computeAggregateEval(
+  sessions: SessionGroup[],
+): AggregateEvaluation | null {
   const withEval = sessions.filter((s) => s.session.evaluation);
   if (withEval.length === 0) return null;
 
-  let promptSum = 0, contextSum = 0, indepSum = 0, scopeSum = 0, toolsSum = 0, iterSum = 0;
+  let promptSum = 0,
+    contextSum = 0,
+    indepSum = 0,
+    scopeSum = 0,
+    toolsSum = 0,
+    iterSum = 0;
   const outcomes: Record<string, number> = {};
 
   for (const s of withEval) {
@@ -520,7 +508,7 @@ export function computeAggregateEval(sessions: SessionGroup[]): AggregateEvaluat
   };
 }
 
-/** Group sessions into conversations. Sessions without conversation_id are standalone. */
+/** Group sessions into conversations. Sessions without connectionId are standalone. */
 export function groupIntoConversations(
   sessionGroups: SessionGroup[],
 ): ConversationGroup[] {
@@ -528,7 +516,7 @@ export function groupIntoConversations(
   const standalone: SessionGroup[] = [];
 
   for (const sg of sessionGroups) {
-    const convId = sg.session.conversation_id;
+    const convId = sg.session.connectionId;
     if (convId) {
       const existing = convMap.get(convId);
       if (existing) {
@@ -545,14 +533,23 @@ export function groupIntoConversations(
 
   for (const [convId, sessions] of convMap) {
     // Sort sessions within conversation: latest first (descending by end time)
-    sessions.sort((a, b) => parseTimestamp(b.session.ended_at) - parseTimestamp(a.session.ended_at));
+    sessions.sort(
+      (a, b) =>
+        parseTimestamp(b.session.endedAt) - parseTimestamp(a.session.endedAt),
+    );
 
-    const totalDuration = sessions.reduce((sum, s) => sum + s.session.duration_seconds, 0);
-    const totalMilestones = sessions.reduce((sum, s) => sum + s.milestones.length, 0);
+    const totalDuration = sessions.reduce(
+      (sum, s) => sum + durationSec(s.session),
+      0,
+    );
+    const totalMilestones = sessions.reduce(
+      (sum, s) => sum + s.milestones.length,
+      0,
+    );
     // First element is now the latest session (descending order)
-    const startedAt = sessions[sessions.length - 1]!.session.started_at;
-    const endedAt = sessions[0]!.session.ended_at;
-    const lastSessionAt = sessions[0]!.session.ended_at;
+    const startedAt = sessions[sessions.length - 1]!.session.startedAt;
+    const endedAt = sessions[0]!.session.endedAt;
+    const lastSessionAt = sessions[0]!.session.endedAt;
 
     result.push({
       conversationId: convId,
@@ -571,15 +568,17 @@ export function groupIntoConversations(
       conversationId: null,
       sessions: [sg],
       aggregateEval: sg.session.evaluation ? computeAggregateEval([sg]) : null,
-      totalDuration: sg.session.duration_seconds,
+      totalDuration: durationSec(sg.session),
       totalMilestones: sg.milestones.length,
-      startedAt: sg.session.started_at,
-      endedAt: sg.session.ended_at,
-      lastSessionAt: sg.session.ended_at,
+      startedAt: sg.session.startedAt,
+      endedAt: sg.session.endedAt,
+      lastSessionAt: sg.session.endedAt,
     });
   }
 
-  result.sort((a, b) => parseTimestamp(b.lastSessionAt) - parseTimestamp(a.lastSessionAt));
+  result.sort(
+    (a, b) => parseTimestamp(b.lastSessionAt) - parseTimestamp(a.lastSessionAt),
+  );
 
   return result;
 }
@@ -587,24 +586,30 @@ export function groupIntoConversations(
 // ── Time context label ────────────────────────────────────────────────────────
 
 /** Get a human-readable label for the current time window */
-export function getTimeContextLabel(windowStart: number, windowEnd: number, isLive: boolean): string {
-  if (isLive) return 'Live';
+export function getTimeContextLabel(
+  windowStart: number,
+  windowEnd: number,
+  isLive: boolean,
+): string {
+  if (isLive) return "Live";
 
   const midpoint = (windowStart + windowEnd) / 2;
   const midDate = new Date(midpoint);
   const today = new Date();
   const yesterday = new Date(Date.now() - 86400000);
 
-  if (midDate.toDateString() === today.toDateString()) return 'Today';
-  if (midDate.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  if (midDate.toDateString() === today.toDateString()) return "Today";
+  if (midDate.toDateString() === yesterday.toDateString()) return "Yesterday";
 
-  return midDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  return midDate.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
 // ── Interval helpers ──────────────────────────────────────────────────────────
 
 /** Merge overlapping/adjacent time intervals into non-overlapping spans */
-export function mergeIntervals(intervals: [number, number][]): [number, number][] {
+export function mergeIntervals(
+  intervals: [number, number][],
+): [number, number][] {
   if (intervals.length === 0) return [];
   intervals.sort((a, b) => a[0] - b[0]);
   const merged: [number, number][] = [intervals[0]!];
@@ -621,18 +626,18 @@ export function mergeIntervals(intervals: [number, number][]): [number, number][
 }
 
 /** Collect active intervals for a session, clamped to a time window.
- *  Uses active_segments when available; falls back to duration-capped range. */
+ *  Uses activeSegments when available; falls back to duration-capped range. */
 export function collectSessionIntervals(
-  s: SessionSeal,
+  s: Session,
   windowStart: number,
   windowEnd: number,
 ): [number, number][] {
-  const sStart = parseTimestamp(s.started_at);
-  const sEnd = parseTimestamp(s.ended_at);
+  const sStart = parseTimestamp(s.startedAt);
+  const sEnd = parseTimestamp(s.endedAt);
   const intervals: [number, number][] = [];
 
-  if (s.active_segments && s.active_segments.length > 0) {
-    for (const [segStart, segEnd] of s.active_segments) {
+  if (s.activeSegments && s.activeSegments.length > 0) {
+    for (const [segStart, segEnd] of s.activeSegments) {
       const t0 = parseTimestamp(segStart);
       const t1 = parseTimestamp(segEnd);
       if (t1 <= t0 || t1 < windowStart || t0 > windowEnd) continue;
@@ -640,18 +645,27 @@ export function collectSessionIntervals(
     }
   } else {
     // Backward compat: cap to [start, start + duration] to avoid inflation
-    const durationMs = (s.duration_seconds ?? 0) * 1000;
+    const durationMs = s.durationMs ?? 0;
     const wallClockMs = sEnd - sStart;
     const gapThresholdMs = 10 * 60 * 1000;
 
     if (durationMs === 0 && wallClockMs > gapThresholdMs) return [];
 
-    const effectiveEnd = durationMs > 0 && wallClockMs > durationMs + gapThresholdMs
-      ? sStart + durationMs
-      : sEnd;
+    const effectiveEnd =
+      durationMs > 0 && wallClockMs > durationMs + gapThresholdMs
+        ? sStart + durationMs
+        : sEnd;
 
-    if (effectiveEnd <= sStart || effectiveEnd < windowStart || sStart > windowEnd) return [];
-    intervals.push([Math.max(sStart, windowStart), Math.min(effectiveEnd, windowEnd)]);
+    if (
+      effectiveEnd <= sStart ||
+      effectiveEnd < windowStart ||
+      sStart > windowEnd
+    )
+      return [];
+    intervals.push([
+      Math.max(sStart, windowStart),
+      Math.min(effectiveEnd, windowEnd),
+    ]);
   }
 
   return intervals;
@@ -660,7 +674,10 @@ export function collectSessionIntervals(
 // ── Activity charts ───────────────────────────────────────────────────────────
 
 /** Get hourly activity for a given day — returns 24 entries with minutes per hour */
-export function getHourlyActivity(sessions: SessionSeal[], date: string): { hour: number; minutes: number }[] {
+export function getHourlyActivity(
+  sessions: Session[],
+  date: string,
+): { hour: number; minutes: number }[] {
   const dayStart = new Date(`${date}T00:00:00`).getTime();
   const dayEnd = dayStart + 86400000;
 
@@ -689,8 +706,11 @@ export function getHourlyActivity(sessions: SessionSeal[], date: string): { hour
   return result;
 }
 
-/** Get daily hours for last N days — uses active_segments with backward compat */
-export function getDailyActivity(sessions: SessionSeal[], days: number): { date: string; hours: number }[] {
+/** Get daily hours for last N days — uses activeSegments with backward compat */
+export function getDailyActivity(
+  sessions: Session[],
+  days: number,
+): { date: string; hours: number }[] {
   const now = new Date();
   const result: { date: string; hours: number }[] = [];
 
@@ -717,8 +737,11 @@ export function getDailyActivity(sessions: SessionSeal[], days: number): { date:
   return result;
 }
 
-/** AI-time hourly activity — sums duration_seconds per hour (no dedup) */
-export function getHourlyActivityAI(sessions: SessionSeal[], date: string): { hour: number; minutes: number }[] {
+/** AI-time hourly activity — sums durationMs per hour (no dedup) */
+export function getHourlyActivityAI(
+  sessions: Session[],
+  date: string,
+): { hour: number; minutes: number }[] {
   const dayStart = new Date(`${date}T00:00:00`).getTime();
   const dayEnd = dayStart + 86400000;
 
@@ -728,17 +751,20 @@ export function getHourlyActivityAI(sessions: SessionSeal[], date: string): { ho
   }
 
   for (const s of sessions) {
-    const sStart = parseTimestamp(s.started_at);
+    const sStart = parseTimestamp(s.startedAt);
     if (sStart < dayStart || sStart >= dayEnd) continue;
     const hour = new Date(sStart).getHours();
-    result[hour]!.minutes += s.duration_seconds / 60;
+    result[hour]!.minutes += s.durationMs / 60000;
   }
 
   return result;
 }
 
-/** AI-time daily activity — sums duration_seconds per day (no dedup) */
-export function getDailyActivityAI(sessions: SessionSeal[], days: number): { date: string; hours: number }[] {
+/** AI-time daily activity — sums durationMs per day (no dedup) */
+export function getDailyActivityAI(
+  sessions: Session[],
+  days: number,
+): { date: string; hours: number }[] {
   const now = new Date();
   const result: { date: string; hours: number }[] = [];
 
@@ -747,14 +773,14 @@ export function getDailyActivityAI(sessions: SessionSeal[], days: number): { dat
     d.setDate(d.getDate() - i);
     const dateStr = toLocalDate(d);
 
-    let seconds = 0;
+    let ms = 0;
     for (const s of sessions) {
-      if (toLocalDate(s.started_at) === dateStr) {
-        seconds += s.duration_seconds;
+      if (toLocalDate(s.startedAt) === dateStr) {
+        ms += s.durationMs;
       }
     }
 
-    result.push({ date: dateStr, hours: seconds / 3600 });
+    result.push({ date: dateStr, hours: ms / 3600000 });
   }
 
   return result;

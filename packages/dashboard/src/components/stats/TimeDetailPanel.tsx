@@ -65,17 +65,17 @@ function formatHours(hours: number): string {
 }
 
 /** Compute merged active periods from sessions using sweep-line.
- *  Uses active_segments when available (same logic as computeStats) to exclude idle time. */
+ *  Uses activeSegments when available (same logic as computeStats) to exclude idle time. */
 function computeActivePeriods(sessions: SessionSeal[]): { start: number; end: number }[] {
   if (sessions.length === 0) return [];
 
   const events: { time: number; delta: number }[] = [];
   for (const s of sessions) {
-    const sStart = parseTimestamp(s.started_at);
-    const sEnd = parseTimestamp(s.ended_at);
+    const sStart = parseTimestamp(s.startedAt);
+    const sEnd = parseTimestamp(s.endedAt);
 
-    if (s.active_segments && s.active_segments.length > 0) {
-      for (const [segStart, segEnd] of s.active_segments) {
+    if (s.activeSegments && s.activeSegments.length > 0) {
+      for (const [segStart, segEnd] of s.activeSegments) {
         const t0 = parseTimestamp(segStart);
         const t1 = parseTimestamp(segEnd);
         if (t1 <= t0) continue;
@@ -85,7 +85,7 @@ function computeActivePeriods(sessions: SessionSeal[]): { start: number; end: nu
     } else {
       // Fallback: cap end to startedAt + duration (same as computeStats)
       if (sEnd <= sStart) continue;
-      const activeEnd = Math.min(sStart + s.duration_seconds * 1000, sEnd);
+      const activeEnd = Math.min(sStart + s.durationMs, sEnd);
       events.push({ time: sStart, delta: 1 });
       events.push({ time: activeEnd, delta: -1 });
     }
@@ -146,7 +146,7 @@ export function TimeDetailPanel({ type, sessions, allSessions, currentStreak = 0
   const config = PANEL_CONFIG[type];
   const Icon = config.icon;
   const sorted = [...sessions].sort(
-    (a, b) => parseTimestamp(b.started_at) - parseTimestamp(a.started_at),
+    (a, b) => parseTimestamp(b.startedAt) - parseTimestamp(a.startedAt),
   );
 
   return (
@@ -311,7 +311,7 @@ function computeActiveDays(sessions: SessionSeal[]): {
   // Group sessions by date
   const dayMap = new Map<string, SessionSeal[]>();
   for (const s of sessions) {
-    const d = new Date(parseTimestamp(s.started_at));
+    const d = new Date(parseTimestamp(s.startedAt));
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const existing = dayMap.get(key);
     if (existing) existing.push(s);
@@ -323,7 +323,7 @@ function computeActiveDays(sessions: SessionSeal[]): {
     .map(([date, daySessions]) => {
       const d = new Date(date + 'T12:00:00');
       const label = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
-      const gainedSeconds = daySessions.reduce((sum, s) => sum + s.duration_seconds, 0);
+      const gainedSeconds = daySessions.reduce((sum, s) => sum + Math.round(s.durationMs / 1000), 0);
       // Compute spent time (union of intervals) for this day
       const periods = computeActivePeriods(daySessions);
       const spentMs = periods.reduce((sum, p) => sum + (p.end - p.start), 0);
@@ -334,7 +334,7 @@ function computeActiveDays(sessions: SessionSeal[]): {
 }
 
 function StreakContent({ allSessions, currentStreak }: { allSessions: SessionSeal[]; currentStreak: number }) {
-  const validSessions = useMemo(() => allSessions.filter(s => !!s.ended_at && s.duration_seconds > 0), [allSessions]);
+  const validSessions = useMemo(() => allSessions.filter(s => !!s.endedAt && s.durationMs > 0), [allSessions]);
   const activeDays = computeActiveDays(validSessions);
 
   // Mark which days are part of the current streak (consecutive from today backwards)
@@ -446,11 +446,11 @@ function SessionList({ sessions, showPublic }: { sessions: SessionSeal[]; showPu
           const isCursor = client === 'cursor';
           const iconColor = isCursor ? 'var(--text-primary)' : toolColor;
           const iconPath = TOOL_ICONS[client];
-          const displayTitle = showPublic ? (s.title ?? 'Untitled') : (s.private_title || s.title || 'Untitled');
+          const displayTitle = showPublic ? (s.title ?? 'Untitled') : (s.privateTitle || s.title || 'Untitled');
 
           return (
             <motion.div
-              key={s.session_id}
+              key={s.promptId}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, delay: Math.min(i * 0.02, 0.6) }}
@@ -486,10 +486,10 @@ function SessionList({ sessions, showPublic }: { sessions: SessionSeal[]; showPu
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-[10px] font-mono text-text-muted">
-                    {formatDuration(s.duration_seconds)}
+                    {formatDuration(Math.round(s.durationMs / 1000))}
                   </span>
                   <span className="text-[10px] text-text-muted">
-                    {formatTime(s.started_at)}
+                    {formatTime(s.startedAt)}
                   </span>
                   {s.project && (
                     <span className="text-[10px] text-text-muted font-mono truncate">

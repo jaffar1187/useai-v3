@@ -33,7 +33,7 @@ interface RecentMilestonesProps {
 
 export function RecentMilestones({ milestones, showPublic = false }: RecentMilestonesProps) {
   const recent = [...milestones]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 8);
 
   return (
@@ -65,7 +65,7 @@ export function RecentMilestones({ milestones, showPublic = false }: RecentMiles
             const badgeCls = BADGE_CLASSES[m.category] ?? 'bg-bg-surface-2 text-text-secondary border-border';
             const initials = TOOL_INITIALS[m.client] ?? m.client.slice(0, 2).toUpperCase();
             const toolColor = TOOL_COLORS[m.client] ?? '#91919a';
-            const displayTitle = showPublic ? m.title : (m.private_title || m.title);
+            const displayTitle = showPublic ? m.title : (m.privateTitle || m.title);
             const isComplex = m.complexity === 'complex';
 
             return (
@@ -102,7 +102,7 @@ export function RecentMilestones({ milestones, showPublic = false }: RecentMiles
 
                 {/* Relative time */}
                 <span className="text-[10px] text-text-muted font-mono flex-shrink-0">
-                  {relativeTime(m.created_at)}
+                  {relativeTime(m.createdAt)}
                 </span>
 
                 {/* Client initials badge */}

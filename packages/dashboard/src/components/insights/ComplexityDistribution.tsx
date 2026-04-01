@@ -153,7 +153,7 @@ function ComplexityOverlay({
 
   const filtered = milestones
     .filter((m) => m.complexity === level)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <>
@@ -198,7 +198,7 @@ function ComplexityOverlay({
         {/* Milestone list */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
           {filtered.map((m, i) => {
-            const title = showPublic ? m.title : (m.private_title ?? m.title);
+            const title = showPublic ? m.title : (m.privateTitle ?? m.title);
             return (
               <motion.div
                 key={m.id}
@@ -215,7 +215,7 @@ function ComplexityOverlay({
                   <p className="text-sm text-text-secondary leading-snug">{title}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[10px] font-mono text-text-muted">
-                      {formatDate(m.created_at)}
+                      {formatDate(m.createdAt)}
                     </span>
                     <span className="text-[10px] text-text-muted capitalize">{m.category}</span>
                   </div>

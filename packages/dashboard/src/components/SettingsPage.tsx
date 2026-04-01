@@ -294,13 +294,13 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
                 description="List of accomplishments logged during each prompt."
                 checked={draft.capture.milestones}
                 onChange={(v) => setCapture({ milestones: v })}
-                info={['title', 'private_title', 'category', 'complexity']}
+                info={['title', 'privateTitle', 'category', 'complexity']}
                 example='title: "Built login page", category: "feature"'
               />
               <SettingToggle
                 label="Private details"
                 description={`Detailed prompt titles and project names.${orgs.length > 0 ? ' Also visible to org admins.' : ''}`}
-                info={['private_title', 'project']}
+                info={['privateTitle', 'project']}
                 example='private_title: "Fixed auth bug in login.ts"'
                 checked={draft.sync.include_details}
                 onChange={(v) => setSync({ include_details: v })}

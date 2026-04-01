@@ -22,15 +22,15 @@ function formatDuration(seconds: number): string {
 function computeCoveredSeconds(sessions: SessionSeal[]): number {
   const events: { time: number; delta: number }[] = [];
   for (const s of sessions) {
-    if (s.active_segments && s.active_segments.length > 0) {
-      for (const [start, end] of s.active_segments) {
+    if (s.activeSegments && s.activeSegments.length > 0) {
+      for (const [start, end] of s.activeSegments) {
         events.push({ time: new Date(start).getTime(), delta: 1 });
         events.push({ time: new Date(end).getTime(), delta: -1 });
       }
     } else {
-      const sStart = new Date(s.started_at).getTime();
+      const sStart = new Date(s.startedAt).getTime();
       events.push({ time: sStart, delta: 1 });
-      events.push({ time: sStart + s.duration_seconds * 1000, delta: -1 });
+      events.push({ time: sStart + s.durationMs, delta: -1 });
     }
   }
   events.sort((a, b) => a.time - b.time || a.delta - b.delta);
@@ -101,7 +101,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
 
   // Determine conversation titles from first (earliest) session
   const firstSession = group.sessions[group.sessions.length - 1]!.session;
-  const privateConvTitle = firstSession.private_title || firstSession.title || firstSession.project || 'Conversation';
+  const privateConvTitle = firstSession.privateTitle || firstSession.title || firstSession.project || 'Conversation';
   const publicConvTitle = firstSession.title || firstSession.project || 'Conversation';
   const hasPrivacyDifference = privateConvTitle !== publicConvTitle;
   const canTogglePrivacy = hasPrivacyDifference && !globalShowPublic;
@@ -265,7 +265,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
               />
               <div className="space-y-1 pl-10">
                 {group.sessions.map((sg) => (
-                  <div key={sg.session.session_id} className="relative">
+                  <div key={sg.session.promptId} className="relative">
                     {/* Dot on thread line */}
                     <div
                       className="absolute -left-7 top-5 w-2 h-2 rounded-full border-2"
@@ -423,7 +423,7 @@ export function SessionList({ sessions = [], milestones = [], preGrouped, filter
 
       {visible.map((conv) => (
         <ConversationCard
-          key={conv.conversationId ?? conv.sessions[0]!.session.session_id}
+          key={conv.conversationId ?? conv.sessions[0]!.session.promptId}
           group={conv}
           defaultExpanded={false}
           globalShowPublic={globalShowPublic}

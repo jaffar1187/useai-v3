@@ -10,7 +10,3 @@
 # If you wish to remove useai from all tools
 
 `node packages/cli/dist/index.js mcp remove --yes`
-
-# Notes for Devs
-
-- Casing should be snake_Case for mcp inputSchema, and function code should be camelCase, as this is the standard.

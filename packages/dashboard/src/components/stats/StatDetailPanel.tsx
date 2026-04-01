@@ -116,7 +116,7 @@ export function StatDetailPanel({ type, milestones, showPublic = false, onClose 
   const Icon = config.icon;
   const filtered = milestones
     .filter(config.filter)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const visible = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
@@ -124,7 +124,7 @@ export function StatDetailPanel({ type, milestones, showPublic = false, onClose 
   // Group visible items by date
   const groups = new Map<string, Milestone[]>();
   for (const m of visible) {
-    const dateKey = new Date(m.created_at).toLocaleDateString([], {
+    const dateKey = new Date(m.createdAt).toLocaleDateString([], {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -203,7 +203,7 @@ export function StatDetailPanel({ type, milestones, showPublic = false, onClose 
                           const isCursor = client === 'cursor';
                           const iconColor = isCursor ? 'var(--text-primary)' : toolColor;
                           const iconPath = TOOL_ICONS[client];
-                          const displayTitle = showPublic ? m.title : (m.private_title || m.title);
+                          const displayTitle = showPublic ? m.title : (m.privateTitle || m.title);
                           const isComplex = m.complexity === 'complex';
 
                           return (
@@ -239,7 +239,7 @@ export function StatDetailPanel({ type, milestones, showPublic = false, onClose 
                                     </span>
                                   )}
                                   <span className="text-[10px] text-text-muted font-mono">
-                                    {formatDate(m.created_at)}
+                                    {formatDate(m.createdAt)}
                                   </span>
                                   {m.languages.length > 0 && (
                                     <span className="text-[9px] text-text-muted font-mono">

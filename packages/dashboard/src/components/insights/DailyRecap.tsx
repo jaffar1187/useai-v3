@@ -23,20 +23,20 @@ function Strong({ children }: { children: React.ReactNode }) {
 /** Helpers */
 function getSessionsInRange(sessions: SessionSeal[], start: number, end: number): SessionSeal[] {
   return sessions.filter((s) => {
-    const t = new Date(s.started_at).getTime();
+    const t = new Date(s.startedAt).getTime();
     return t >= start && t <= end;
   });
 }
 
 function getMilestonesInRange(milestones: Milestone[], start: number, end: number): Milestone[] {
   return milestones.filter((m) => {
-    const t = new Date(m.created_at).getTime();
+    const t = new Date(m.createdAt).getTime();
     return t >= start && t <= end;
   });
 }
 
 function totalHours(sessions: SessionSeal[]): number {
-  return sessions.reduce((sum, s) => sum + s.duration_seconds, 0) / 3600;
+  return sessions.reduce((sum, s) => sum + s.durationMs, 0) / 3600000;
 }
 
 function avgEval(sessions: SessionSeal[], field: keyof NonNullable<SessionSeal['evaluation']>): number | null {
@@ -50,10 +50,10 @@ function dominantTaskType(sessions: SessionSeal[]): { type: string; pct: number 
   if (sessions.length === 0) return null;
   const counts: Record<string, number> = {};
   for (const s of sessions) {
-    const t = s.task_type || 'coding';
-    counts[t] = (counts[t] ?? 0) + s.duration_seconds;
+    const t = s.taskType || 'coding';
+    counts[t] = (counts[t] ?? 0) + Math.round(s.durationMs / 1000);
   }
-  const totalSec = sessions.reduce((sum, s) => sum + s.duration_seconds, 0);
+  const totalSec = sessions.reduce((sum, s) => sum + Math.round(s.durationMs / 1000), 0);
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
   if (!top || totalSec === 0) return null;
   return { type: top[0], pct: Math.round((top[1] / totalSec) * 100) };
@@ -180,8 +180,8 @@ function generateInsights(
     // Find most productive tool by milestones/hour
     const toolEfficiency = clients.map(([name, arr]) => {
       const hrs = totalHours(arr);
-      const sessionIds = new Set(arr.map((s) => s.session_id));
-      const toolMilestones = milestones.filter((m) => sessionIds.has(m.session_id));
+      const sessionIds = new Set(arr.map((s) => s.promptId));
+      const toolMilestones = milestones.filter((m) => sessionIds.has(m.sessionId));
       return { name, rate: toolMilestones.length / Math.max(hrs, 0.1), count: toolMilestones.length };
     }).filter((t) => t.count > 0);
 

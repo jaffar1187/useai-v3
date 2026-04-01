@@ -251,11 +251,11 @@ export function TimeScrubber({
   const parsedSessions = useMemo(
     () =>
       sessions
-        .filter((s) => !!s.ended_at && s.duration_seconds > 0)
+        .filter((s) => !!s.endedAt && s.durationMs > 0)
         .map((s) => ({
           session: s,
-          start: parseTimestamp(s.started_at),
-          end: parseTimestamp(s.ended_at),
+          start: parseTimestamp(s.startedAt),
+          end: parseTimestamp(s.endedAt),
         })),
     [sessions],
   );
@@ -284,7 +284,7 @@ export function TimeScrubber({
   const parsedMilestones = useMemo(
     () =>
       milestones
-        .map((m) => ({ milestone: m, time: parseTimestamp(m.created_at) }))
+        .map((m) => ({ milestone: m, time: parseTimestamp(m.createdAt) }))
         .sort((a, b) => a.time - b.time),
     [milestones],
   );
@@ -406,7 +406,7 @@ export function TimeScrubber({
           {/* Session blocks */}
           {sessionBlocks.map((block) => (
             <div
-              key={block.session.session_id}
+              key={block.session.promptId}
               className="absolute bottom-0 rounded-t-md pointer-events-auto cursor-pointer hover:opacity-80"
               style={{
                 left: block.leftOffset,
@@ -496,23 +496,23 @@ function SessionTooltip({ session, showPublic }: { session: SessionSeal; showPub
   const name = TOOL_DISPLAY_NAMES[session.client] ?? session.client;
   const displayTitle = showPublic
     ? (session.title || session.project || `${name} Session`)
-    : (session.private_title || session.title || session.project || `${name} Session`);
+    : (session.privateTitle || session.title || session.project || `${name} Session`);
 
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
         <span className="font-bold text-xs text-accent uppercase tracking-widest">{name}</span>
-        <span className="text-[10px] text-text-muted font-mono">{formatDuration(session.duration_seconds)}</span>
+        <span className="text-[10px] text-text-muted font-mono">{formatDuration(Math.round(session.durationMs / 1000))}</span>
       </div>
       <div className="h-px bg-border/50 my-0.5" />
       <div className="text-text-primary font-medium">{displayTitle}</div>
-      <div className="text-text-secondary capitalize text-[10px]">{session.task_type}</div>
+      <div className="text-text-secondary capitalize text-[10px]">{session.taskType}</div>
     </div>
   );
 }
 
 function MilestoneTooltip({ milestone, showPublic }: { milestone: Milestone; showPublic: boolean }) {
-  const title = showPublic ? milestone.title : (milestone.private_title ?? milestone.title);
+  const title = showPublic ? milestone.title : (milestone.privateTitle ?? milestone.title);
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
@@ -527,7 +527,7 @@ function MilestoneTooltip({ milestone, showPublic }: { milestone: Milestone; sho
       </div>
       <div className="h-px bg-border/50 my-0.5" />
       <div className="font-bold text-xs break-words text-text-primary">{title}</div>
-      {!showPublic && milestone.private_title && (
+      {!showPublic && milestone.privateTitle && (
         <div className="text-[10px] text-text-muted italic opacity-70">Public: {milestone.title}</div>
       )}
     </div>

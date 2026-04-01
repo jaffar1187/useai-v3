@@ -2,11 +2,11 @@ import { join } from "node:path";
 import { readFile, writeFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import type { Session } from "@devness/useai-types";
-import { DATA_DIR } from "./paths.js";
+import { SEALED_DIR } from "./paths.js";
 import { ensureDir, appendLine } from "./fs.js";
 
 function dateFilePath(date: string): string {
-  return join(DATA_DIR, `${date}.jsonl`);
+  return join(SEALED_DIR, `${date}.jsonl`);
 }
 
 function getLast(days: number): string[] {
@@ -20,13 +20,13 @@ function getLast(days: number): string[] {
 }
 
 export async function appendSession(session: Session): Promise<void> {
-  await ensureDir(DATA_DIR);
+  await ensureDir(SEALED_DIR);
   const date = session.endedAt.slice(0, 10);
   await appendLine(dateFilePath(date), JSON.stringify(session));
 }
 
 export async function readSessionsForRange(days: number): Promise<Session[]> {
-  const dates = getLast(Math.min(days, 30));
+  const dates = getLast(Math.min(days, 32));
   const results = await Promise.all(
     dates.map(async (date) => {
       try {
@@ -41,17 +41,23 @@ export async function readSessionsForRange(days: number): Promise<Session[]> {
       }
     }),
   );
-  return results
-    .flat()
-    .sort(
-      (a, b) =>
-        b.endedAt.localeCompare(a.endedAt) ||
-        a.promptId.localeCompare(b.promptId),
-    );
+  return (
+    results
+      .flat()
+      // Descending order by endedAt, then by promptId in case of ties.
+      .sort(
+        (a, b) =>
+          b.endedAt.localeCompare(a.endedAt) ||
+          a.promptId.localeCompare(b.promptId),
+      )
+  );
 }
 
-export async function writeSessionsForDate(date: string, sessions: Session[]): Promise<void> {
-  await ensureDir(DATA_DIR);
+export async function writeSessionsForDate(
+  date: string,
+  sessions: Session[],
+): Promise<void> {
+  await ensureDir(SEALED_DIR);
   const lines = sessions.map((s) => JSON.stringify(s));
   await writeFile(
     dateFilePath(date),
@@ -59,8 +65,6 @@ export async function writeSessionsForDate(date: string, sessions: Session[]): P
     "utf-8",
   );
 }
-
-const SEALED_DIR = join(DATA_DIR, "sealed");
 
 interface SealedChainData {
   session: Record<string, unknown>;
@@ -98,7 +102,10 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
         taskType = (record.data["task_type"] as string) ?? undefined;
       } else if (record.type === "session_seal") {
         const rawSeal = record.data["seal"];
-        seal = typeof rawSeal === "string" ? JSON.parse(rawSeal) as Record<string, unknown> : rawSeal as Record<string, unknown> | undefined;
+        seal =
+          typeof rawSeal === "string"
+            ? (JSON.parse(rawSeal) as Record<string, unknown>)
+            : (rawSeal as Record<string, unknown> | undefined);
       } else if (record.type === "milestone") {
         milestones.push(record.data);
       }
@@ -115,28 +122,33 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
   const sealClient = (seal["client"] as string) ?? client ?? "unknown";
   const id = sessionId ?? file.replace(".jsonl", "");
 
+  const endedAt = (seal["ended_at"] as string) ?? "";
+  const startedAt = (seal["started_at"] as string) ?? startTimestamp ?? "";
+
+  // Build Session-compatible object (v3 camelCase shape)
   const session: Record<string, unknown> = {
-    session_id: id,
+    promptId: id,
+    connectionId: (seal["conversation_id"] as string) ?? "",
     client: sealClient,
-    task_type: (seal["task_type"] as string) ?? taskType ?? "other",
-    started_at: (seal["started_at"] as string) ?? startTimestamp ?? "",
-    ended_at: (seal["ended_at"] as string) ?? "",
-    duration_seconds: durationSeconds,
-    languages,
-    files_touched: (seal["files_touched"] as number) ?? 0,
-    title: (seal["title"] as string) ?? undefined,
-    private_title: (seal["private_title"] as string) ?? undefined,
+    taskType: (seal["task_type"] as string) ?? taskType ?? "other",
+    title: (seal["title"] as string) ?? "",
+    privateTitle: (seal["private_title"] as string) ?? undefined,
     project: (seal["project"] as string) ?? undefined,
     model: (seal["model"] as string) ?? undefined,
+    startedAt,
+    endedAt,
+    durationMs: durationSeconds * 1000,
+    activeSegments: (seal["active_segments"] as [string, string][]) ?? undefined,
+    languages,
+    filesTouchedCount: (seal["files_touched"] as number) ?? 0,
     evaluation: seal["evaluation"] ?? undefined,
-    heartbeat_count: (seal["heartbeat_count"] as number) ?? 0,
-    record_count: (seal["record_count"] as number) ?? 0,
-    chain_start_hash: (seal["chain_start_hash"] as string) ?? "",
-    chain_end_hash: chainHash,
-    seal_signature: (seal["seal_signature"] as string) ?? "",
+    prevHash: (seal["chain_start_hash"] as string) ?? "",
+    hash: chainHash,
+    signature: (seal["seal_signature"] as string) ?? "",
+    milestones: [],
+    score: seal["score"] ?? undefined,
   };
 
-  const endedAt = (seal["ended_at"] as string) ?? "";
   const enrichedMilestones = milestones.map((m) => ({
     ...m,
     session_id: id,
@@ -155,20 +167,22 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
  * Milestones are embedded in each session as `milestones` array
  * so the cloud /api/sync can extract them.
  */
-export async function readV1Sessions(): Promise<Record<string, unknown>[]> {
+export async function readV1Sessions(): Promise<Session[]> {
   if (!existsSync(SEALED_DIR)) return [];
   try {
     const files = await readdir(SEALED_DIR);
-    const jsonlFiles = files.filter((f) => f.endsWith(".jsonl"));
-    const sessions: Record<string, unknown>[] = [];
+    const jsonlFiles = files.filter(
+      (f) => f.endsWith(".jsonl") && !/^\d{4}-\d{2}-\d{2}\.jsonl$/.test(f),
+    );
+    const sessions: Session[] = [];
 
     for (const file of jsonlFiles) {
       const raw = await readFile(join(SEALED_DIR, file), "utf-8");
       const parsed = parseSealedChain(file, raw);
       if (parsed) {
-        // Embed milestones in session so cloud can extract via _milestones
+        // Embed milestones in session
         parsed.session["milestones"] = parsed.milestones;
-        sessions.push(parsed.session);
+        sessions.push(parsed.session as unknown as Session);
       }
     }
 
@@ -178,32 +192,8 @@ export async function readV1Sessions(): Promise<Record<string, unknown>[]> {
   }
 }
 
-/**
- * Read v1 milestones from sealed UUID.jsonl chain files.
- */
-export async function readV1Milestones(): Promise<Record<string, unknown>[]> {
-  if (!existsSync(SEALED_DIR)) return [];
-  try {
-    const files = await readdir(SEALED_DIR);
-    const jsonlFiles = files.filter((f) => f.endsWith(".jsonl"));
-    const milestones: Record<string, unknown>[] = [];
-
-    for (const file of jsonlFiles) {
-      const raw = await readFile(join(SEALED_DIR, file), "utf-8");
-      const parsed = parseSealedChain(file, raw);
-      if (parsed) milestones.push(...parsed.milestones);
-    }
-
-    return milestones;
-  } catch {
-    return [];
-  }
-}
-
-export const readV1SealedMilestones = readV1Milestones;
-
 export async function deleteSession(promptId: string): Promise<void> {
-  const dates = getLast(30);
+  const dates = getLast(32);
   for (const date of dates) {
     const path = dateFilePath(date);
     try {

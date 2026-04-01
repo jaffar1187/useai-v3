@@ -215,12 +215,12 @@ export function DashboardBody({
   // ── All data from server ───────────────────────────────────────────────
   const stats = serverData?.stats ?? EMPTY_STATS;
   const evaluation = serverData?.evaluation ?? null;
-  const outsideWindow = serverData?.outside_window ?? { before: 0, after: 0 };
+  const outsideWindow = serverData?.outsideWindow ?? { before: 0, after: 0 };
   const complexityData = serverData?.complexity ?? { simple: 0, medium: 0, complex: 0 };
-  const displaySessionCount = serverData?.display_session_count ?? 0;
-  const filteredSessions = serverData?.filtered_sessions ?? [];
-  const filteredMilestones = serverData?.filtered_milestones ?? [];
-  const allSessionsLight = serverData?.all_sessions_light ?? [];
+  const displaySessionCount = serverData?.displaySessionCount ?? 0;
+  const filteredSessions = serverData?.filteredSessions ?? [];
+  const filteredMilestones = serverData?.filteredMilestones ?? [];
+  const allSessionsLight = serverData?.allSessionsLight ?? [];
 
   // ── Derived values (pure UI logic, no data computation) ────────────────
   const isLive = timeTravelTime === null;
@@ -284,12 +284,12 @@ export function DashboardBody({
 
   // Feed metrics from server evaluation
   const feedMetrics = useMemo(() => {
-    if (!evaluation || evaluation.session_count === 0) return null;
+    if (!evaluation || evaluation.sessionCount === 0) return null;
     return {
-      promptQuality: evaluation.prompt_quality,
-      scope: evaluation.scope_quality,
-      context: evaluation.context_provided,
-      independence: evaluation.independence_level,
+      promptQuality: evaluation.promptQuality,
+      scope: evaluation.scopeQuality,
+      context: evaluation.contextProvided,
+      independence: evaluation.independenceLevel,
     };
   }, [evaluation]);
 
