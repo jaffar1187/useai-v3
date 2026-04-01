@@ -197,7 +197,7 @@ function TaskTypeOverlay({
   const filtered = useMemo(
     () => milestones
       .filter((m) => sessionIdSet.has(m.sessionId))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      .sort((a, b) => (b.createdAt < a.createdAt ? -1 : 1)),
     [milestones, sessionIdSet],
   );
 

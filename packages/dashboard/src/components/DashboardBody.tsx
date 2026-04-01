@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Filter, Eye, EyeOff, Info } from 'lucide-react';
-import type { SessionSeal, DashboardResponse, FeedConversation } from '../lib/api';
-import { fetchDashboard, fetchFeed } from '../lib/api';
-import type { StatCardType } from './stats/StatDetailPanel';
-import type { Filters, ActiveTab } from '../lib/types';
+import type { ActiveTab } from '../lib/types';
 import type { TimeScale } from './time-travel/types';
-import { ALL_SCALES, SCALE_LABELS, SCRUB_CALENDAR_MAP, isCalendarScale, getTimeWindow, jumpScale, shouldSnapToLive } from './time-travel/types';
+import { useDashboardData } from '../hooks/useDashboardData';
+import type { DashboardFetcher, FeedFetcher } from '../hooks/useDashboardData';
 import { StatsBar } from './stats/StatsBar';
 import { StatDetailPanel } from './stats/StatDetailPanel';
+import type { StatCardType } from './stats/StatDetailPanel';
 import { TimeDetailPanel } from './stats/TimeDetailPanel';
 import { TabBar } from './TabBar';
 import { FilterChips } from './sessions/FilterChips';
@@ -21,8 +20,7 @@ import { ActivityStrip } from './insights/ActivityStrip';
 import { RecentMilestones } from './insights/RecentMilestones';
 import { SummaryChips } from './insights/SummaryChips';
 
-export type DashboardFetcher = typeof fetchDashboard;
-export type FeedFetcher = typeof fetchFeed;
+export type { DashboardFetcher, FeedFetcher };
 
 export interface DashboardBodyProps {
   onDeleteSession?: (id: string) => void;
@@ -31,9 +29,7 @@ export interface DashboardBodyProps {
   defaultTimeScale?: TimeScale;
   activeTab?: ActiveTab;
   onActiveTabChange?: (tab: ActiveTab) => void;
-  /** Custom fetch function for dashboard data. Defaults to local daemon endpoint. */
   dashboardFetcher?: DashboardFetcher | undefined;
-  /** Custom fetch function for session feed. Defaults to local daemon endpoint. */
   feedFetcher?: FeedFetcher | undefined;
 }
 
@@ -79,15 +75,6 @@ function writeLocalStorage(key: string, value: string) {
   try { localStorage.setItem(key, value); } catch { /* ignore */ }
 }
 
-const EMPTY_STATS: DashboardResponse['stats'] = {
-  totalHours: 0, totalSessions: 0, actualSpanHours: 0, coveredHours: 0,
-  aiMultiplier: 0, peakConcurrency: 0, currentStreak: 0, filesTouched: 0,
-  featuresShipped: 0, bugsFixed: 0, complexSolved: 0, totalMilestones: 0,
-  completionRate: 0, activeProjects: 0,
-  byClient: {}, byLanguage: {}, byTaskType: {}, byProject: {},
-  byProjectClock: {}, byClientAI: {}, byLanguageAI: {}, byTaskTypeAI: {},
-};
-
 export function DashboardBody({
   onDeleteSession,
   onDeleteConversation,
@@ -95,30 +82,26 @@ export function DashboardBody({
   defaultTimeScale = 'day',
   activeTab: controlledTab,
   onActiveTabChange,
-  dashboardFetcher = fetchDashboard,
-  feedFetcher = fetchFeed,
+  dashboardFetcher,
+  feedFetcher,
 }: DashboardBodyProps) {
-  // ── UI state ────────────────────────────────────────────────────────────
-  const [timeTravelTime, setTimeTravelTime] = useState<number | null>(null);
-  const [timeScale, setTimeScaleRaw] = useState<TimeScale>(() =>
-    readLocalStorage('useai-time-scale', ALL_SCALES as TimeScale[], defaultTimeScale),
-  );
-  const [filters, setFilters] = useState<Filters>({ category: 'all', client: 'all', project: 'all', language: 'all' });
-  const [internalTab, setInternalTabRaw] = useState<ActiveTab>(() =>
-    readLocalStorage('useai-active-tab', ['sessions', 'insights'], 'sessions'),
-  );
+  const data = useDashboardData({
+    defaultTimeScale,
+    dashboardFetcher,
+    feedFetcher,
+    onDeleteSession,
+    onDeleteConversation,
+    onDeleteMilestone,
+  });
+
+  // ── Local UI state ─────────────────────────────────────────────────────
   const [selectedStatCard, setSelectedStatCard] = useState<StatCardType>(null);
   const [globalShowPublic, setGlobalShowPublic] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [internalTab, setInternalTabRaw] = useState<ActiveTab>(() =>
+    readLocalStorage('useai-active-tab', ['sessions', 'insights'], 'sessions'),
+  );
 
-  // ── Server data state ──────────────────────────────────────────────────
-  const [serverData, setServerData] = useState<DashboardResponse | null>(null);
-  const [feedConversations, setFeedConversations] = useState<FeedConversation[]>([]);
-  const [feedHasMore, setFeedHasMore] = useState(false);
-  const [feedLoading, setFeedLoading] = useState(false);
-  const [dataVersion, setDataVersion] = useState(0); // bump to trigger re-fetch after delete
-
-  // Controlled vs uncontrolled tab
   const isControlledTab = controlledTab !== undefined;
   const activeTab = controlledTab ?? internalTab;
   const setActiveTab = useCallback((tab: ActiveTab) => {
@@ -130,221 +113,57 @@ export function DashboardBody({
     }
   }, [onActiveTabChange]);
 
-  const setTimeScale = useCallback((s: TimeScale) => {
-    writeLocalStorage('useai-time-scale', s);
-    setTimeScaleRaw(s);
-  }, []);
+  const hasActiveFilter = data.filters.client !== 'all' || data.filters.language !== 'all' || data.filters.project !== 'all';
 
-  const setFilter = useCallback((key: keyof Filters, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  }, []);
-
-  // Restore calendar scale when returning to live
-  useEffect(() => {
-    if (timeTravelTime === null) {
-      const calendarScale = SCRUB_CALENDAR_MAP[timeScale];
-      if (calendarScale) {
-        setTimeScale(calendarScale);
-      }
-    }
-  }, [timeTravelTime, timeScale, setTimeScale]);
-
-  // ── Fetch all server data ──────────────────────────────────────────────
-  useEffect(() => {
-    dashboardFetcher(timeScale, timeTravelTime ?? undefined)
-      .then(setServerData)
-      .catch(() => setServerData(null));
-  }, [timeScale, timeTravelTime, dataVersion]);
-
-  useEffect(() => {
-    setFeedConversations([]);
-    setFeedLoading(true);
-    feedFetcher({
-      scale: timeScale,
-      time: timeTravelTime ?? undefined,
-      offset: 0,
-      limit: 50,
-      client: filters.client !== 'all' ? filters.client : undefined,
-      language: filters.language !== 'all' ? filters.language : undefined,
-      project: filters.project !== 'all' ? filters.project : undefined,
-    })
-      .then((data) => {
-        setFeedConversations(data.conversations);
-        setFeedHasMore(data.has_more);
-        setFeedLoading(false);
-      })
-      .catch(() => setFeedLoading(false));
-  }, [timeScale, timeTravelTime, filters, dataVersion]);
-
-  const handleLoadMore = useCallback(() => {
-    if (feedLoading || !feedHasMore) return;
-    setFeedLoading(true);
-    feedFetcher({
-      scale: timeScale,
-      time: timeTravelTime ?? undefined,
-      offset: feedConversations.length,
-      limit: 50,
-      client: filters.client !== 'all' ? filters.client : undefined,
-      language: filters.language !== 'all' ? filters.language : undefined,
-      project: filters.project !== 'all' ? filters.project : undefined,
-    })
-      .then((data) => {
-        setFeedConversations((prev) => [...prev, ...data.conversations]);
-        setFeedHasMore(data.has_more);
-        setFeedLoading(false);
-      })
-      .catch(() => setFeedLoading(false));
-  }, [timeScale, timeTravelTime, filters, feedConversations.length, feedLoading, feedHasMore]);
-
-  // Wrap delete handlers to re-fetch after delete
-  const handleDeleteSession = useCallback(async (id: string) => {
-    await onDeleteSession?.(id);
-    setDataVersion((v) => v + 1);
-  }, [onDeleteSession]);
-
-  const handleDeleteConversation = useCallback(async (id: string) => {
-    await onDeleteConversation?.(id);
-    setDataVersion((v) => v + 1);
-  }, [onDeleteConversation]);
-
-  const handleDeleteMilestone = useCallback(async (id: string) => {
-    await onDeleteMilestone?.(id);
-    setDataVersion((v) => v + 1);
-  }, [onDeleteMilestone]);
-
-  // ── All data from server ───────────────────────────────────────────────
-  const stats = serverData?.stats ?? EMPTY_STATS;
-  const evaluation = serverData?.evaluation ?? null;
-  const outsideWindow = serverData?.outsideWindow ?? { before: 0, after: 0 };
-  const complexityData = serverData?.complexity ?? { simple: 0, medium: 0, complex: 0 };
-  const displaySessionCount = serverData?.displaySessionCount ?? 0;
-  const filteredSessions = serverData?.filteredSessions ?? [];
-  const filteredMilestones = serverData?.filteredMilestones ?? [];
-  const allSessionsLight = serverData?.allSessionsLight ?? [];
-
-  // ── Derived values (pure UI logic, no data computation) ────────────────
-  const isLive = timeTravelTime === null;
-  const effectiveTime = timeTravelTime ?? Date.now();
-  const { start: windowStart, end: windowEnd } = getTimeWindow(timeScale, effectiveTime);
-
-  // Navigation labels from server outside_window counts
-  const outsideWindowCounts = useMemo(() => {
-    if (isLive && outsideWindow.before === 0) return undefined;
-    const scaleLabel = SCALE_LABELS[timeScale];
-    const fmt = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
-    const fmtDate = (ts: number) => {
-      const d = new Date(ts);
-      return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${fmt(ts)}`;
-    };
-    const isMultiDay = isCalendarScale(timeScale) || (windowEnd - windowStart) >= 86400000;
-    const label = isMultiDay ? fmtDate : fmt;
-
-    const olderRef = jumpScale(timeScale, effectiveTime, -1);
-    const olderWindow = getTimeWindow(timeScale, olderRef);
-    const olderLabel = `View prev ${scaleLabel} · ${label(olderWindow.start)} – ${label(olderWindow.end)}`;
-    if (isLive) {
-      return { before: outsideWindow.before, after: 0, olderLabel };
-    }
-    const newerRef = jumpScale(timeScale, effectiveTime, 1);
-    const newerWindow = getTimeWindow(timeScale, newerRef);
-    return {
-      ...outsideWindow,
-      newerLabel: `View next ${scaleLabel} · ${label(newerWindow.start)} – ${label(newerWindow.end)}`,
-      olderLabel,
-    };
-  }, [outsideWindow, effectiveTime, isLive, timeScale, windowStart, windowEnd]);
-
-  const handleNavigateNewer = useCallback(() => {
-    const next = jumpScale(timeScale, effectiveTime, 1);
-    if (shouldSnapToLive(timeScale, next)) {
-      setTimeTravelTime(null);
-    } else {
-      setTimeTravelTime(next);
-    }
-  }, [effectiveTime, timeScale]);
-
-  const handleNavigateOlder = useCallback(() => {
-    const prev = jumpScale(timeScale, effectiveTime, -1);
-    setTimeTravelTime(prev);
-  }, [effectiveTime, timeScale]);
-
-  const highlightDate = useMemo(() => {
-    if (isLive) return undefined;
-    const d = new Date(effectiveTime);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, [isLive, effectiveTime]);
-
-  const handleDayClick = useCallback((date: string) => {
-    const midday = new Date(`${date}T12:00:00`).getTime();
-    setTimeTravelTime(midday);
-    setTimeScale('day');
-  }, [setTimeScale]);
-
-  const hasActiveFilter = filters.client !== 'all' || filters.language !== 'all' || filters.project !== 'all';
-
-  // Feed metrics from server evaluation
-  const feedMetrics = useMemo(() => {
-    if (!evaluation || evaluation.sessionCount === 0) return null;
-    return {
-      promptQuality: evaluation.promptQuality,
-      scope: evaluation.scopeQuality,
-      context: evaluation.contextProvided,
-      independence: evaluation.independenceLevel,
-    };
-  }, [evaluation]);
-
-  // Cast light sessions to SessionSeal shape for components that expect it
-  const allSessionsForStrip = allSessionsLight as unknown as SessionSeal[];
-
-  // ── Render ──────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3">
       <TimeTravelPanel
-        value={timeTravelTime}
-        onChange={setTimeTravelTime}
-        scale={timeScale}
-        onScaleChange={setTimeScale}
-        sessions={allSessionsForStrip}
-        milestones={filteredMilestones}
+        value={data.timeTravelTime}
+        onChange={data.setTimeTravelTime}
+        scale={data.timeScale}
+        onScaleChange={data.setTimeScale}
+        sessions={data.allSessionsForStrip}
+        milestones={data.filteredMilestones}
         showPublic={globalShowPublic}
       />
 
       <StatsBar
-        totalHours={stats.totalHours}
-        totalSessions={stats.totalSessions}
-        actualSpanHours={stats.actualSpanHours}
-        coveredHours={stats.coveredHours}
-        aiMultiplier={stats.aiMultiplier}
-        peakConcurrency={stats.peakConcurrency}
-        currentStreak={stats.currentStreak}
-        filesTouched={stats.filesTouched}
-        featuresShipped={stats.featuresShipped}
-        bugsFixed={stats.bugsFixed}
-        complexSolved={stats.complexSolved}
-        totalMilestones={stats.totalMilestones}
-        completionRate={stats.completionRate}
-        activeProjects={stats.activeProjects}
+        totalHours={data.stats.totalHours}
+        totalSessions={data.stats.totalSessions}
+        actualSpanHours={data.stats.actualSpanHours}
+        coveredHours={data.stats.coveredHours}
+        aiMultiplier={data.stats.aiMultiplier}
+        peakConcurrency={data.stats.peakConcurrency}
+        currentStreak={data.stats.currentStreak}
+        filesTouched={data.stats.filesTouched}
+        featuresShipped={data.stats.featuresShipped}
+        bugsFixed={data.stats.bugsFixed}
+        complexSolved={data.stats.complexSolved}
+        totalMilestones={data.stats.totalMilestones}
+        completionRate={data.stats.completionRate}
+        activeProjects={data.stats.activeProjects}
         selectedCard={selectedStatCard}
         onCardClick={setSelectedStatCard}
       />
 
       <StatDetailPanel
         type={selectedStatCard}
-        milestones={filteredMilestones}
+        milestones={data.filteredMilestones}
         showPublic={globalShowPublic}
         onClose={() => setSelectedStatCard(null)}
       />
 
       <TimeDetailPanel
         type={selectedStatCard}
-        sessions={filteredSessions}
-        allSessions={allSessionsForStrip}
-        currentStreak={stats.currentStreak}
+        sessions={data.filteredSessions}
+        allSessions={data.allSessionsForStrip}
+        currentStreak={data.stats.currentStreak}
         stats={{
-          totalHours: stats.totalHours,
-          coveredHours: stats.coveredHours,
-          aiMultiplier: stats.aiMultiplier,
-          peakConcurrency: stats.peakConcurrency,
+          totalHours: data.stats.totalHours,
+          coveredHours: data.stats.coveredHours,
+          aiMultiplier: data.stats.aiMultiplier,
+          peakConcurrency: data.stats.peakConcurrency,
         }}
         showPublic={globalShowPublic}
         onClose={() => setSelectedStatCard(null)}
@@ -360,17 +179,17 @@ export function DashboardBody({
                 Activity Feed
               </h2>
               <MetricChip
-                value={`${displaySessionCount}`}
+                value={`${data.displaySessionCount}`}
                 label="Prompts"
                 title="Prompts"
                 description="Your direct messages to the AI plus any subagent calls it spawned — each one counts as a prompt."
               />
-              {feedMetrics && (
+              {data.feedMetrics && (
                 <>
-                  <MetricChip value={feedMetrics.promptQuality.toFixed(1)} label="Prompt_Quality" title="Prompt Quality" description="How well-crafted were your prompts?" />
-                  <MetricChip value={feedMetrics.context.toFixed(1)} label="Context" title="Context" description="Did you give the AI enough detail?" />
-                  <MetricChip value={feedMetrics.scope.toFixed(1)} label="Scope" title="Scope" description="Did the AI know what to work on?" />
-                  <MetricChip value={feedMetrics.independence.toFixed(1)} label="Independence" title="Independence" description="How much did the AI handle on its own?" />
+                  <MetricChip value={data.feedMetrics.promptQuality.toFixed(1)} label="Prompt_Quality" title="Prompt Quality" description="How well-crafted were your prompts?" />
+                  <MetricChip value={data.feedMetrics.context.toFixed(1)} label="Context" title="Context" description="Did you give the AI enough detail?" />
+                  <MetricChip value={data.feedMetrics.scope.toFixed(1)} label="Scope" title="Scope" description="Did the AI know what to work on?" />
+                  <MetricChip value={data.feedMetrics.independence.toFixed(1)} label="Independence" title="Independence" description="How much did the AI handle on its own?" />
                 </>
               )}
             </div>
@@ -404,22 +223,22 @@ export function DashboardBody({
           </div>
 
           {showFilters && (
-            <FilterChips sessions={filteredSessions} filters={filters} onFilterChange={setFilter} />
+            <FilterChips sessions={data.filteredSessions} filters={data.filters} onFilterChange={data.setFilter} />
           )}
 
           <SessionList
-            preGrouped={feedConversations as unknown as import('../lib/stats').ConversationGroup[]}
-            filters={filters}
+            preGrouped={data.feedConversations as unknown as import('../lib/stats').ConversationGroup[]}
+            filters={data.filters}
             globalShowPublic={globalShowPublic}
             showFullDate
-            outsideWindowCounts={outsideWindowCounts}
-            onNavigateNewer={handleNavigateNewer}
-            onNavigateOlder={handleNavigateOlder}
-            onDeleteSession={handleDeleteSession}
-            onDeleteConversation={handleDeleteConversation}
-            onDeleteMilestone={handleDeleteMilestone}
-            onLoadMore={handleLoadMore}
-            hasMore={feedHasMore}
+            outsideWindowCounts={data.outsideWindowCounts}
+            onNavigateNewer={data.handleNavigateNewer}
+            onNavigateOlder={data.handleNavigateOlder}
+            onDeleteSession={data.handleDeleteSession}
+            onDeleteConversation={data.handleDeleteConversation}
+            onDeleteMilestone={data.handleDeleteMilestone}
+            onLoadMore={data.handleLoadMore}
+            hasMore={data.feedHasMore}
           />
         </div>
       )}
@@ -427,33 +246,33 @@ export function DashboardBody({
       {activeTab === 'insights' && (
         <div className="space-y-4 pt-2">
           <DailyRecap
-            sessions={filteredSessions}
-            milestones={filteredMilestones}
-            isLive={isLive}
-            windowStart={windowStart}
-            windowEnd={windowEnd}
-            allSessions={allSessionsForStrip}
-            allMilestones={filteredMilestones}
+            sessions={data.filteredSessions}
+            milestones={data.filteredMilestones}
+            isLive={data.isLive}
+            windowStart={data.windowStart}
+            windowEnd={data.windowEnd}
+            allSessions={data.allSessionsForStrip}
+            allMilestones={data.filteredMilestones}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ProjectAllocation byProjectClock={stats.byProjectClock} byProject={stats.byProject} />
-            <ComplexityDistribution data={complexityData} milestones={filteredMilestones} showPublic={globalShowPublic} />
-            <SummaryChips stats={stats} />
+            <ProjectAllocation byProjectClock={data.stats.byProjectClock} byProject={data.stats.byProject} />
+            <ComplexityDistribution data={data.complexityData} milestones={data.filteredMilestones} showPublic={globalShowPublic} />
+            <SummaryChips stats={data.stats} />
           </div>
 
-          <TaskTypeBreakdown byTaskType={stats.byTaskType} byTaskTypeAI={stats.byTaskTypeAI} sessions={filteredSessions} milestones={filteredMilestones} showPublic={globalShowPublic} />
+          <TaskTypeBreakdown byTaskType={data.stats.byTaskType} byTaskTypeAI={data.stats.byTaskTypeAI} sessions={data.filteredSessions} milestones={data.filteredMilestones} showPublic={globalShowPublic} />
 
           <ActivityStrip
-            sessions={allSessionsForStrip}
-            timeScale={timeScale}
-            effectiveTime={effectiveTime}
-            isLive={isLive}
-            onDayClick={handleDayClick}
-            highlightDate={highlightDate}
+            sessions={data.allSessionsForStrip}
+            timeScale={data.timeScale}
+            effectiveTime={data.effectiveTime}
+            isLive={data.isLive}
+            onDayClick={data.handleDayClick}
+            highlightDate={data.highlightDate}
           />
 
-          <RecentMilestones milestones={filteredMilestones} showPublic={globalShowPublic} />
+          <RecentMilestones milestones={data.filteredMilestones} showPublic={globalShowPublic} />
         </div>
       )}
     </div>

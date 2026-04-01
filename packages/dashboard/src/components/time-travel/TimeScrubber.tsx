@@ -85,6 +85,12 @@ const SCALE_CONFIG: Record<
     minorTickInterval: 24 * 60 * 60 * 1000,
     labelFormat: (d) => d.toLocaleDateString([], { month: 'short', day: 'numeric' }),
   },
+  'year': {
+    visibleDuration: 365 * 24 * 60 * 60 * 1000,
+    majorTickInterval: 30 * 24 * 60 * 60 * 1000,
+    minorTickInterval: 7 * 24 * 60 * 60 * 1000,
+    labelFormat: (d) => d.toLocaleDateString([], { month: 'short' }),
+  },
 };
 
 function formatDuration(seconds: number): string {

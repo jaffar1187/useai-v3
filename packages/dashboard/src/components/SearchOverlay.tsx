@@ -78,7 +78,8 @@ export function SearchOverlay({ open, onClose, onDeleteSession, onDeleteConversa
 
     setLoading(true);
     fetchFeed({
-      scale: 'month',
+      start: new Date(Date.now() - 32 * 86400000).toISOString(),
+      end: new Date().toISOString(),
       search: trimmed,
       offset: 0,
       limit: 50,
@@ -100,7 +101,8 @@ export function SearchOverlay({ open, onClose, onDeleteSession, onDeleteConversa
     if (!trimmed || loading || !hasMore) return;
     setLoading(true);
     fetchFeed({
-      scale: 'month',
+      start: new Date(Date.now() - 32 * 86400000).toISOString(),
+      end: new Date().toISOString(),
       search: trimmed,
       offset: results.length,
       limit: 50,

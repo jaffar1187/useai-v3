@@ -9,8 +9,8 @@ interface DailyRecapProps {
   sessions: SessionSeal[];
   milestones: Milestone[];
   isLive: boolean;
-  windowStart: number;
-  windowEnd: number;
+  windowStart: string;
+  windowEnd: string;
   /** All sessions (not filtered) — needed for comparisons */
   allSessions?: SessionSeal[];
   allMilestones?: Milestone[];
@@ -21,18 +21,12 @@ function Strong({ children }: { children: React.ReactNode }) {
 }
 
 /** Helpers */
-function getSessionsInRange(sessions: SessionSeal[], start: number, end: number): SessionSeal[] {
-  return sessions.filter((s) => {
-    const t = new Date(s.startedAt).getTime();
-    return t >= start && t <= end;
-  });
+function getSessionsInRange(sessions: SessionSeal[], start: string, end: string): SessionSeal[] {
+  return sessions.filter((s) => s.startedAt >= start && s.startedAt <= end);
 }
 
-function getMilestonesInRange(milestones: Milestone[], start: number, end: number): Milestone[] {
-  return milestones.filter((m) => {
-    const t = new Date(m.createdAt).getTime();
-    return t >= start && t <= end;
-  });
+function getMilestonesInRange(milestones: Milestone[], start: string, end: string): Milestone[] {
+  return milestones.filter((m) => m.createdAt >= start && m.createdAt <= end);
 }
 
 function totalHours(sessions: SessionSeal[]): number {
@@ -69,12 +63,12 @@ function generateInsights(
   milestones: Milestone[],
   allSessions: SessionSeal[],
   allMilestones: Milestone[],
-  windowStart: number,
-  windowEnd: number,
+  windowStart: string,
+  windowEnd: string,
 ): Insight[] {
   const insights: Insight[] = [];
-  const windowMs = windowEnd - windowStart;
-  const prevStart = windowStart - windowMs;
+  const windowMs = new Date(windowEnd).getTime() - new Date(windowStart).getTime();
+  const prevStart = new Date(new Date(windowStart).getTime() - windowMs).toISOString();
   const prevEnd = windowStart;
 
   const prevSessions = getSessionsInRange(allSessions, prevStart, prevEnd);

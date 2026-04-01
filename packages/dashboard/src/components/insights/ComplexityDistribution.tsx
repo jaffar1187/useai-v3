@@ -153,7 +153,7 @@ function ComplexityOverlay({
 
   const filtered = milestones
     .filter((m) => m.complexity === level)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort((a, b) => (b.createdAt < a.createdAt ? -1 : 1));
 
   return (
     <>

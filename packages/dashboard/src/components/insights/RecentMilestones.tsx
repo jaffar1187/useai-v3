@@ -33,7 +33,7 @@ interface RecentMilestonesProps {
 
 export function RecentMilestones({ milestones, showPublic = false }: RecentMilestonesProps) {
   const recent = [...milestones]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort((a, b) => (b.createdAt < a.createdAt ? -1 : 1))
     .slice(0, 8);
 
   return (

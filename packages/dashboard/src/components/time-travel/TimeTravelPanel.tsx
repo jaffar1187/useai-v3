@@ -43,12 +43,13 @@ export function TimeTravelPanel({
   // Period label
   const periodLabel = useMemo(() => {
     const { start, end } = timeWindow;
-    const fmtTime = (ts: number) =>
-      new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
-    const fmtDateShort = (ts: number) =>
-      new Date(ts).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    const fmtTime = (iso: string) =>
+      new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+    const fmtDateShort = (iso: string) =>
+      new Date(iso).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 
-    const isSameDay = new Date(start).toDateString() === new Date(end - 1).toDateString();
+    const endMs = new Date(end).getTime();
+    const isSameDay = new Date(start).toDateString() === new Date(endMs - 1).toDateString();
 
     if (isLive) {
       if (isSameDay) {
@@ -199,45 +200,53 @@ export function TimeTravelPanel({
         {/* Right: Controls */}
         <div className="flex flex-col sm:flex-row items-center gap-4">
           {/* Scale buttons — rolling | calendar */}
-          <div className="flex items-center bg-bg-surface-2/50 border border-border/50 rounded-xl p-1 shadow-inner">
-            {ROLLING_SCALES.map((s) => (
-              <button
-                key={s}
-                data-testid={`scale-${s}`}
-                onClick={() => onScaleChange(s)}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
-                  scale === s
-                    ? 'bg-bg-surface-3 text-text-primary shadow-sm'
-                    : 'text-text-muted hover:text-text-primary hover:bg-bg-surface-2'
-                }`}
-                title={SCALE_LABELS[s]}
-              >
-                {s}
-              </button>
-            ))}
+          <div className="flex items-end gap-2">
+            {/* Rolling group */}
+            <div className="flex flex-col items-center gap-1.5">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-text-muted/60">Last</span>
+              <div className="flex items-center bg-bg-surface-2/50 border border-border/50 rounded-xl p-1 shadow-inner">
+                {ROLLING_SCALES.map((s) => (
+                  <button
+                    key={s}
+                    data-testid={`scale-${s}`}
+                    onClick={() => onScaleChange(s)}
+                    className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
+                      scale === s
+                        ? 'bg-white/15 text-white shadow-sm'
+                        : 'text-text-muted hover:text-text-primary hover:bg-bg-surface-2'
+                    }`}
+                    title={SCALE_LABELS[s]}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            {/* Separator */}
-            <div className="w-px h-5 bg-border/50 mx-1" />
-
-            {CALENDAR_SCALES.map((s) => {
-              // Highlight the calendar button when on its scrub-rolling equivalent (e.g. 24h → day)
-              const isActive = scale === s || SCRUB_CALENDAR_MAP[scale] === s;
-              return (
-                <button
-                  key={s}
-                  data-testid={`scale-${s}`}
-                  onClick={() => onScaleChange(s)}
-                  className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
-                    isActive
-                      ? 'bg-bg-surface-3 text-text-primary shadow-sm'
-                      : 'text-text-muted hover:text-text-primary hover:bg-bg-surface-2'
-                  }`}
-                  title={SCALE_LABELS[s]}
-                >
-                  {s}
-                </button>
-              );
-            })}
+            {/* Calendar group */}
+            <div className="flex flex-col items-center gap-1.5">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-text-muted/60">Current</span>
+              <div className="flex items-center bg-bg-surface-2/50 border border-border/50 rounded-xl p-1 shadow-inner">
+                {CALENDAR_SCALES.map((s) => {
+                  const isActive = scale === s || SCRUB_CALENDAR_MAP[scale] === s;
+                  return (
+                    <button
+                      key={s}
+                      data-testid={`scale-${s}`}
+                      onClick={() => onScaleChange(s)}
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
+                        isActive
+                          ? 'bg-white/15 text-white shadow-sm'
+                          : 'text-text-muted hover:text-text-primary hover:bg-bg-surface-2'
+                      }`}
+                      title={SCALE_LABELS[s]}
+                    >
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* Nav arrows */}
@@ -269,7 +278,7 @@ export function TimeTravelPanel({
         value={effectiveTime}
         onChange={handleScrubberChange}
         scale={scale}
-        window={isCalendar ? timeWindow : undefined}
+        window={isCalendar ? { start: new Date(timeWindow.start).getTime(), end: new Date(timeWindow.end).getTime() } : undefined}
         sessions={sessions}
         milestones={undefined}
         showPublic={showPublic}

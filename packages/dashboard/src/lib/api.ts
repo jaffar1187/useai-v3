@@ -229,17 +229,16 @@ export interface FeedResponse {
 }
 
 export function fetchDashboard(
-  scale: string,
-  time?: number,
+  start: string,
+  end: string,
 ): Promise<DashboardResponse> {
-  const params = new URLSearchParams({ scale });
-  if (time != null) params.set("time", String(time));
+  const params = new URLSearchParams({ start, end });
   return get(`/api/local/aggregations?${params}`);
 }
 
 export function fetchFeed(params: {
-  scale: string;
-  time?: number | undefined;
+  start: string;
+  end: string;
   offset?: number | undefined;
   limit?: number | undefined;
   client?: string | undefined;
@@ -247,8 +246,7 @@ export function fetchFeed(params: {
   project?: string | undefined;
   search?: string | undefined;
 }): Promise<FeedResponse> {
-  const qs = new URLSearchParams({ scale: params.scale });
-  if (params.time != null) qs.set("time", String(params.time));
+  const qs = new URLSearchParams({ start: params.start, end: params.end });
   if (params.offset != null) qs.set("offset", String(params.offset));
   if (params.limit != null) qs.set("limit", String(params.limit));
   if (params.client) qs.set("client", params.client);

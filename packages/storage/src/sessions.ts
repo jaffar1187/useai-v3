@@ -25,6 +25,42 @@ export async function appendSession(session: Session): Promise<void> {
   await appendLine(dateFilePath(date), JSON.stringify(session));
 }
 
+/**
+ * Read sessions for a specific UTC date range.
+ * start/end are ISO strings — extracts date portion and reads matching files.
+ */
+export async function readSessionsForDateRange(
+  startIso: string,
+  endIso: string,
+): Promise<Session[]> {
+  const startDate = startIso.slice(0, 10);
+  const endDate = endIso.slice(0, 10);
+
+  // List all date files in sealed dir and filter to range
+  if (!existsSync(SEALED_DIR)) return [];
+  const allFiles = await readdir(SEALED_DIR);
+  const dates = allFiles
+    .filter((f) => /^\d{4}-\d{2}-\d{2}\.jsonl$/.test(f))
+    .map((f) => f.replace(".jsonl", ""))
+    .filter((d) => d >= startDate && d <= endDate);
+
+  const results = await Promise.all(
+    dates.map(async (date) => {
+      try {
+        const raw = await readFile(dateFilePath(date), "utf-8");
+        return raw
+          .trim()
+          .split("\n")
+          .filter(Boolean)
+          .map((line) => JSON.parse(line) as Session);
+      } catch {
+        return [];
+      }
+    }),
+  );
+  return results.flat();
+}
+
 export async function readSessionsForRange(days: number): Promise<Session[]> {
   const dates = getLast(Math.min(days, 32));
   const results = await Promise.all(
@@ -41,16 +77,7 @@ export async function readSessionsForRange(days: number): Promise<Session[]> {
       }
     }),
   );
-  return (
-    results
-      .flat()
-      // Descending order by endedAt, then by promptId in case of ties.
-      .sort(
-        (a, b) =>
-          b.endedAt.localeCompare(a.endedAt) ||
-          a.promptId.localeCompare(b.promptId),
-      )
-  );
+  return results.flat();
 }
 
 export async function writeSessionsForDate(
@@ -95,12 +122,15 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
         hash?: string;
       };
 
-      if (record.type === "session_start") {
-        sessionId = record.session_id;
-        startTimestamp = record.timestamp;
-        client = (record.data["client"] as string) ?? undefined;
-        taskType = (record.data["task_type"] as string) ?? undefined;
-      } else if (record.type === "session_seal") {
+      //There are 4 lines in every uuid.jsonl file:
+      //1. session_start
+      //2. session_end
+      //3. milestone
+      //4. session_seal
+
+      //we consider only milestone and session_seal
+
+      if (record.type === "session_seal") {
         const rawSeal = record.data["seal"];
         seal =
           typeof rawSeal === "string"
@@ -138,7 +168,8 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
     startedAt,
     endedAt,
     durationMs: durationSeconds * 1000,
-    activeSegments: (seal["active_segments"] as [string, string][]) ?? undefined,
+    activeSegments:
+      (seal["active_segments"] as [string, string][]) ?? undefined,
     languages,
     filesTouchedCount: (seal["files_touched"] as number) ?? 0,
     evaluation: seal["evaluation"] ?? undefined,
@@ -151,12 +182,12 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
 
   const enrichedMilestones = milestones.map((m) => ({
     ...m,
-    session_id: id,
-    chain_hash: chainHash,
+    sessionId: id,
+    chainHash,
     client: sealClient,
     languages,
-    duration_minutes: Math.round(durationSeconds / 60),
-    created_at: endedAt,
+    durationMinutes: Math.round(durationSeconds / 60),
+    createdAt: endedAt,
   }));
 
   return { session, milestones: enrichedMilestones };

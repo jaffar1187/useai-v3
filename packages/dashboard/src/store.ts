@@ -1,12 +1,11 @@
 import { create } from 'zustand';
 import type { LocalConfig, HealthInfo, UpdateInfo, DashboardResponse, FeedResponse } from './lib/api';
-import { fetchConfig, fetchHealth, fetchUpdateCheck, fetchDashboard, fetchFeed, deleteSession as apiDeleteSession, deleteConversation as apiDeleteConversation, deleteMilestone as apiDeleteMilestone } from './lib/api';
+import { fetchConfig, fetchHealth, fetchUpdateCheck, deleteSession as apiDeleteSession, deleteConversation as apiDeleteConversation, deleteMilestone as apiDeleteMilestone } from './lib/api';
 import type { TimeScale } from './components/time-travel/types';
-import { ALL_SCALES, SCALE_MS } from './components/time-travel/types';
+import { ALL_SCALES } from './components/time-travel/types';
 import type { Filters, ActiveTab } from './lib/types';
 
 export type { TimeScale, Filters, ActiveTab, DashboardResponse, FeedResponse };
-export { SCALE_MS };
 
 export interface DashboardState {
   config: LocalConfig | null;
@@ -37,7 +36,7 @@ export interface DashboardState {
   deleteMilestone: (milestoneId: string) => Promise<void>;
 }
 
-export const useDashboardStore = create<DashboardState>((set, get) => ({
+export const useDashboardStore = create<DashboardState>((set) => ({
   config: null,
   health: null,
   updateInfo: null,
@@ -72,44 +71,11 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
   },
 
   loadDashboard: async () => {
-    const { timeScale, timeTravelTime } = get();
-    try {
-      const data = await fetchDashboard(timeScale, timeTravelTime ?? undefined);
-      set({ dashboardData: data });
-    } catch {
-      // Fall back to client-side computation (old behavior still works)
-    }
+    // Not used by DashboardBody (it manages its own fetching)
   },
 
-  loadFeed: async (params) => {
-    const { timeScale, timeTravelTime, filters, feedData } = get();
-    const offset = params?.offset ?? 0;
-    const append = params?.append ?? false;
-    set({ feedLoading: true });
-    try {
-      const data = await fetchFeed({
-        scale: timeScale,
-        time: timeTravelTime ?? undefined,
-        offset,
-        limit: 50,
-        client: filters.client !== 'all' ? filters.client : undefined,
-        language: filters.language !== 'all' ? filters.language : undefined,
-        project: filters.project !== 'all' ? filters.project : undefined,
-      });
-      if (append && feedData) {
-        set({
-          feedData: {
-            ...data,
-            conversations: [...feedData.conversations, ...data.conversations],
-          },
-          feedLoading: false,
-        });
-      } else {
-        set({ feedData: data, feedLoading: false });
-      }
-    } catch {
-      set({ feedLoading: false });
-    }
+  loadFeed: async () => {
+    // Not used — DashboardBody manages its own fetching
   },
 
   loadHealth: async () => {

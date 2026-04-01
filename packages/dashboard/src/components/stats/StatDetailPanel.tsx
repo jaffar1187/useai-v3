@@ -116,7 +116,7 @@ export function StatDetailPanel({ type, milestones, showPublic = false, onClose 
   const Icon = config.icon;
   const filtered = milestones
     .filter(config.filter)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort((a, b) => (b.createdAt < a.createdAt ? -1 : 1));
 
   const visible = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;

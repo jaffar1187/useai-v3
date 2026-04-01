@@ -1,63 +1,12 @@
 import { Hono } from "hono";
 import type { Session } from "@devness/useai-types";
-import { readSessionsForRange, readV1Sessions } from "@devness/useai-storage";
+import { readSessionsForDateRange, readV1Sessions } from "@devness/useai-storage";
 import {
   groupSessionsWithMilestones,
   groupIntoConversations,
 } from "../lib/stats.js";
 
 export const promptsRoutes = new Hono();
-
-// --- Time scale types (server-side subset of dashboard TimeScale) ---
-
-type FeedScale = "1h" | "3h" | "6h" | "12h" | "day" | "week" | "month";
-
-const ROLLING_MS: Record<string, number> = {
-  "1h": 60 * 60 * 1000,
-  "3h": 3 * 60 * 60 * 1000,
-  "6h": 6 * 60 * 60 * 1000,
-  "12h": 12 * 60 * 60 * 1000,
-};
-
-function getTimeWindow(
-  scale: FeedScale,
-  referenceTime: number,
-): { start: number; end: number; days: number } {
-  let start: number;
-  let end: number;
-
-  const ms = ROLLING_MS[scale];
-  if (ms !== undefined) {
-    start = referenceTime - ms;
-    end = referenceTime;
-  } else {
-    const d = new Date(referenceTime);
-
-    if (scale === "day") {
-      start = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-      end = start + 86400000;
-    } else if (scale === "week") {
-      const dayOfWeek = d.getDay();
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      start = new Date(
-        d.getFullYear(),
-        d.getMonth(),
-        d.getDate() + mondayOffset,
-      ).getTime();
-      end = start + 7 * 86400000;
-    } else {
-      // month
-      start = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
-      end = new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
-    }
-  }
-
-  const days = Math.min(
-    32,
-    Math.max(2, Math.ceil((Date.now() - start) / 86400000) + 1),
-  );
-  return { start, end, days };
-}
 
 // --- Conversion helpers ---
 
@@ -80,20 +29,6 @@ function toMilestones(s: Session) {
   }));
 }
 
-// --- Scales ---
-
-const VALID_SCALES = new Set<string>([
-  "1h",
-  "3h",
-  "6h",
-  "12h",
-  "day",
-  "week",
-  "month",
-]);
-
-// --- Filter helpers ---
-
 type MilestoneSeal = ReturnType<typeof toMilestones>[number];
 
 function matchesSearch(session: Session, term: string): boolean {
@@ -108,15 +43,19 @@ function matchesSearch(session: Session, term: string): boolean {
   return false;
 }
 
+// --- Route ---
+
 promptsRoutes.get("/", async (c) => {
-  const scaleParam = c.req.query("scale") ?? "day";
-  const scale: FeedScale = VALID_SCALES.has(scaleParam)
-    ? (scaleParam as FeedScale)
-    : "day";
-  //Always in ms
-  const referenceTime = c.req.query("time")
-    ? Number(c.req.query("time"))
-    : Date.now();
+  const start = c.req.query("start");
+  const end = c.req.query("end");
+
+  if (!start || !end || !start.includes("Z") || !end.includes("Z")) {
+    return c.json(
+      { error: "start and end query params required (ISO string)" },
+      400,
+    );
+  }
+
   const offset = Math.max(0, Number(c.req.query("offset") ?? 0));
   const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? 50)));
   const clientFilter = c.req.query("client") ?? null;
@@ -124,27 +63,22 @@ promptsRoutes.get("/", async (c) => {
   const projectFilter = c.req.query("project") ?? null;
   const searchTerm = c.req.query("search") ?? null;
 
-  // 1. Compute time window and how many days of files to read
-  const window = getTimeWindow(scale, referenceTime);
-
-  // 2. Read sessions (v3 + v1)
+  // Read sessions for the date range
   const [v3Sessions, v1Sessions] = await Promise.all([
-    readSessionsForRange(window.days),
+    readSessionsForDateRange(start, end),
     readV1Sessions(),
   ]);
 
-  // 3. Combine and filter by time window
+  // Combine and filter by ISO string comparison
   const allSessions: Session[] = [...v3Sessions, ...v1Sessions];
-  const windowFiltered = allSessions.filter((s) => {
-    const sStart = new Date(s.startedAt).getTime();
-    const sEnd = new Date(s.endedAt).getTime();
-    return sStart <= window.end && sEnd >= window.start;
-  });
+  const windowFiltered = allSessions.filter(
+    (s) => s.startedAt <= end && s.endedAt >= start,
+  );
 
-  // 4. Extract milestones from filtered sessions
+  // Extract milestones from filtered sessions
   const allMilestones: MilestoneSeal[] = windowFiltered.flatMap(toMilestones);
 
-  // 5. Filter by client/language/project/search
+  // Apply filters
   let filtered = windowFiltered;
 
   if (clientFilter) {
@@ -170,16 +104,14 @@ promptsRoutes.get("/", async (c) => {
     filtered = filtered.filter((s) => matchesSearch(s, searchTerm));
   }
 
-  // 6. Group sessions with milestones (attach milestones to their sessions)
+  // Group sessions with milestones, then into conversations
   const sessionsWithMilestones = groupSessionsWithMilestones(
     filtered,
     allMilestones,
   );
-
-  // 7. Group into conversations (already sorted by most recent, includes aggregate evals)
   const conversations = groupIntoConversations(sessionsWithMilestones);
 
-  // 8. Paginate (offset + limit)
+  // Paginate
   const total = conversations.length;
   const paginated = conversations.slice(offset, offset + limit);
 
