@@ -1,14 +1,5 @@
-const API = "";
-
-// In dev mode (Vite on :5174), cloud API calls go through /cloud-api proxy → localhost:3010
-// In production (embedded in daemon on :19200), they go through the daemon's /api/local/* handlers
-const isDev =
-  typeof import.meta !== "undefined" &&
-  typeof import.meta.env !== "undefined" &&
-  import.meta.env.DEV;
-
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${API}${path}`);
+  const res = await fetch(`${path}`);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }
@@ -19,7 +10,7 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
     opts.headers = { "Content-Type": "application/json" };
     opts.body = JSON.stringify(body);
   }
-  const res = await fetch(`${API}${path}`, opts);
+  const res = await fetch(`${path}`, opts);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(
@@ -31,16 +22,12 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
 }
 
 async function patch<T>(path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = {};
-  if (body) headers["Content-Type"] = "application/json";
-  if (isDev) {
-    const token = localStorage.getItem("useai_dev_token");
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-  }
   const opts: RequestInit = { method: "PATCH" };
-  if (Object.keys(headers).length > 0) opts.headers = headers;
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(`${API}${path}`, opts);
+  if (body) {
+    opts.headers = { "Content-Type": "application/json" };
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(`${path}`, opts);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(
@@ -52,7 +39,7 @@ async function patch<T>(path: string, body?: unknown): Promise<T> {
 }
 
 async function del<T>(path: string): Promise<T> {
-  const res = await fetch(`${API}${path}`, { method: "DELETE" });
+  const res = await fetch(`${path}`, { method: "DELETE" });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(
@@ -256,16 +243,8 @@ export function fetchFeed(params: {
   return get(`/api/local/prompts?${qs}`);
 }
 
-export async function fetchConfig(): Promise<LocalConfig> {
-  const config = await get<LocalConfig>("/api/local/config");
-  // In dev mode, auth goes directly to cloud API and state is in localStorage
-  if (isDev && localStorage.getItem("useai_dev_token")) {
-    config.authenticated = true;
-    config.email = localStorage.getItem("useai_dev_email") ?? config.email;
-    config.username =
-      localStorage.getItem("useai_dev_username") || config.username;
-  }
-  return config;
+export function fetchConfig(): Promise<LocalConfig> {
+  return get("/api/local/config");
 }
 
 // ── Update check ─────────────────────────────────────────────────────────────
@@ -295,8 +274,6 @@ export function fetchHealth(): Promise<HealthInfo> {
 }
 
 // ── Auth/Sync ────────────────────────────────────────────────────────────────
-// Dev:  /cloud-api/api/auth/* → Vite proxy → localhost:3010/api/auth/*
-// Prod: /api/local/auth/*     → daemon     → api.useai.dev/api/auth/*
 
 export function postSendOtp(email: string): Promise<{ message: string }> {
   return post("/api/local/auth/send-otp", { email });
@@ -317,60 +294,21 @@ export async function postSync(): Promise<{
   return post("/api/local/sync");
 }
 
-export async function postLogout(): Promise<{ success: boolean }> {
-  if (isDev) {
-    localStorage.removeItem("useai_dev_token");
-    localStorage.removeItem("useai_dev_email");
-    localStorage.removeItem("useai_dev_username");
-  }
+export function postLogout(): Promise<{ success: boolean }> {
   return post("/api/local/auth/logout");
 }
 
 // ── Username ──────────────────────────────────────────────────────────────────
 
-export async function checkUsername(
+export function checkUsername(
   username: string,
 ): Promise<{ available: boolean; reason?: string }> {
-  const encoded = encodeURIComponent(username);
-  if (isDev) {
-    const token = localStorage.getItem("useai_dev_token");
-    const opts: RequestInit = {};
-    if (token) opts.headers = { Authorization: `Bearer ${token}` };
-    const res = await fetch(
-      `${API}/cloud-api/api/users/check-username/${encoded}`,
-      opts,
-    );
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    return res.json() as Promise<{ available: boolean; reason?: string }>;
-  }
-  return get(`/api/local/users/check-username/${encoded}`);
+  return get(`/api/local/users/check-username/${encodeURIComponent(username)}`);
 }
 
-export async function updateUsername(
+export function updateUsername(
   username: string,
 ): Promise<{ username: string }> {
-  if (isDev) {
-    const token = localStorage.getItem("useai_dev_token");
-    if (!token) throw new Error("Not authenticated");
-    const res = await fetch(`${API}/cloud-api/api/users/me`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ username }),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(
-        (data as { message?: string }).message ??
-          `${res.status} ${res.statusText}`,
-      );
-    }
-    const data = (await res.json()) as { username: string };
-    localStorage.setItem("useai_dev_username", data.username);
-    return data;
-  }
   return patch("/api/local/users/me", { username });
 }
 
@@ -429,7 +367,6 @@ export interface UserOrg {
 }
 
 export function fetchMyOrgs(): Promise<UserOrg[]> {
-  if (isDev) return get("/cloud-api/api/orgs");
   return get("/api/local/orgs");
 }
 

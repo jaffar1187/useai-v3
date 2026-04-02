@@ -4,7 +4,6 @@ import { fetchDashboard, fetchFeed } from '../lib/api';
 import type { Filters } from '../lib/types';
 import type { TimeScale } from '../components/time-travel/types';
 import {
-  ALL_SCALES,
   SCALE_LABELS,
   SCRUB_CALENDAR_MAP,
   isCalendarScale,
@@ -16,17 +15,18 @@ import {
 export type DashboardFetcher = typeof fetchDashboard;
 export type FeedFetcher = typeof fetchFeed;
 
-function readLocalStorage<T extends string>(key: string, valid: T[], fallback: T): T {
-  try {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
-    if (saved && (valid as string[]).includes(saved)) return saved as T;
-  } catch { /* ignore */ }
-  return fallback;
+/** Minimal store interface that useDashboardData reads from. */
+export interface DashboardDataStore {
+  timeTravelTime: number | null;
+  timeScale: TimeScale;
+  filters: Filters;
+  setTimeTravelTime: (t: number | null) => void;
+  setTimeScale: (s: TimeScale) => void;
+  setFilter: (key: keyof Filters, value: string) => void;
 }
 
-function writeLocalStorage(key: string, value: string) {
-  try { localStorage.setItem(key, value); } catch { /* ignore */ }
-}
+/** Hook to select state from a Zustand-compatible store. */
+export type UseStore = <T>(selector: (s: DashboardDataStore) => T) => T;
 
 const EMPTY_STATS: DashboardResponse['stats'] = {
   totalHours: 0, totalSessions: 0, actualSpanHours: 0, coveredHours: 0,
@@ -38,7 +38,7 @@ const EMPTY_STATS: DashboardResponse['stats'] = {
 };
 
 export interface UseDashboardDataOptions {
-  defaultTimeScale?: TimeScale | undefined;
+  useStore: UseStore;
   dashboardFetcher?: DashboardFetcher | undefined;
   feedFetcher?: FeedFetcher | undefined;
   onDeleteSession?: ((id: string) => void) | undefined;
@@ -47,23 +47,20 @@ export interface UseDashboardDataOptions {
 }
 
 export function useDashboardData({
-  defaultTimeScale = 'day',
+  useStore,
   dashboardFetcher: fetchDash = fetchDashboard,
   feedFetcher: fetchFd = fetchFeed,
   onDeleteSession,
   onDeleteConversation,
   onDeleteMilestone,
-}: UseDashboardDataOptions = {}) {
-  // ── Time travel state ──────────────────────────────────────────────────
-  const [timeTravelTime, setTimeTravelTime] = useState<number | null>(null);
-  const [timeScale, setTimeScaleRaw] = useState<TimeScale>(() =>
-    readLocalStorage('useai-time-scale', ALL_SCALES as TimeScale[], defaultTimeScale),
-  );
-
-  const setTimeScale = useCallback((s: TimeScale) => {
-    writeLocalStorage('useai-time-scale', s);
-    setTimeScaleRaw(s);
-  }, []);
+}: UseDashboardDataOptions) {
+  // ── State from provided store ─────────────────────────────────────────
+  const timeTravelTime = useStore((s) => s.timeTravelTime);
+  const setTimeTravelTime = useStore((s) => s.setTimeTravelTime);
+  const timeScale = useStore((s) => s.timeScale);
+  const setTimeScale = useStore((s) => s.setTimeScale);
+  const filters = useStore((s) => s.filters);
+  const setFilter = useStore((s) => s.setFilter);
 
   // Restore calendar scale when returning to live
   useEffect(() => {
@@ -84,11 +81,6 @@ export function useDashboardData({
   const [feedHasMore, setFeedHasMore] = useState(false);
   const [feedLoading, setFeedLoading] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
-  const [filters, setFiltersRaw] = useState<Filters>({ category: 'all', client: 'all', project: 'all', language: 'all' });
-
-  const setFilter = useCallback((key: keyof Filters, value: string) => {
-    setFiltersRaw((prev) => ({ ...prev, [key]: value }));
-  }, []);
 
   // Fetch dashboard stats
   useEffect(() => {

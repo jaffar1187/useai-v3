@@ -5,7 +5,7 @@ export interface Filters {
   language: string;
 }
 
-export type ActiveTab = 'sessions' | 'insights' | 'settings' | 'faqs';
+export type ActiveTab = 'prompts' | 'insights' | 'settings' | 'faqs';
 
 export interface ExternalNavLink {
   label: string;

@@ -1,9 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Filter, Eye, EyeOff, Info } from 'lucide-react';
 import type { ActiveTab } from '../lib/types';
-import type { TimeScale } from './time-travel/types';
 import { useDashboardData } from '../hooks/useDashboardData';
-import type { DashboardFetcher, FeedFetcher } from '../hooks/useDashboardData';
+import type { DashboardFetcher, FeedFetcher, UseStore } from '../hooks/useDashboardData';
 import { StatsBar } from './stats/StatsBar';
 import { StatDetailPanel } from './stats/StatDetailPanel';
 import type { StatCardType } from './stats/StatDetailPanel';
@@ -20,15 +19,15 @@ import { ActivityStrip } from './insights/ActivityStrip';
 import { RecentMilestones } from './insights/RecentMilestones';
 import { SummaryChips } from './insights/SummaryChips';
 
-export type { DashboardFetcher, FeedFetcher };
+export type { DashboardFetcher, FeedFetcher, UseStore };
 
 export interface DashboardBodyProps {
+  useStore: UseStore;
   onDeleteSession?: (id: string) => void;
   onDeleteConversation?: (id: string) => void;
   onDeleteMilestone?: (id: string) => void;
-  defaultTimeScale?: TimeScale;
-  activeTab?: ActiveTab;
-  onActiveTabChange?: (tab: ActiveTab) => void;
+  activeTab: ActiveTab;
+  onActiveTabChange: (tab: ActiveTab) => void;
   dashboardFetcher?: DashboardFetcher | undefined;
   feedFetcher?: FeedFetcher | undefined;
 }
@@ -63,30 +62,18 @@ function MetricChip({ value, label, title, description, color = 'default' }: {
   );
 }
 
-function readLocalStorage<T extends string>(key: string, valid: T[], fallback: T): T {
-  try {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
-    if (saved && (valid as string[]).includes(saved)) return saved as T;
-  } catch { /* ignore */ }
-  return fallback;
-}
-
-function writeLocalStorage(key: string, value: string) {
-  try { localStorage.setItem(key, value); } catch { /* ignore */ }
-}
-
 export function DashboardBody({
+  useStore,
   onDeleteSession,
   onDeleteConversation,
   onDeleteMilestone,
-  defaultTimeScale = 'day',
-  activeTab: controlledTab,
+  activeTab,
   onActiveTabChange,
   dashboardFetcher,
   feedFetcher,
 }: DashboardBodyProps) {
   const data = useDashboardData({
-    defaultTimeScale,
+    useStore,
     dashboardFetcher,
     feedFetcher,
     onDeleteSession,
@@ -98,20 +85,6 @@ export function DashboardBody({
   const [selectedStatCard, setSelectedStatCard] = useState<StatCardType>(null);
   const [globalShowPublic, setGlobalShowPublic] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [internalTab, setInternalTabRaw] = useState<ActiveTab>(() =>
-    readLocalStorage('useai-active-tab', ['sessions', 'insights'], 'sessions'),
-  );
-
-  const isControlledTab = controlledTab !== undefined;
-  const activeTab = controlledTab ?? internalTab;
-  const setActiveTab = useCallback((tab: ActiveTab) => {
-    if (onActiveTabChange) {
-      onActiveTabChange(tab);
-    } else {
-      writeLocalStorage('useai-active-tab', tab);
-      setInternalTabRaw(tab);
-    }
-  }, [onActiveTabChange]);
 
   const hasActiveFilter = data.filters.client !== 'all' || data.filters.language !== 'all' || data.filters.project !== 'all';
 
@@ -169,9 +142,9 @@ export function DashboardBody({
         onClose={() => setSelectedStatCard(null)}
       />
 
-      {!isControlledTab && <TabBar activeTab={activeTab} onTabChange={setActiveTab} />}
+      <TabBar activeTab={activeTab} onTabChange={onActiveTabChange} />
 
-      {activeTab === 'sessions' && (
+      {activeTab === 'prompts' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1 pt-0.5">
             <div className="flex items-center gap-2 flex-wrap">

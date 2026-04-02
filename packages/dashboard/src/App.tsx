@@ -80,6 +80,7 @@ export function App() {
             />
 
             <DashboardBody
+              useStore={useDashboardStore}
               onDeleteSession={deleteSession}
               onDeleteConversation={deleteConversation}
               onDeleteMilestone={deleteMilestone}
