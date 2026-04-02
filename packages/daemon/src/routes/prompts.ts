@@ -69,11 +69,11 @@ promptsRoutes.get("/", async (c) => {
     readV1Sessions(),
   ]);
 
-  // Combine and filter by ISO string comparison
+  // Combine and filter by ISO string comparison — only show signed sessions
   const allSessions: Session[] = [...v3Sessions, ...v1Sessions];
-  const windowFiltered = allSessions.filter(
-    (s) => s.startedAt <= end && s.endedAt >= start,
-  );
+  const windowFiltered = allSessions
+    .filter((s) => s.startedAt <= end && s.endedAt >= start)
+    .filter((s) => !!s.hash && !!s.signature);
 
   // Extract milestones from filtered sessions
   const allMilestones: MilestoneSeal[] = windowFiltered.flatMap(toMilestones);

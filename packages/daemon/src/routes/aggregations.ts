@@ -99,10 +99,11 @@ aggregationsRoutes.get("/", async (c) => {
 
   const allSessions: Session[] = [...sessions, ...v1Sessions];
 
-  // Filter by ISO string comparison
+  // Filter by ISO string comparison — only show signed sessions
   const filteredSessions = allSessions
     .filter((s) => s.startedAt <= end && s.endedAt >= start)
-    .filter((s) => !!s.endedAt && s.durationMs > 0);
+    .filter((s) => !!s.endedAt && s.durationMs > 0)
+    .filter((s) => !!s.hash && !!s.signature);
 
   // Extract milestones from filtered sessions
   const filteredMilestones = filteredSessions.flatMap(toMilestones);
