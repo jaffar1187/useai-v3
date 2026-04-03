@@ -276,7 +276,7 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
             {draft.authenticated && <div className="divide-y divide-border/30 rounded-lg border border-blue/15 bg-blue/[0.03] px-3">
               <div className="py-2">
                 <div className="flex items-center gap-1">
-                  <span className="text-xs font-medium text-text-primary">Stats</span>
+                  <span className="text-xs font-medium text-text-primary">Leaderboard Stats</span>
                   <InfoTooltip fields={['total_seconds', 'user_time_seconds', 'ai_time_seconds', 'multiplier', 'prompt_count', 'streak_days', 'languages', 'task_types', 'clients']} example="ai_time_seconds: 7200, user_time_seconds: 3600, multiplier: 2.0" />
                 </div>
                 <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">Daily totals — always included with sync.</div>
@@ -302,8 +302,8 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
                 description={`Detailed prompt titles and project names.${orgs.length > 0 ? ' Also visible to org admins.' : ''}`}
                 info={['privateTitle', 'project']}
                 example='private_title: "Fixed auth bug in login.ts"'
-                checked={draft.sync.include_details}
-                onChange={(v) => setSync({ include_details: v })}
+                checked={draft.sync.include_private_details}
+                onChange={(v) => setSync({ include_private_details: v })}
               />
               <SettingSelect
                 label="Evaluation reasons"
@@ -366,11 +366,11 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
           <SettingToggle
             label="Auto-sync"
             description="Automatically sync data on a schedule."
-            checked={draft.sync.enabled}
-            onChange={(v) => setSync({ enabled: v })}
+            checked={draft.sync.auto_sync}
+            onChange={(v) => setSync({ auto_sync: v })}
           />
 
-          {draft.sync.enabled && (
+          {draft.sync.auto_sync && (
             <div className="space-y-3 pt-2">
               {orgs.length > 0 && (
                 <div className="px-0.5">

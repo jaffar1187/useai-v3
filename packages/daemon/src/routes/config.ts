@@ -17,18 +17,10 @@ configRoutes.get("/", async (c) => {
 });
 
 // GET /api/local/config/full — dashboard-shaped config
-// Maps v3 camelCase fields to the snake_case shape the dashboard FullConfig expects.
 configRoutes.get("/full", async (c) => {
   const config = await getConfig();
 
-  // Map v3 reasonsLevel → dashboard evaluation_reasons
-  const reasonsMap: Record<string, "all" | "below_perfect" | "none"> = {
-    detailed: "all",
-    summary: "below_perfect",
-    none: "none",
-  };
-
-  const full = {
+  return c.json({
     mode: "local" as const,
     authenticated: Boolean(config.auth.token),
     email: config.auth.user?.email ?? null,
@@ -36,33 +28,23 @@ configRoutes.get("/full", async (c) => {
     capture: {
       prompt: config.capture.prompt,
       prompt_images: config.capture.promptImages,
-      evaluation: config.capture.evaluation,
-      evaluation_reasons:
-        reasonsMap[config.capture.reasonsLevel] ?? "below_perfect",
-      milestones: config.capture.milestones,
+      evaluation: config.sync.includeEvaluation,
+      evaluation_reasons: config.sync.includeEvaluationReasons,
+      milestones: config.sync.includeMilestones,
     },
     sync: {
-      enabled: config.sync.enabled,
+      auto_sync: config.sync.autoSync,
       interval_hours: config.sync.intervalMinutes / 60,
-      include_stats: config.sync.includeStats,
-      include_details: config.sync.includeDetails,
+      include_leaderboard_stats: config.sync.includeLeaderboardStats,
+      include_private_details: config.sync.includePrivateDetails,
     },
-  };
-
-  return c.json(full);
+  });
 });
 
 // PATCH /api/local/config — accepts dashboard-shaped updates and translates to v3
 configRoutes.patch("/", async (c) => {
   const body = (await c.req.json()) as Record<string, unknown>;
   const current = await getConfig();
-
-  // Map dashboard evaluation_reasons → v3 reasonsLevel
-  const reasonsReverseMap: Record<string, "none" | "summary" | "detailed"> = {
-    all: "detailed",
-    below_perfect: "summary",
-    none: "none",
-  };
 
   const bodyCapture = body["capture"];
   if (bodyCapture && typeof bodyCapture === "object") {
@@ -76,10 +58,13 @@ configRoutes.patch("/", async (c) => {
       ...current.capture,
       ...(typeof prompt === "boolean" && { prompt }),
       ...(typeof promptImages === "boolean" && { promptImages }),
-      ...(typeof evaluation === "boolean" && { evaluation }),
-      ...(typeof milestones === "boolean" && { milestones }),
+    };
+    current.sync = {
+      ...current.sync,
+      ...(typeof evaluation === "boolean" && { includeEvaluation: evaluation }),
+      ...(typeof milestones === "boolean" && { includeMilestones: milestones }),
       ...(typeof evaluationReasons === "string" && {
-        reasonsLevel: reasonsReverseMap[evaluationReasons] ?? "summary",
+        includeEvaluationReasons: evaluationReasons as "none" | "below_perfect" | "all",
       }),
     };
   }
@@ -87,18 +72,18 @@ configRoutes.patch("/", async (c) => {
   const bodySync = body["sync"];
   if (bodySync && typeof bodySync === "object") {
     const sync = bodySync as Record<string, unknown>;
-    const enabled = sync["enabled"];
+    const autoSync = sync["auto_sync"];
     const intervalHours = sync["interval_hours"];
-    const includeStats = sync["include_stats"];
-    const includeDetails = sync["include_details"];
+    const includeLeaderboardStats = sync["include_leaderboard_stats"];
+    const includePrivateDetails = sync["include_private_details"];
     current.sync = {
       ...current.sync,
-      ...(typeof enabled === "boolean" && { enabled }),
+      ...(typeof autoSync === "boolean" && { autoSync }),
       ...(typeof intervalHours === "number" && {
         intervalMinutes: intervalHours * 60,
       }),
-      ...(typeof includeStats === "boolean" && { includeStats }),
-      ...(typeof includeDetails === "boolean" && { includeDetails }),
+      ...(typeof includeLeaderboardStats === "boolean" && { includeLeaderboardStats }),
+      ...(typeof includePrivateDetails === "boolean" && { includePrivateDetails }),
     };
   }
 
@@ -113,14 +98,7 @@ configRoutes.patch("/", async (c) => {
 
   await saveConfig(current);
 
-  // Return dashboard-shaped FullConfig (same shape as GET /full)
-  const reasonsMap: Record<string, "all" | "below_perfect" | "none"> = {
-    detailed: "all",
-    summary: "below_perfect",
-    none: "none",
-  };
-
-  const full = {
+  return c.json({
     mode: "local" as const,
     authenticated: Boolean(current.auth.token),
     email: current.auth.user?.email ?? null,
@@ -128,19 +106,16 @@ configRoutes.patch("/", async (c) => {
     capture: {
       prompt: current.capture.prompt,
       prompt_images: current.capture.promptImages,
-      evaluation: current.capture.evaluation,
-      evaluation_reasons:
-        reasonsMap[current.capture.reasonsLevel] ?? "below_perfect",
-      milestones: current.capture.milestones,
+      evaluation: current.sync.includeEvaluation,
+      evaluation_reasons: current.sync.includeEvaluationReasons,
+      milestones: current.sync.includeMilestones,
     },
     sync: {
-      enabled: current.sync.enabled,
+      auto_sync: current.sync.autoSync,
       interval_hours: current.sync.intervalMinutes / 60,
-      include_stats: current.sync.includeStats,
-      include_details: current.sync.includeDetails,
+      include_leaderboard_stats: current.sync.includeLeaderboardStats,
+      include_private_details: current.sync.includePrivateDetails,
     },
     instructions_updated: [] as string[],
-  };
-
-  return c.json(full);
+  });
 });

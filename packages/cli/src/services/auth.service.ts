@@ -3,7 +3,7 @@ import { sendOtp, verifyOtp, checkUsername, claimUsername } from "@devness/useai
 
 export async function login(email: string, code: string) {
   const auth = await verifyOtp(email, code);
-  await patchConfig({ auth: { token: auth.token, user: { id: auth.user.id, email: auth.user.email, username: auth.user.username } }, sync: { enabled: true, autoSync: true, intervalMinutes: 30, includeStats: true, includeDetails: true } });
+  await patchConfig({ auth: { token: auth.token, user: { id: auth.user.id, email: auth.user.email, username: auth.user.username } }, sync: { autoSync: true, intervalMinutes: 30, includeLeaderboardStats: true, includePrivateDetails: true, includeEvaluation: true, includeMilestones: true, includeEvaluationReasons: "below_perfect" } });
   return auth;
 }
 

@@ -345,14 +345,14 @@ export interface FullConfig {
     prompt: boolean;
     prompt_images: boolean;
     evaluation: boolean;
-    evaluation_reasons: "all" | "below_perfect" | "none";
+    evaluation_reasons: "none" | "below_perfect" | "all";
     milestones: boolean;
   };
   sync: {
-    enabled: boolean;
+    auto_sync: boolean;
     interval_hours: number;
-    include_stats: boolean;
-    include_details: boolean;
+    include_leaderboard_stats: boolean;
+    include_private_details: boolean;
   };
   evaluation_framework: string;
   authenticated: boolean;

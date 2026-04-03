@@ -13,7 +13,7 @@ async function runSync(): Promise<void> {
     return;
   }
 
-  if (!config.sync.autoSync || !config.sync.enabled) return;
+  if (!config.sync.autoSync) return;
 
   const token = config.auth.token;
   if (!token) return;

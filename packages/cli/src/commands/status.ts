@@ -34,7 +34,7 @@ export function registerStatus(program: Command): void {
       if (config) {
         label("Config version",  String(config.version));
         label("Eval framework",  config.evaluation.framework);
-        label("Sync enabled",    String(config.sync.enabled));
+        label("Auto-sync",       String(config.sync.autoSync));
         if (config.lastSyncAt)
           label("Last sync",     config.lastSyncAt.slice(0, 19).replace("T", " "));
 

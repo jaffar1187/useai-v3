@@ -10,11 +10,11 @@ const CLIENT_VERSION = "3.0.0";
 
 function sanitizeEvaluation(
   evaluation: SessionEvaluation,
-  reasonsLevel: UseaiConfig["capture"]["reasonsLevel"],
+  includeEvaluationReasons: UseaiConfig["sync"]["includeEvaluationReasons"],
 ): SessionEvaluation {
-  if (reasonsLevel === "detailed") return evaluation;
+  if (includeEvaluationReasons === "all") return evaluation;
 
-  // Strip all *_reason fields for "none" or "summary"
+  // Strip all *_reason fields for "none" or "below_perfect"
   const {
     prompt_quality_reason: _pqr,
     context_provided_reason: _cpr,
@@ -29,20 +29,19 @@ function sanitizeEvaluation(
 
 function sanitizeSession(
   session: Session,
-  capture: UseaiConfig["capture"],
-  includeDetails: boolean,
+  sync: UseaiConfig["sync"],
 ): SanitizedSession {
   // Always strip prompt (stays local)
   const { prompt: _prompt, ...withoutPrompt } = session;
 
-  // Strip private details if includeDetails is false
-  if (!includeDetails) {
+  // Strip private details if includePrivateDetails is false
+  if (!sync.includePrivateDetails) {
     delete withoutPrompt.privateTitle;
     delete withoutPrompt.project;
   }
 
   // Optionally strip evaluation
-  if (!capture.evaluation || !withoutPrompt.evaluation) {
+  if (!sync.includeEvaluation || !withoutPrompt.evaluation) {
     const { evaluation: _eval, ...withoutEval } = withoutPrompt;
     return withoutEval;
   }
@@ -51,7 +50,7 @@ function sanitizeSession(
     ...withoutPrompt,
     evaluation: sanitizeEvaluation(
       withoutPrompt.evaluation,
-      includeDetails ? capture.reasonsLevel : "none",
+      sync.includePrivateDetails ? sync.includeEvaluationReasons : "none",
     ),
   };
 }
@@ -224,8 +223,7 @@ export async function syncSessions(
   result.skipped += deduped.length - valid.length;
 
   // 3. Sanitize
-  const includeDetails = config.sync.includeDetails ?? true;
-  const sanitized = valid.map((s) => sanitizeSession(s, config.capture, includeDetails));
+  const sanitized = valid.map((s) => sanitizeSession(s, config.sync));
 
   // 4. Group by date and send per-date payloads
   const byDate = groupByDate(sanitized);

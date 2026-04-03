@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
-import { useDashboardStore } from './store';
-import { Header } from './components/Header';
-import { DashboardBody } from './components/DashboardBody';
-import { SearchOverlay } from './components/SearchOverlay';
-import { SettingsPage } from './components/SettingsPage';
-import { FaqsPage } from './components/FaqsPage';
+import { useEffect, useState } from "react";
+import { useDashboardStore } from "./store";
+import { Header } from "./components/Header";
+import { DashboardBody } from "./components/DashboardBody";
+import { SearchOverlay } from "./components/SearchOverlay";
+import { SettingsPage } from "./components/SettingsPage";
+import { FaqsPage } from "./components/FaqsPage";
 
 export function App() {
   const {
@@ -44,13 +44,13 @@ export function App() {
   // Cmd+K / Ctrl+K to open search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setSearchOpen(v => !v);
+        setSearchOpen((v) => !v);
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   if (loading) {
@@ -63,11 +63,19 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-bg-base selection:bg-accent/30 selection:text-text-primary">
-      <Header health={health} updateInfo={updateInfo} onSearchOpen={() => setSearchOpen(true)} activeTab={activeTab} onTabChange={setActiveTab} config={config} onRefresh={loadAll} />
+      <Header
+        health={health}
+        updateInfo={updateInfo}
+        onSearchOpen={() => setSearchOpen(true)}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        config={config}
+        onRefresh={loadAll}
+      />
       <div className="max-w-[1240px] mx-auto px-4 sm:px-6 pb-6">
-        {activeTab === 'faqs' ? (
+        {activeTab === "faqs" ? (
           <FaqsPage />
-        ) : activeTab === 'settings' ? (
+        ) : activeTab === "settings" ? (
           <SettingsPage onTabChange={setActiveTab as (tab: string) => void} />
         ) : (
           <>
