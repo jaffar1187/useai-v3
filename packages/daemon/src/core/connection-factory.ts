@@ -16,7 +16,10 @@ export async function createMcpConnection(): Promise<WebStandardStreamableHTTPSe
       promptContext.connectionId = connectionId;
       const pingInterval = setInterval(
         () => {
-          server.server.ping().catch(() => clearInterval(pingInterval));
+          server.server.ping().catch(() => {
+            clearInterval(pingInterval);
+            connections.delete(promptContext.connectionId!);
+          });
         },
         2 * 60 * 1000,
       );

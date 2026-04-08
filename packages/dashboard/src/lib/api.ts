@@ -215,7 +215,7 @@ export interface FeedResponse {
   has_more: boolean;
 }
 
-export function fetchDashboard(
+export function fetchAggregations(
   start: string,
   end: string,
 ): Promise<DashboardResponse> {
@@ -223,7 +223,7 @@ export function fetchDashboard(
   return get(`/api/local/aggregations?${params}`);
 }
 
-export function fetchFeed(params: {
+export function fetchPrompts(params: {
   start: string;
   end: string;
   offset?: number | undefined;

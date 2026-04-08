@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, X, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { FeedConversation } from '../lib/api';
-import { fetchFeed } from '../lib/api';
+import { fetchPrompts } from '../lib/api';
 import type { Filters } from '../lib/types';
 import type { ConversationGroup } from '../lib/stats';
 import { SessionList } from './sessions/SessionList';
@@ -77,7 +77,7 @@ export function SearchOverlay({ open, onClose, onDeleteSession, onDeleteConversa
     }
 
     setLoading(true);
-    fetchFeed({
+    fetchPrompts({
       start: new Date(Date.now() - 32 * 86400000).toISOString(),
       end: new Date().toISOString(),
       search: trimmed,
@@ -100,7 +100,7 @@ export function SearchOverlay({ open, onClose, onDeleteSession, onDeleteConversa
     const trimmed = debouncedQuery.trim();
     if (!trimmed || loading || !hasMore) return;
     setLoading(true);
-    fetchFeed({
+    fetchPrompts({
       start: new Date(Date.now() - 32 * 86400000).toISOString(),
       end: new Date().toISOString(),
       search: trimmed,

@@ -25,7 +25,7 @@ export interface DashboardState {
   filters: Filters;
   activeTab: ActiveTab;
 
-  loadAll: () => Promise<void>;
+  loadConfig: () => Promise<void>;
   loadHealth: () => Promise<void>;
   loadUpdateCheck: () => Promise<void>;
   setTimeTravelTime: (t: number | null) => void;
@@ -81,12 +81,12 @@ export const useDashboardStore = create<DashboardState>()(
         return "prompts" as ActiveTab;
       })(),
 
-      loadAll: async () => {
+      loadConfig: async () => {
         try {
           const config = await fetchConfig();
-          set({ config, loading: false }, false, "loadAll");
+          set({ config, loading: false }, false, "loadConfig");
         } catch {
-          set({ loading: false }, false, "loadAll/error");
+          set({ loading: false }, false, "loadConfig/error");
         }
       },
 

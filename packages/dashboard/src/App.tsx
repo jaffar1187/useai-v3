@@ -12,7 +12,7 @@ export function App() {
     health,
     updateInfo,
     loading,
-    loadAll,
+    loadConfig,
     loadHealth,
     loadUpdateCheck,
     deleteSession,
@@ -24,20 +24,20 @@ export function App() {
 
   // Load data on mount
   useEffect(() => {
-    loadAll();
+    loadConfig();
     loadHealth();
     loadUpdateCheck();
-  }, [loadAll, loadHealth, loadUpdateCheck]);
+  }, []);
 
   // Auto-refresh every 30s
   useEffect(() => {
     const healthInterval = setInterval(loadHealth, 30000);
-    const dataInterval = setInterval(loadAll, 30000);
+    const dataInterval = setInterval(loadConfig, 30000);
     return () => {
       clearInterval(healthInterval);
       clearInterval(dataInterval);
     };
-  }, [loadAll, loadHealth]);
+  }, []);
 
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -70,7 +70,7 @@ export function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         config={config}
-        onRefresh={loadAll}
+        onRefresh={loadConfig}
       />
       <div className="max-w-[1240px] mx-auto px-4 sm:px-6 pb-6">
         {activeTab === "faqs" ? (
