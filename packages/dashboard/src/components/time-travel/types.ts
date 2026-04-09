@@ -85,6 +85,7 @@ export function start(scale: TimeScale, d: Date): string {
   switch (scale) {
     case "day":
       return new Date(y, m, day).toISOString();
+    // In UI we show for week mon-sunday data, But in JS week starts from 0 which is sunday.
     case "week":
       return new Date(
         y,

@@ -19,8 +19,12 @@ syncRouteRoutes.post("/", async (c) => {
     const allSessions = [...sessions, ...v1Sessions];
     const result = await syncSessions(config.auth.token, allSessions, config);
 
-    await patchConfig({ lastSyncAt: new Date().toISOString() });
-    return c.json({ ok: true, data: result });
+    if (result.synced > 0) {
+      await patchConfig({ lastSyncAt: new Date().toISOString() });
+    }
+
+    const ok = result.errors === 0;
+    return c.json({ ok, data: result });
   } catch (err) {
     return c.json({ ok: false, error: String(err) }, 500);
   }

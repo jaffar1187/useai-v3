@@ -100,7 +100,6 @@ export function useDashboardData({
     effectiveTime,
   );
   const isLive = timeTravelTime === null;
-
   // ── Server data ────────────────────────────────────────────────────────
   const [serverData, setServerData] = useState<DashboardResponse | null>(null);
   const [feedConversations, setFeedConversations] = useState<

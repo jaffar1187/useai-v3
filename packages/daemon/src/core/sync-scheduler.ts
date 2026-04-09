@@ -31,6 +31,8 @@ async function runSync(): Promise<void> {
     const result = await syncSessions(token, sessions, config);
     if (result.synced > 0) {
       await saveConfig({ ...config, lastSyncAt: new Date().toISOString() });
+    }
+    if (result.synced > 0 || result.errors > 0) {
       console.log(`[useai sync] Synced ${result.synced} sessions (skipped: ${result.skipped}, errors: ${result.errors})`);
     }
   } catch (err) {

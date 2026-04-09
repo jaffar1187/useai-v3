@@ -1,6 +1,9 @@
 import { Hono } from "hono";
 import type { Session } from "@devness/useai-types";
-import { readSessionsForDateRange, readV1Sessions } from "@devness/useai-storage";
+import {
+  readSessionsForDateRange,
+  readV1Sessions,
+} from "@devness/useai-storage";
 import {
   groupSessionsWithMilestones,
   groupIntoConversations,
@@ -57,7 +60,7 @@ promptsRoutes.get("/", async (c) => {
   }
 
   const offset = Math.max(0, Number(c.req.query("offset") ?? 0));
-  const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? 50)));
+  const limit = Math.min(50, Math.max(50, Number(c.req.query("limit") ?? 50)));
   const clientFilter = c.req.query("client") ?? null;
   const languageFilter = c.req.query("language") ?? null;
   const projectFilter = c.req.query("project") ?? null;
