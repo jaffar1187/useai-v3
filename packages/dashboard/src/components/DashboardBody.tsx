@@ -14,7 +14,6 @@ import { TimeDetailPanel } from "./stats/TimeDetailPanel";
 import { FilterChips } from "./sessions/FilterChips";
 import { SessionList } from "./sessions/SessionList";
 import { TimeTravelPanel } from "./time-travel/TimeTravelPanel";
-import { DailyRecap } from "./insights/DailyRecap";
 import { ComplexityDistribution } from "./insights/ComplexityDistribution";
 import { TaskTypeBreakdown } from "./insights/TaskTypeBreakdown";
 import { ProjectAllocation } from "./insights/ProjectAllocation";
@@ -130,6 +129,7 @@ export function DashboardBody({
   const [selectedStatCard, setSelectedStatCard] = useState<StatCardType>(null);
   const [globalShowPublic, setGlobalShowPublic] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [timeMode, setTimeMode] = useState<"user" | "ai">("user");
 
   const hasActiveFilter =
     data.filters.client !== "all" ||
@@ -300,27 +300,43 @@ export function DashboardBody({
 
       {activeTab === "insights" && (
         <div className="space-y-4 pt-2">
-          <DailyRecap
-            sessions={data.filteredSessions}
-            milestones={data.filteredMilestones}
-            isLive={data.isLive}
-            windowStart={data.windowStart}
-            windowEnd={data.windowEnd}
-            allSessions={data.allSessionsForStrip}
-            allMilestones={data.filteredMilestones}
-          />
+          <div className="flex justify-end">
+            <div className="flex items-center bg-bg-surface-2/50 border border-border/50 rounded-xl p-1">
+              <button
+                onClick={() => setTimeMode("user")}
+                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
+                  timeMode === "user"
+                    ? "bg-white/15 text-white shadow-sm"
+                    : "text-text-muted hover:text-text-primary hover:bg-bg-surface-2"
+                }`}
+              >
+                Clock Time
+              </button>
+              <button
+                onClick={() => setTimeMode("ai")}
+                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
+                  timeMode === "ai"
+                    ? "bg-white/15 text-white shadow-sm"
+                    : "text-text-muted hover:text-text-primary hover:bg-bg-surface-2"
+                }`}
+              >
+                AI Time
+              </button>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ProjectAllocation
               byProjectClock={data.stats.byProjectClock}
               byProject={data.stats.byProject}
+              timeMode={timeMode}
             />
             <ComplexityDistribution
               data={data.complexityData}
               milestones={data.filteredMilestones}
               showPublic={globalShowPublic}
             />
-            <SummaryChips stats={data.stats} />
+            <SummaryChips stats={data.stats} timeMode={timeMode} />
           </div>
 
           <TaskTypeBreakdown
@@ -329,6 +345,7 @@ export function DashboardBody({
             sessions={data.filteredSessions}
             milestones={data.filteredMilestones}
             showPublic={globalShowPublic}
+            timeMode={timeMode}
           />
 
           <ActivityStrip
@@ -338,6 +355,7 @@ export function DashboardBody({
             isLive={data.isLive}
             onDayClick={data.handleDayClick}
             highlightDate={data.highlightDate}
+            timeMode={timeMode}
           />
 
           <RecentMilestones

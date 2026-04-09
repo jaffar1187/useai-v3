@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Monitor, Code2, ChevronDown } from 'lucide-react';
+import { Monitor, Code2 } from 'lucide-react';
 import type { ComputedStats } from '../../lib/stats';
 import { TOOL_COLORS, TOOL_DISPLAY_NAMES } from '../../constants/tools';
 
 interface SummaryChipsProps {
   stats: ComputedStats;
+  timeMode?: TimeMode;
 }
 
 const LANG_COLORS = [
@@ -22,11 +23,6 @@ const LANG_COLORS = [
 const OTHER_COLOR = '#64748b';
 
 type TimeMode = 'user' | 'ai';
-
-const TIME_LABELS: Record<TimeMode, string> = {
-  user: 'Clock Time',
-  ai: 'AI Time',
-};
 
 interface Segment {
   name: string;
@@ -108,54 +104,14 @@ function buildSegments(
   return result;
 }
 
-function TimeModeDropdown({ value, onChange }: { value: TimeMode; onChange: (m: TimeMode) => void }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border/50 bg-bg-surface-2 text-[11px] text-text-secondary font-medium hover:border-text-muted/50 transition-colors"
-      >
-        {TIME_LABELS[value]}
-        <ChevronDown className="w-3 h-3 text-text-muted" />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-20 min-w-[120px] rounded-lg border border-border/50 bg-bg-surface-1 shadow-lg py-1">
-            {(Object.entries(TIME_LABELS) as [TimeMode, string][]).map(([mode, label]) => (
-              <button
-                key={mode}
-                onClick={() => { onChange(mode); setOpen(false); }}
-                className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
-                  mode === value
-                    ? 'text-accent bg-accent/10 font-medium'
-                    : 'text-text-secondary hover:bg-bg-surface-2'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 function DonutCard({
   title,
   icon,
   segments,
-  timeMode,
-  onTimeModeChange,
 }: {
   title: string;
   icon: React.ReactNode;
   segments: Segment[];
-  timeMode: TimeMode;
-  onTimeModeChange: (m: TimeMode) => void;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const size = 100;
@@ -192,7 +148,6 @@ function DonutCard({
             {title}
           </h2>
         </div>
-        <TimeModeDropdown value={timeMode} onChange={onTimeModeChange} />
       </div>
 
       <div className="flex flex-col sm:flex-row items-center gap-6">
@@ -207,7 +162,7 @@ function DonutCard({
             />
             {arcs.map((arc, i) => (
               <motion.circle
-                key={`${timeMode}-${arc.name}`}
+                key={`${title}-${arc.name}`}
                 cx={cx} cy={cy} r={radius}
                 fill="none"
                 stroke={arc.color}
@@ -276,12 +231,9 @@ function DonutCard({
   );
 }
 
-export function SummaryChips({ stats }: SummaryChipsProps) {
-  const [clientTimeMode, setClientTimeMode] = useState<TimeMode>('user');
-  const [langTimeMode, setLangTimeMode] = useState<TimeMode>('user');
-
-  const clientData = clientTimeMode === 'user' ? stats.byClient : stats.byClientAI;
-  const langData = langTimeMode === 'user' ? stats.byLanguage : stats.byLanguageAI;
+export function SummaryChips({ stats, timeMode = 'user' }: SummaryChipsProps) {
+  const clientData = timeMode === 'user' ? stats.byClient : stats.byClientAI;
+  const langData = timeMode === 'user' ? stats.byLanguage : stats.byLanguageAI;
 
   const clientSegments = useMemo(
     () => buildSegments(clientData, LANG_COLORS, TOOL_DISPLAY_NAMES, TOOL_COLORS),
@@ -302,8 +254,6 @@ export function SummaryChips({ stats }: SummaryChipsProps) {
           title="Tools"
           icon={<Monitor className="w-3.5 h-3.5 text-text-muted" />}
           segments={clientSegments}
-          timeMode={clientTimeMode}
-          onTimeModeChange={setClientTimeMode}
         />
       )}
       {langSegments.length > 0 && (
@@ -311,8 +261,6 @@ export function SummaryChips({ stats }: SummaryChipsProps) {
           title="Languages"
           icon={<Code2 className="w-3.5 h-3.5 text-text-muted" />}
           segments={langSegments}
-          timeMode={langTimeMode}
-          onTimeModeChange={setLangTimeMode}
         />
       )}
     </>

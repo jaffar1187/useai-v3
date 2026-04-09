@@ -1,16 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { SessionSeal } from '../../lib/api';
 import { getDailyActivity, getDailyActivityAI, getHourlyActivity, getHourlyActivityAI } from '../../lib/stats';
 import type { TimeScale } from '../time-travel/types';
 import { motion } from 'motion/react';
-import { ChevronDown } from 'lucide-react';
 
 type TimeMode = 'user' | 'ai';
-
-const TIME_LABELS: Record<TimeMode, string> = {
-  user: 'Clock Time',
-  ai: 'AI Time',
-};
 
 function formatTime(hours: number): string {
   const totalMins = Math.round(hours * 60);
@@ -28,6 +22,7 @@ interface ActivityStripProps {
   isLive: boolean;
   onDayClick?: ((date: string) => void) | undefined;
   highlightDate?: string | undefined;
+  timeMode?: TimeMode;
 }
 
 export function ActivityStrip({
@@ -37,9 +32,8 @@ export function ActivityStrip({
   isLive: _isLive,
   onDayClick,
   highlightDate,
+  timeMode = 'user',
 }: ActivityStripProps) {
-  const [timeMode, setTimeMode] = useState<TimeMode>('user');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const useHourly = timeScale === 'day' || timeScale === '24h' || timeScale === '12h' || timeScale === '6h';
   const ed = new Date(effectiveTime);
@@ -59,37 +53,6 @@ export function ActivityStrip({
     ? `Hourly — ${new Date(effectiveTime).toLocaleDateString([], { month: 'short', day: 'numeric' })}`
     : 'Last 7 Days';
 
-  const dropdown = (
-    <div className="relative">
-      <button
-        onClick={() => setDropdownOpen((v) => !v)}
-        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border/50 bg-bg-surface-2 text-[11px] text-text-secondary font-medium hover:border-text-muted/50 transition-colors"
-      >
-        {TIME_LABELS[timeMode]}
-        <ChevronDown className="w-3 h-3 text-text-muted" />
-      </button>
-      {dropdownOpen && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-20 min-w-[120px] rounded-lg border border-border/50 bg-bg-surface-1 shadow-lg py-1">
-            {(Object.entries(TIME_LABELS) as [TimeMode, string][]).map(([mode, label]) => (
-              <button
-                key={mode}
-                onClick={() => { setTimeMode(mode); setDropdownOpen(false); }}
-                className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
-                  mode === timeMode
-                    ? 'text-accent bg-accent/10 font-medium'
-                    : 'text-text-secondary hover:bg-bg-surface-2'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
 
   if (useHourly) {
     const maxMinutes = Math.max(...hourlyData.map((d) => d.minutes), 1);
@@ -100,7 +63,6 @@ export function ActivityStrip({
           <div className="text-xs text-text-muted uppercase tracking-widest font-bold">
             {title}
           </div>
-          {dropdown}
         </div>
         <div className="flex items-end gap-[3px] h-16">
           {hourlyData.map((entry, idx) => {
@@ -162,7 +124,6 @@ export function ActivityStrip({
         <div className="text-xs text-text-muted uppercase tracking-widest font-bold">
           {title}
         </div>
-        {dropdown}
       </div>
       <div className="flex items-end gap-2 h-16">
         {dailyData.map((day, idx) => {

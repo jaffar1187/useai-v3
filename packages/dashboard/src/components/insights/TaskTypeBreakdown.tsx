@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ListChecks, X, ChevronDown } from 'lucide-react';
+import { ListChecks, X } from 'lucide-react';
 import type { Milestone, SessionSeal } from '../../lib/api.js';
 
 const TASK_TYPE_COLORS: Record<string, string> = {
@@ -23,11 +23,6 @@ const TASK_TYPE_COLORS: Record<string, string> = {
 };
 
 type TimeMode = 'user' | 'ai';
-
-const TIME_LABELS: Record<TimeMode, string> = {
-  user: 'Clock Time',
-  ai: 'AI Time',
-};
 
 function formatTime(seconds: number): string {
   if (seconds < 60) return '<1m';
@@ -53,11 +48,10 @@ interface TaskTypeBreakdownProps {
   sessions?: SessionSeal[];
   milestones?: Milestone[];
   showPublic?: boolean;
+  timeMode?: TimeMode;
 }
 
-export function TaskTypeBreakdown({ byTaskType, byTaskTypeAI, sessions = [], milestones = [], showPublic = false }: TaskTypeBreakdownProps) {
-  const [timeMode, setTimeMode] = useState<TimeMode>('user');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+export function TaskTypeBreakdown({ byTaskType, byTaskTypeAI, sessions = [], milestones = [], showPublic = false, timeMode = 'user' }: TaskTypeBreakdownProps) {
 
   const data = timeMode === 'user' || !byTaskTypeAI ? byTaskType : byTaskTypeAI;
 
@@ -78,36 +72,6 @@ export function TaskTypeBreakdown({ byTaskType, byTaskTypeAI, sessions = [], mil
           <h2 className="text-sm font-bold text-text-muted uppercase tracking-widest">
             Task Types
           </h2>
-
-          <div className="relative">
-            <button
-              onClick={() => setDropdownOpen((v) => !v)}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border/50 bg-bg-surface-2 text-[11px] text-text-secondary font-medium hover:border-text-muted/50 transition-colors"
-            >
-              {TIME_LABELS[timeMode]}
-              <ChevronDown className="w-3 h-3 text-text-muted" />
-            </button>
-            {dropdownOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 z-20 min-w-[120px] rounded-lg border border-border/50 bg-bg-surface-1 shadow-lg py-1">
-                  {(Object.entries(TIME_LABELS) as [TimeMode, string][]).map(([mode, label]) => (
-                    <button
-                      key={mode}
-                      onClick={() => { setTimeMode(mode); setDropdownOpen(false); }}
-                      className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
-                        mode === timeMode
-                          ? 'text-accent bg-accent/10 font-medium'
-                          : 'text-text-secondary hover:bg-bg-surface-2'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
         </div>
 
         <div className="space-y-2.5">

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { FolderKanban, ChevronDown } from 'lucide-react';
+import { FolderKanban } from 'lucide-react';
 
 const PROJECT_COLORS = [
   '#b4f82c',
@@ -29,6 +29,7 @@ function formatTime(seconds: number): string {
 interface ProjectAllocationProps {
   byProjectClock: Record<string, number>;
   byProject: Record<string, number>;
+  timeMode: TimeMode;
 }
 
 interface Segment {
@@ -78,9 +79,7 @@ function buildSegments(data: Record<string, number>): Segment[] {
   return result;
 }
 
-export function ProjectAllocation({ byProjectClock, byProject }: ProjectAllocationProps) {
-  const [timeMode, setTimeMode] = useState<TimeMode>('user');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+export function ProjectAllocation({ byProjectClock, byProject, timeMode }: ProjectAllocationProps) {
   const [hovered, setHovered] = useState<string | null>(null);
 
   const data = timeMode === 'user' ? byProjectClock : byProject;
@@ -110,11 +109,6 @@ export function ProjectAllocation({ byProjectClock, byProject }: ProjectAllocati
 
   const hoveredSeg = hovered ? segments.find((s) => s.name === hovered) : null;
 
-  const LABELS: Record<TimeMode, string> = {
-    user: 'Clock Time',
-    ai: 'AI Time',
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -130,37 +124,6 @@ export function ProjectAllocation({ byProjectClock, byProject }: ProjectAllocati
           <h2 className="text-sm font-bold text-text-muted uppercase tracking-widest">
             Project Allocation
           </h2>
-        </div>
-
-        {/* Time mode dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setDropdownOpen((v) => !v)}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border/50 bg-bg-surface-2 text-[11px] text-text-secondary font-medium hover:border-text-muted/50 transition-colors"
-          >
-            {LABELS[timeMode]}
-            <ChevronDown className="w-3 h-3 text-text-muted" />
-          </button>
-          {dropdownOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-              <div className="absolute right-0 top-full mt-1 z-20 min-w-[120px] rounded-lg border border-border/50 bg-bg-surface-1 shadow-lg py-1">
-                {(Object.entries(LABELS) as [TimeMode, string][]).map(([mode, label]) => (
-                  <button
-                    key={mode}
-                    onClick={() => { setTimeMode(mode); setDropdownOpen(false); }}
-                    className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
-                      mode === timeMode
-                        ? 'text-accent bg-accent/10 font-medium'
-                        : 'text-text-secondary hover:bg-bg-surface-2'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
         </div>
       </div>
 
