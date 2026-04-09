@@ -38,8 +38,8 @@ function formatTime(seconds: number): string {
   return m > 0 ? `${h}h${m}m` : `${h}h`;
 }
 
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+function formatTaskType(s: string): string {
+  return s.replace(/_/g, "-");
 }
 
 function formatDate(iso: string): string {
@@ -122,7 +122,7 @@ export function TaskTypeBreakdown({ byTaskType, byTaskTypeAI, sessions = [], mil
                 onClick={() => setSelectedType(type)}
               >
                 <span className="text-xs text-text-secondary font-medium w-24 text-right shrink-0">
-                  {capitalize(type)}
+                  {formatTaskType(type)}
                 </span>
 
                 <div className="flex-1 h-5 rounded bg-bg-surface-2/50 overflow-hidden">
@@ -228,7 +228,7 @@ function TaskTypeOverlay({
             <ListChecks className="w-4 h-4" style={{ color }} />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-bold text-text-primary">{capitalize(taskType)}</h2>
+            <h2 className="text-sm font-bold text-text-primary">{formatTaskType(taskType)}</h2>
             <span className="text-[10px] font-mono text-text-muted">
               {filtered.length} milestone{filtered.length !== 1 ? 's' : ''}
             </span>

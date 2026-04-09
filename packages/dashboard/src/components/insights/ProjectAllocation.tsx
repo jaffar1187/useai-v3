@@ -68,7 +68,7 @@ function buildSegments(data: Record<string, number>): Segment[] {
 
   if (otherSeconds > 0) {
     result.push({
-      name: 'Other',
+      name: 'other',
       seconds: otherSeconds,
       color: OTHER_COLOR,
       percentage: (otherSeconds / total) * 100,

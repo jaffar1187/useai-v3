@@ -97,8 +97,8 @@ function buildSegments(
 
   if (otherSeconds > 0) {
     result.push({
-      name: 'Other',
-      displayName: 'Other',
+      name: 'other',
+      displayName: 'other',
       seconds: otherSeconds,
       color: OTHER_COLOR,
       percentage: (otherSeconds / total) * 100,
@@ -299,7 +299,7 @@ export function SummaryChips({ stats }: SummaryChipsProps) {
     <>
       {clientSegments.length > 0 && (
         <DonutCard
-          title="Clients"
+          title="Tools"
           icon={<Monitor className="w-3.5 h-3.5 text-text-muted" />}
           segments={clientSegments}
           timeMode={clientTimeMode}

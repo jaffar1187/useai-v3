@@ -192,6 +192,6 @@ aggregationsRoutes.get("/", async (c) => {
     complexity: { simple, medium, complex },
     filteredSessions: displaySessions.map(toFilteredSession),
     filteredMilestones: dedupedMilestones,
-    allSessionsLight: allSessions.map(toLightSession),
+    allSessionsLight: filteredSessions.map(toLightSession),
   });
 });

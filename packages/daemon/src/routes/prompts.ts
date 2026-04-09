@@ -76,6 +76,7 @@ promptsRoutes.get("/", async (c) => {
   const allSessions: Session[] = [...v3Sessions, ...v1Sessions];
   const windowFiltered = allSessions
     .filter((s) => s.startedAt <= end && s.endedAt >= start)
+    .filter((s) => !!s.endedAt && s.durationMs > 0)
     .filter((s) => !!s.hash && !!s.signature);
 
   // Extract milestones from filtered sessions

@@ -14,9 +14,9 @@ interface ComplexityDistributionProps {
 }
 
 const BARS: { key: keyof ComplexityDistributionProps['data']; label: string; color: string }[] = [
-  { key: 'simple', label: 'Simple', color: '#34d399' },
-  { key: 'medium', label: 'Medium', color: '#fbbf24' },
-  { key: 'complex', label: 'Complex', color: '#f87171' },
+  { key: 'simple', label: 'simple', color: '#34d399' },
+  { key: 'medium', label: 'medium', color: '#fbbf24' },
+  { key: 'complex', label: 'complex', color: '#f87171' },
 ];
 
 export function ComplexityDistribution({ data, milestones = [], showPublic = false }: ComplexityDistributionProps) {

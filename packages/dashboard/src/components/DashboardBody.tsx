@@ -11,7 +11,6 @@ import { StatsBar } from "./stats/StatsBar";
 import { StatDetailPanel } from "./stats/StatDetailPanel";
 import type { StatCardType } from "./stats/StatDetailPanel";
 import { TimeDetailPanel } from "./stats/TimeDetailPanel";
-import { TabBar } from "./TabBar";
 import { FilterChips } from "./sessions/FilterChips";
 import { SessionList } from "./sessions/SessionList";
 import { TimeTravelPanel } from "./time-travel/TimeTravelPanel";
@@ -190,8 +189,6 @@ export function DashboardBody({
         showPublic={globalShowPublic}
         onClose={() => setSelectedStatCard(null)}
       />
-
-      <TabBar activeTab={activeTab} onTabChange={onActiveTabChange} />
 
       {activeTab === "prompts" && (
         <div className="space-y-4">

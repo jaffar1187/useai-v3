@@ -335,6 +335,9 @@ export function computeStats(
   // Active projects
   const activeProjects = Object.keys(byProject).length;
 
+  const dropZero = (rec: Record<string, number>) =>
+    Object.fromEntries(Object.entries(rec).filter(([, v]) => Math.round(v) > 0));
+
   return {
     totalHours: totalSeconds / 3600,
     totalSessions: sessions.length,
@@ -348,14 +351,14 @@ export function computeStats(
     totalMilestones: milestones.length,
     completionRate,
     activeProjects,
-    byClient,
-    byLanguage,
-    byTaskType,
-    byProject,
-    byProjectClock,
-    byClientAI,
-    byLanguageAI,
-    byTaskTypeAI,
+    byClient: dropZero(byClient),
+    byLanguage: dropZero(byLanguage),
+    byTaskType: dropZero(byTaskType),
+    byProject: dropZero(byProject),
+    byProjectClock: dropZero(byProjectClock),
+    byClientAI: dropZero(byClientAI),
+    byLanguageAI: dropZero(byLanguageAI),
+    byTaskTypeAI: dropZero(byTaskTypeAI),
   };
 }
 

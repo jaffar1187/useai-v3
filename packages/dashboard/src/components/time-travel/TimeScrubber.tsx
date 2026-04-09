@@ -512,7 +512,7 @@ function SessionTooltip({ session, showPublic }: { session: SessionSeal; showPub
       </div>
       <div className="h-px bg-border/50 my-0.5" />
       <div className="text-text-primary font-medium">{displayTitle}</div>
-      <div className="text-text-secondary capitalize text-[10px]">{session.taskType}</div>
+      <div className="text-text-secondary text-[10px]">{session.taskType?.replace(/_/g, "-")}</div>
     </div>
   );
 }
