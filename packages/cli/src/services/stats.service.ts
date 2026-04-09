@@ -21,6 +21,16 @@ export interface StatsData {
   byTaskType: Record<string, number>;
   /** AI-time seconds per task type */
   byTaskTypeAI: Record<string, number>;
+  /** Clock-time seconds per project */
+  byProject: Record<string, number>;
+  /** Clock-time seconds per project (sweep-line) */
+  byProjectClock: Record<string, number>;
+  /** Clock-time seconds per language */
+  byLanguage: Record<string, number>;
+  /** AI-time seconds per language */
+  byLanguageAI: Record<string, number>;
+  /** Milestone complexity distribution */
+  complexity: { simple: number; medium: number; complex: number };
   /** Evaluation averages (1-5 scale), null if no evaluated sessions */
   evaluation: {
     promptQuality: number;
@@ -55,7 +65,12 @@ export async function getStats(start: string, end: string): Promise<StatsData> {
       byClientAI: Record<string, number>;
       byTaskType: Record<string, number>;
       byTaskTypeAI: Record<string, number>;
+      byProject: Record<string, number>;
+      byProjectClock: Record<string, number>;
+      byLanguage: Record<string, number>;
+      byLanguageAI: Record<string, number>;
     };
+    complexity: { simple: number; medium: number; complex: number };
     evaluation: {
       promptQuality: number;
       contextProvided: number;
@@ -79,6 +94,11 @@ export async function getStats(start: string, end: string): Promise<StatsData> {
     byClientAI: json.stats.byClientAI,
     byTaskType: json.stats.byTaskType,
     byTaskTypeAI: json.stats.byTaskTypeAI,
+    byProject: json.stats.byProject,
+    byProjectClock: json.stats.byProjectClock,
+    byLanguage: json.stats.byLanguage,
+    byLanguageAI: json.stats.byLanguageAI,
+    complexity: json.complexity,
     evaluation: json.evaluation,
   };
 }
@@ -110,6 +130,12 @@ export function getTimeWindow(scale: string): { start: string; end: string; labe
         start: new Date(y, m, 1).toISOString(),
         end: new Date(y, m + 1, 1).toISOString(),
         label: "this month",
+      };
+    case "year":
+      return {
+        start: new Date(y, 0, 1).toISOString(),
+        end: new Date(y + 1, 0, 1).toISOString(),
+        label: "this year",
       };
     default: {
       // Rolling: "7d", "30d", etc.
