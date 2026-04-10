@@ -19,8 +19,8 @@ export function registerStatus(program: Command): void {
       // Daemon
       if (daemonStatus.running) {
         success(`Daemon running at ${daemonStatus.url}`);
-        if (daemonStatus.uptime !== undefined)
-          label("  uptime",    formatDuration(daemonStatus.uptime));
+        if (daemonStatus.uptimeSeconds !== undefined)
+          label("  uptime",    formatDuration(daemonStatus.uptimeSeconds * 1000));
         if (daemonStatus.activeSessions !== undefined)
           label("  connections", String(daemonStatus.activeSessions));
         if (daemonStatus.version)

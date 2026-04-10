@@ -7,7 +7,7 @@ import type { Filters } from '../lib/types';
 import type { ConversationGroup } from '../lib/stats';
 import { SessionList } from './sessions/SessionList';
 
-const DEFAULT_FILTERS: Filters = { category: 'all', client: 'all', project: 'all', language: 'all' };
+const DEFAULT_FILTERS: Filters = { category: 'all', tool: 'all', project: 'all', language: 'all' };
 
 interface SearchOverlayProps {
   open: boolean;

@@ -16,7 +16,7 @@ export const promptsRoutes = new Hono();
 function toMilestones(s: Session) {
   return (s.milestones ?? []).map((m) => ({
     id: m.id,
-    sessionId: s.promptId,
+    promptId: s.promptId,
     title: m.title,
     ...(m.privateTitle && { privateTitle: m.privateTitle }),
     ...(s.project && { project: s.project }),
@@ -61,12 +61,12 @@ promptsRoutes.get("/", async (c) => {
 
   const offset = Math.max(0, Number(c.req.query("offset") ?? 0));
   const limit = Math.min(50, Math.max(50, Number(c.req.query("limit") ?? 50)));
-  const clientFilter = c.req.query("client") ?? null;
+  const toolFilter = c.req.query("tool") ?? null;
   const languageFilter = c.req.query("language") ?? null;
   const projectFilter = c.req.query("project") ?? null;
   const searchTerm = c.req.query("search") ?? null;
 
-  // Read sessions for the date range
+  // Read sessions for the date range, and v1 sessions are converted to the structure of latest version.
   const [v3Sessions, v1Sessions] = await Promise.all([
     readSessionsForDateRange(start, end),
     readV1Sessions(),
@@ -85,9 +85,9 @@ promptsRoutes.get("/", async (c) => {
   // Apply filters
   let filtered = windowFiltered;
 
-  if (clientFilter) {
+  if (toolFilter) {
     filtered = filtered.filter(
-      (s) => s.client?.toLowerCase() === clientFilter.toLowerCase(),
+      (s) => s.client?.toLowerCase() === toolFilter.toLowerCase(),
     );
   }
 
@@ -108,7 +108,7 @@ promptsRoutes.get("/", async (c) => {
     filtered = filtered.filter((s) => matchesSearch(s, searchTerm));
   }
 
-  // Group sessions with milestones, then into conversations
+  // Dashboard's UI shows a nested hierarchy: Prompt header → Prompt → Milestones, so daemon sends it to save CPU on every render.
   const sessionsWithMilestones = groupSessionsWithMilestones(
     filtered,
     allMilestones,

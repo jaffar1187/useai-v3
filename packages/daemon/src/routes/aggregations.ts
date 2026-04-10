@@ -10,7 +10,7 @@ export const aggregationsRoutes = new Hono();
 function toMilestones(s: Session) {
   return (s.milestones ?? []).map((m) => ({
     id: m.id,
-    sessionId: s.promptId,
+    promptId: s.promptId,
     title: m.title,
     ...(m.privateTitle && { privateTitle: m.privateTitle }),
     ...(s.project && { project: s.project }),
@@ -111,7 +111,7 @@ aggregationsRoutes.get("/", async (c) => {
   // Dedup milestones
   const seen = new Set<string>();
   const dedupedMilestones = filteredMilestones.filter((m) => {
-    const key = `${m.sessionId}::${m.title}`;
+    const key = `${m.promptId}::${m.title}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

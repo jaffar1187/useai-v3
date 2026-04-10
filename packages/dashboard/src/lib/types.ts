@@ -1,6 +1,6 @@
 export interface Filters {
   category: string;
-  client: string;
+  tool: string;
   project: string;
   language: string;
 }

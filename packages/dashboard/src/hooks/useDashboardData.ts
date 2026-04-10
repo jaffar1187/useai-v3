@@ -125,7 +125,7 @@ export function useDashboardData({
       end: windowEnd,
       offset: 0,
       limit: 50,
-      client: filters.client !== "all" ? filters.client : undefined,
+      tool: filters.tool !== "all" ? filters.tool : undefined,
       language: filters.language !== "all" ? filters.language : undefined,
       project: filters.project !== "all" ? filters.project : undefined,
     })
@@ -145,7 +145,7 @@ export function useDashboardData({
       end: windowEnd,
       offset: feedConversations.length,
       limit: 50,
-      client: filters.client !== "all" ? filters.client : undefined,
+      tool: filters.tool !== "all" ? filters.tool : undefined,
       language: filters.language !== "all" ? filters.language : undefined,
       project: filters.project !== "all" ? filters.project : undefined,
     })

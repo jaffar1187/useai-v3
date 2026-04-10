@@ -132,7 +132,7 @@ export function DashboardBody({
   const [timeMode, setTimeMode] = useState<"user" | "ai">("user");
 
   const hasActiveFilter =
-    data.filters.client !== "all" ||
+    data.filters.tool !== "all" ||
     data.filters.language !== "all" ||
     data.filters.project !== "all";
 

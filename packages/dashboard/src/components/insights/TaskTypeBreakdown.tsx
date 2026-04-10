@@ -153,16 +153,16 @@ function TaskTypeOverlay({
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const sessionIdSet = useMemo(
+  const promptIdSet = useMemo(
     () => new Set(sessions.filter(s => s.taskType === taskType).map(s => s.promptId)),
     [sessions, taskType],
   );
 
   const filtered = useMemo(
     () => milestones
-      .filter((m) => sessionIdSet.has(m.sessionId))
+      .filter((m) => promptIdSet.has(m.promptId))
       .sort((a, b) => (b.createdAt < a.createdAt ? -1 : 1)),
-    [milestones, sessionIdSet],
+    [milestones, promptIdSet],
   );
 
   return (

@@ -12,7 +12,7 @@ export function registerDaemonStatus(daemon: Command): void {
       if (status.running) {
         success(`Running at ${status.url}`);
         if (status.pid)              label("  PID",         String(status.pid));
-        if (status.uptime !== undefined) label("  Uptime",  formatDuration(status.uptime));
+        if (status.uptimeSeconds !== undefined) label("  Uptime",  formatDuration(status.uptimeSeconds * 1000));
         if (status.activeSessions !== undefined) label("  Connections", String(status.activeSessions));
         if (status.version)          label("  Version",    status.version);
       } else {

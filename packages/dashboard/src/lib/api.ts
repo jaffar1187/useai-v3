@@ -102,7 +102,7 @@ export interface SessionSeal {
 
 export interface Milestone {
   id: string;
-  sessionId: string;
+  promptId: string;
   title: string;
   privateTitle?: string;
   project?: string;
@@ -228,7 +228,7 @@ export function fetchPrompts(params: {
   end: string;
   offset?: number | undefined;
   limit?: number | undefined;
-  client?: string | undefined;
+  tool?: string | undefined;
   language?: string | undefined;
   project?: string | undefined;
   search?: string | undefined;
@@ -236,7 +236,7 @@ export function fetchPrompts(params: {
   const qs = new URLSearchParams({ start: params.start, end: params.end });
   if (params.offset != null) qs.set("offset", String(params.offset));
   if (params.limit != null) qs.set("limit", String(params.limit));
-  if (params.client) qs.set("client", params.client);
+  if (params.tool) qs.set("tool", params.tool);
   if (params.language) qs.set("language", params.language);
   if (params.project) qs.set("project", params.project);
   if (params.search) qs.set("search", params.search);

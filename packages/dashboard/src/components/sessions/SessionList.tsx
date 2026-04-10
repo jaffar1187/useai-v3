@@ -326,7 +326,7 @@ export function SessionList({ sessions = [], milestones = [], preGrouped, filter
 
     // Legacy: filter + group client-side
     const filtered = sessions.filter((s) => {
-      if (filters.client !== 'all' && s.client !== filters.client) return false;
+      if (filters.tool !== 'all' && s.client !== filters.tool) return false;
       if (filters.language !== 'all' && !s.languages.includes(filters.language)) return false;
       if (filters.project !== 'all' && (s.project ?? '') !== filters.project) return false;
       return true;

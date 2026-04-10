@@ -384,11 +384,11 @@ export function groupSessionsWithMilestones(
 ): SessionGroup[] {
   const milestoneMap = new Map<string, Milestone[]>();
   for (const m of milestones) {
-    const existing = milestoneMap.get(m.sessionId);
+    const existing = milestoneMap.get(m.promptId);
     if (existing) {
       existing.push(m);
     } else {
-      milestoneMap.set(m.sessionId, [m]);
+      milestoneMap.set(m.promptId, [m]);
     }
   }
 

@@ -63,7 +63,7 @@ export const useDashboardStore = create<DashboardState>()(
       //Language(typescript, python, etc.)
       filters: {
         category: "all",
-        client: "all",
+        tool: "all",
         project: "all",
         language: "all",
       },

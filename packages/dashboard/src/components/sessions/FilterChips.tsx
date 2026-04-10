@@ -34,7 +34,7 @@ function Chip({
 }
 
 export function FilterChips({ sessions, filters, onFilterChange }: FilterChipsProps) {
-  const clients = useMemo(
+  const tools = useMemo(
     () => [...new Set(sessions.map((s) => s.client))].sort(),
     [sessions],
   );
@@ -52,27 +52,27 @@ export function FilterChips({ sessions, filters, onFilterChange }: FilterChipsPr
     [sessions],
   );
 
-  const hasFilters = clients.length > 0 || languages.length > 0 || projects.length > 0;
+  const hasFilters = tools.length > 0 || languages.length > 0 || projects.length > 0;
   if (!hasFilters) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-1">
         <Chip
           label="All"
-          active={filters.client === 'all' && filters.language === 'all' && filters.project === 'all'}
+          active={filters.tool === 'all' && filters.language === 'all' && filters.project === 'all'}
           onClick={() => {
-            onFilterChange('client', 'all');
+            onFilterChange('tool', 'all');
             onFilterChange('language', 'all');
             onFilterChange('project', 'all');
           }}
         />
 
-        {clients.map((c) => (
+        {tools.map((c) => (
           <Chip
             key={c}
             label={TOOL_DISPLAY_NAMES[c] ?? c}
-            active={filters.client === c}
-            onClick={() => onFilterChange('client', filters.client === c ? 'all' : c)}
+            active={filters.tool === c}
+            onClick={() => onFilterChange('tool', filters.tool === c ? 'all' : c)}
           />
         ))}
 

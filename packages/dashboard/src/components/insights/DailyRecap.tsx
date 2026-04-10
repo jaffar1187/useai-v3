@@ -174,8 +174,8 @@ function generateInsights(
     // Find most productive tool by milestones/hour
     const toolEfficiency = clients.map(([name, arr]) => {
       const hrs = totalHours(arr);
-      const sessionIds = new Set(arr.map((s) => s.promptId));
-      const toolMilestones = milestones.filter((m) => sessionIds.has(m.sessionId));
+      const promptIds = new Set(arr.map((s) => s.promptId));
+      const toolMilestones = milestones.filter((m) => promptIds.has(m.promptId));
       return { name, rate: toolMilestones.length / Math.max(hrs, 0.1), count: toolMilestones.length };
     }).filter((t) => t.count > 0);
 
