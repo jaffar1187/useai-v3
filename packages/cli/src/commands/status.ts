@@ -32,18 +32,17 @@ export function registerStatus(program: Command): void {
       // Config
       console.log();
       if (config) {
-        label("Config version",  String(config.version));
         label("Eval framework",  config.evaluation.framework);
-        label("Auto-sync",       String(config.sync.autoSync));
-        if (config.lastSyncAt)
-          label("Last sync",     config.lastSyncAt.slice(0, 19).replace("T", " "));
 
         const user = config.auth.user;
-        label("Auth",
-          user
-            ? pc.green(`${user.username ?? user.email} (${user.id.slice(0, 8)}…)`)
-            : pc.dim("not logged in"),
-        );
+        if (user) {
+          label("Auth", pc.green(`${user.username ?? user.email} (${user.id.slice(0, 8)}…)`));
+          label("Auto-sync", String(config.sync.autoSync));
+          if (config.lastSyncAt)
+            label("Last sync", config.lastSyncAt.slice(0, 19).replace("T", " "));
+        } else {
+          label("Auth", pc.dim("not logged in"));
+        }
       } else {
         label("Config", pc.dim("not found"));
       }

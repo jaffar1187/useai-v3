@@ -7,18 +7,26 @@ import { success, fail, header } from "../utils/display.js";
 import { DAEMON_URL } from "@devness/useai-storage/paths";
 import type { Session } from "@devness/useai-types";
 
-async function fetchAllSessions(start: string, end: string): Promise<Session[]> {
+async function fetchAllSessions(
+  start: string,
+  end: string,
+): Promise<Session[]> {
   const all: Session[] = [];
   let offset = 0;
   const limit = 50;
 
   while (true) {
-    const params = new URLSearchParams({ start, end, offset: String(offset), limit: String(limit) });
+    const params = new URLSearchParams({
+      start,
+      end,
+      offset: String(offset),
+      limit: String(limit),
+    });
     const res = await fetch(`${DAEMON_URL}/api/local/prompts?${params}`, {
       signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) throw new Error(`Daemon returned ${res.status}`);
-    const json = await res.json() as {
+    const json = (await res.json()) as {
       conversations: Array<{ sessions: Array<{ session: Session }> }>;
       has_more: boolean;
     };
@@ -37,13 +45,17 @@ async function fetchAllSessions(start: string, end: string): Promise<Session[]> 
 export function registerExport(program: Command): void {
   program
     .command("export")
-    .description("Export sessions to a file")
-    .option("-s, --scale <scale>", "Time scale: day, week, month, year, or rolling like 7d, 30d", "month")
+    .description("Export prompts to a file")
+    .option(
+      "-s, --scale <scale>",
+      "Time scale: day, week, month, year, or rolling like 7d, 30d",
+      "month",
+    )
     .option("-f, --format <fmt>", "Output format: json or csv", "json")
-    .option("-o, --out <file>",   "Output file path")
+    .option("-o, --out <file>", "Output file path")
     .action(async (opts: { scale: string; format: string; out?: string }) => {
       const { start, end, label: windowLabel } = getTimeWindow(opts.scale);
-      const format  = opts.format === "csv" ? "csv" : "json";
+      const format = opts.format === "csv" ? "csv" : "json";
       const defaultName = `useai-export-${new Date().toISOString().slice(0, 10)}.${format}`;
       const exportDir = join(homedir(), "Desktop", "useai-exports");
       const outFile = opts.out ?? join(exportDir, defaultName);
@@ -61,7 +73,8 @@ export function registerExport(program: Command): void {
 
       try {
         const rows = sessions.map(toExportRow);
-        const content = format === "csv" ? toCsv(sessions) : JSON.stringify(rows, null, 2);
+        const content =
+          format === "csv" ? toCsv(sessions) : JSON.stringify(rows, null, 2);
         writeFileSync(outFile, content, "utf-8");
         success(`Exported ${sessions.length} sessions → ${outFile}`);
       } catch (err) {
@@ -111,12 +124,14 @@ function toCsv(sessions: Session[]): string {
   const header = cols.join(",");
   const rows = sessions.map((s) => {
     const row = toExportRow(s);
-    return cols.map((c) => {
-      const v = row[c];
-      if (Array.isArray(v)) return v.join("|");
-      if (typeof v === "string") return `"${v.replace(/"/g, '""')}"`;
-      return v ?? "";
-    }).join(",");
+    return cols
+      .map((c) => {
+        const v = row[c];
+        if (Array.isArray(v)) return v.join("|");
+        if (typeof v === "string") return `"${v.replace(/"/g, '""')}"`;
+        return v ?? "";
+      })
+      .join(",");
   });
   return [header, ...rows].join("\n");
 }

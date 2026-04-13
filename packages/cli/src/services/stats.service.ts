@@ -1,4 +1,3 @@
-import { readSessionsForRange } from "@devness/useai-storage";
 import type { Session } from "@devness/useai-types";
 import { DAEMON_URL } from "@devness/useai-storage/paths";
 
@@ -156,7 +155,7 @@ export async function getSessions(days = 30): Promise<Session[]> {
       const json = await res.json() as { data: { sessions: Session[] } };
       return json.data.sessions;
     }
-  } catch { /* fall through */ }
-  return readSessionsForRange(days);
+  } catch { /* daemon unavailable */ }
+  return [];
 }
 

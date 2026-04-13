@@ -12,11 +12,26 @@ export async function saveConfig(config: UseaiConfig): Promise<void> {
   await writeJson(CONFIG_FILE, config);
 }
 
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...target };
+  for (const key of Object.keys(source)) {
+    const tv = target[key];
+    const sv = source[key];
+    if (tv && sv && typeof tv === "object" && typeof sv === "object" && !Array.isArray(tv) && !Array.isArray(sv)) {
+      result[key] = deepMerge(tv as Record<string, unknown>, sv as Record<string, unknown>);
+    } else {
+      result[key] = sv;
+    }
+  }
+  return result;
+}
+
 export async function patchConfig(
   patch: Partial<UseaiConfig>,
 ): Promise<UseaiConfig> {
   const current = await getConfig();
-  const updated = { ...current, ...patch };
-  await saveConfig(updated);
-  return updated;
+  const merged = deepMerge(current, patch);
+  const validated = UseaiConfigSchema.parse(merged);
+  await saveConfig(validated);
+  return validated;
 }

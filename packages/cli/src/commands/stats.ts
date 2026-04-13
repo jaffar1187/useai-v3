@@ -25,7 +25,7 @@ function formatRating(score: number): string {
 export function registerStats(program: Command): void {
   program
     .command("stats")
-    .description("Show session statistics")
+    .description("Show prompts statistics")
     .option(
       "-s, --scale <scale>",
       "Time scale: day, week, month, or rolling like 7d, 30d",
@@ -74,11 +74,25 @@ export function registerStats(program: Command): void {
           .filter(([key]) => key !== "other")
           .sort((a, b) => b[1] - a[1]);
         const visible = projectEntries.slice(0, MAX_PROJECTS);
-        const overflowClock = projectEntries.slice(MAX_PROJECTS).reduce((s, [, v]) => s + v, 0) + (stats.byProjectClock["other"] ?? 0);
-        const overflowAI = projectEntries.slice(MAX_PROJECTS).reduce((s, [k]) => s + (stats.byProject[k] ?? 0), 0) + (stats.byProject["other"] ?? 0);
-        const rows = visible.map(([k, v]) => [k, formatSeconds(v), formatSeconds(stats.byProject[k] ?? 0)]);
+        const overflowClock =
+          projectEntries.slice(MAX_PROJECTS).reduce((s, [, v]) => s + v, 0) +
+          (stats.byProjectClock["other"] ?? 0);
+        const overflowAI =
+          projectEntries
+            .slice(MAX_PROJECTS)
+            .reduce((s, [k]) => s + (stats.byProject[k] ?? 0), 0) +
+          (stats.byProject["other"] ?? 0);
+        const rows = visible.map(([k, v]) => [
+          k,
+          formatSeconds(v),
+          formatSeconds(stats.byProject[k] ?? 0),
+        ]);
         if (overflowClock > 0 || overflowAI > 0) {
-          rows.push(["other", formatSeconds(overflowClock), formatSeconds(overflowAI)]);
+          rows.push([
+            "other",
+            formatSeconds(overflowClock),
+            formatSeconds(overflowAI),
+          ]);
         }
         table(["Project", "clock", "ai"], rows);
       }
@@ -88,9 +102,12 @@ export function registerStats(program: Command): void {
         console.log();
         dim("Milestone complexity:");
         const total = simple + medium + complex;
-        label("simple", `${simple} (${Math.round(simple / total * 100)}%)`);
-        label("medium", `${medium} (${Math.round(medium / total * 100)}%)`);
-        label("complex", `${complex} (${Math.round(complex / total * 100)}%)`);
+        label("simple", `${simple} (${Math.round((simple / total) * 100)}%)`);
+        label("medium", `${medium} (${Math.round((medium / total) * 100)}%)`);
+        label(
+          "complex",
+          `${complex} (${Math.round((complex / total) * 100)}%)`,
+        );
       }
 
       if (Object.keys(stats.byClient).length > 0) {
@@ -98,7 +115,11 @@ export function registerStats(program: Command): void {
         dim("By tool:");
         const rows = Object.entries(stats.byClient)
           .sort((a, b) => b[1] - a[1])
-          .map(([k, v]) => [k, formatSeconds(v), formatSeconds(stats.byClientAI[k] ?? 0)]);
+          .map(([k, v]) => [
+            k,
+            formatSeconds(v),
+            formatSeconds(stats.byClientAI[k] ?? 0),
+          ]);
         table(["Tool", "clock", "ai"], rows);
       }
 
@@ -110,11 +131,25 @@ export function registerStats(program: Command): void {
           .filter(([key]) => key !== "other")
           .sort((a, b) => b[1] - a[1]);
         const visibleLangs = langEntries.slice(0, MAX_LANGS);
-        const langOverflowClock = langEntries.slice(MAX_LANGS).reduce((s, [, v]) => s + v, 0) + (stats.byLanguage["other"] ?? 0);
-        const langOverflowAI = langEntries.slice(MAX_LANGS).reduce((s, [k]) => s + (stats.byLanguageAI[k] ?? 0), 0) + (stats.byLanguageAI["other"] ?? 0);
-        const langRows = visibleLangs.map(([k, v]) => [k, formatSeconds(v), formatSeconds(stats.byLanguageAI[k] ?? 0)]);
+        const langOverflowClock =
+          langEntries.slice(MAX_LANGS).reduce((s, [, v]) => s + v, 0) +
+          (stats.byLanguage["other"] ?? 0);
+        const langOverflowAI =
+          langEntries
+            .slice(MAX_LANGS)
+            .reduce((s, [k]) => s + (stats.byLanguageAI[k] ?? 0), 0) +
+          (stats.byLanguageAI["other"] ?? 0);
+        const langRows = visibleLangs.map(([k, v]) => [
+          k,
+          formatSeconds(v),
+          formatSeconds(stats.byLanguageAI[k] ?? 0),
+        ]);
         if (langOverflowClock > 0 || langOverflowAI > 0) {
-          langRows.push(["other", formatSeconds(langOverflowClock), formatSeconds(langOverflowAI)]);
+          langRows.push([
+            "other",
+            formatSeconds(langOverflowClock),
+            formatSeconds(langOverflowAI),
+          ]);
         }
         table(["Language", "clock", "ai"], langRows);
       }
@@ -124,7 +159,11 @@ export function registerStats(program: Command): void {
         dim("By task type:");
         const rows = Object.entries(stats.byTaskType)
           .sort((a, b) => b[1] - a[1])
-          .map(([k, v]) => [k.replace(/_/g, "-"), formatSeconds(v), formatSeconds(stats.byTaskTypeAI[k] ?? 0)]);
+          .map(([k, v]) => [
+            k.replace(/_/g, "-"),
+            formatSeconds(v),
+            formatSeconds(stats.byTaskTypeAI[k] ?? 0),
+          ]);
         table(["Type", "clock", "ai"], rows);
       }
       console.log();

@@ -3,9 +3,7 @@ import { Command } from "commander";
 
 import { registerStats }      from "./commands/stats.js";
 import { registerStatus }     from "./commands/status.js";
-import { registerMilestones } from "./commands/milestones.js";
 import { registerExport }     from "./commands/export.js";
-import { registerPurge }      from "./commands/purge.js";
 import { registerServe }      from "./commands/serve.js";
 import { registerConfig }     from "./commands/config.js";
 import { registerLogin }      from "./commands/login.js";
@@ -31,9 +29,7 @@ program
 // Top-level commands
 registerStats(program);
 registerStatus(program);
-registerMilestones(program);
 registerExport(program);
-registerPurge(program);
 registerServe(program);
 registerConfig(program);
 registerLogin(program);
