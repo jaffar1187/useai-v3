@@ -205,7 +205,7 @@ function groupByDate(sessions: SanitizedSession[]): Map<string, SanitizedSession
 // Main sync
 // ---------------------------------------------------------------------------
 
-export async function syncSessions(
+export async function syncPrompts(
   token: string,
   sessions: Session[],
   config: UseaiConfig,

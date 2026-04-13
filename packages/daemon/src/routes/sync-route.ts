@@ -1,8 +1,42 @@
 import { Hono } from "hono";
-import { syncSessions } from "@devness/useai-cloud";
-import { getConfig, readSessionsForRange, readV1Sessions, patchConfig } from "@devness/useai-storage";
+import { syncPrompts } from "@devness/useai-cloud";
+import { getConfig, patchConfig } from "@devness/useai-storage";
+import { DAEMON_URL } from "@devness/useai-storage/paths";
+import type { Session } from "@devness/useai-types";
 
 export const syncRouteRoutes = new Hono();
+
+async function fetchAllPrompts(start: string, end: string): Promise<Session[]> {
+  const all: Session[] = [];
+  let offset = 0;
+  const limit = 50;
+
+  while (true) {
+    const params = new URLSearchParams({
+      start,
+      end,
+      offset: String(offset),
+      limit: String(limit),
+    });
+    const res = await fetch(`${DAEMON_URL}/api/local/prompts?${params}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error(`Daemon returned ${res.status}`);
+    const json = (await res.json()) as {
+      conversations: Array<{ sessions: Array<{ session: Session }> }>;
+      has_more: boolean;
+    };
+    for (const conv of json.conversations) {
+      for (const sg of conv.sessions) {
+        all.push(sg.session);
+      }
+    }
+    if (!json.has_more) break;
+    offset += limit;
+  }
+
+  return all;
+}
 
 syncRouteRoutes.post("/", async (c) => {
   const config = await getConfig();
@@ -10,14 +44,11 @@ syncRouteRoutes.post("/", async (c) => {
     return c.json({ ok: false, error: "Not authenticated" }, 401);
   }
   try {
-    const [sessions, v1Sessions] = await Promise.all([
-      readSessionsForRange(32),
-      readV1Sessions(),
-    ]);
+    const start = new Date(Date.now() - 180 * 86400000).toISOString();
+    const end = new Date().toISOString();
+    const sessions = await fetchAllPrompts(start, end);
 
-    // Sync all sessions (v3 + v1 both return Session type)
-    const allSessions = [...sessions, ...v1Sessions];
-    const result = await syncSessions(config.auth.token, allSessions, config);
+    const result = await syncPrompts(config.auth.token, sessions, config);
 
     if (result.synced > 0) {
       await patchConfig({ lastSyncAt: new Date().toISOString() });

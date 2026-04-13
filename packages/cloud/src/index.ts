@@ -9,7 +9,7 @@ export {
   CloudAuthError,
 } from "./auth.js";
 
-export { syncSessions, syncV1Sessions } from "./sync.js";
+export { syncPrompts, syncV1Sessions } from "./sync.js";
 
 export { fetchLeaderboard } from "./leaderboard.js";
 export type { FetchLeaderboardOptions } from "./leaderboard.js";
