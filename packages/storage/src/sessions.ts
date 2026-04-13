@@ -110,6 +110,7 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
   let client: string | undefined;
   let taskType: string | undefined;
   let seal: Record<string, unknown> | undefined;
+  let sealRecordSignature: string | undefined;
   const milestones: Record<string, unknown>[] = [];
 
   for (const line of lines) {
@@ -120,6 +121,7 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
         timestamp?: string;
         data: Record<string, unknown>;
         hash?: string;
+        signature?: string;
       };
 
       //There are 4 lines in every uuid.jsonl file:
@@ -136,6 +138,7 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
           typeof rawSeal === "string"
             ? (JSON.parse(rawSeal) as Record<string, unknown>)
             : (rawSeal as Record<string, unknown> | undefined);
+        sealRecordSignature = record.signature;
       } else if (record.type === "milestone") {
         milestones.push(record.data);
       }
@@ -165,6 +168,7 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
     privateTitle: (seal["private_title"] as string) ?? undefined,
     project: (seal["project"] as string) ?? undefined,
     model: (seal["model"] as string) ?? undefined,
+    prompt: (seal["prompt"] as string) ?? undefined,
     startedAt,
     endedAt,
     durationMs: durationSeconds * 1000,
@@ -175,7 +179,7 @@ function parseSealedChain(file: string, raw: string): SealedChainData | null {
     evaluation: seal["evaluation"] ?? undefined,
     prevHash: (seal["chain_start_hash"] as string) ?? "",
     hash: chainHash,
-    signature: (seal["seal_signature"] as string) ?? "",
+    signature: (seal["seal_signature"] as string) ?? sealRecordSignature ?? "",
     milestones: [],
     score: seal["score"] ?? undefined,
   };

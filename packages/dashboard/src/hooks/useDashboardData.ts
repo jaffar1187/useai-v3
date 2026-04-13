@@ -94,7 +94,17 @@ export function useDashboardData({
   }, [timeTravelTime, timeScale, setTimeScale]);
 
   // ── Compute window ─────────────────────────────────────────────────────
-  const effectiveTime = timeTravelTime ?? Date.now();
+  // For rolling scales, the window depends on Date.now(). To avoid
+  // recomputing the window (and re-firing the fetch effect) on every render,
+  // pin "now" to a tick that updates every 30s while live.
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (timeTravelTime !== null) return;
+    const id = setInterval(() => setNowTick(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, [timeTravelTime]);
+
+  const effectiveTime = timeTravelTime ?? nowTick;
   const { start: windowStart, end: windowEnd } = getTimeWindow(
     timeScale,
     effectiveTime,

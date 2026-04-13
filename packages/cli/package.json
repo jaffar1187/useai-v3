@@ -9,6 +9,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch --preserveWatchOutput",
+    "start": "node --env-file-if-exists=.env dist/index.js",
     "clean": "rm -rf dist"
   },
   "dependencies": {

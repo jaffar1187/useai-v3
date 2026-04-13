@@ -1,5 +1,7 @@
 import type { Command } from "commander";
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { getTimeWindow } from "../services/stats.service.js";
 import { success, fail, header } from "../utils/display.js";
 import { DAEMON_URL } from "@devness/useai-storage/paths";
@@ -42,7 +44,10 @@ export function registerExport(program: Command): void {
     .action(async (opts: { scale: string; format: string; out?: string }) => {
       const { start, end, label: windowLabel } = getTimeWindow(opts.scale);
       const format  = opts.format === "csv" ? "csv" : "json";
-      const outFile = opts.out ?? `useai-export-${new Date().toISOString().slice(0, 10)}.${format}`;
+      const defaultName = `useai-export-${new Date().toISOString().slice(0, 10)}.${format}`;
+      const exportDir = join(homedir(), "Desktop", "useai-exports");
+      const outFile = opts.out ?? join(exportDir, defaultName);
+      if (!opts.out) mkdirSync(exportDir, { recursive: true });
 
       header(`Export (${windowLabel})`);
 
@@ -55,7 +60,8 @@ export function registerExport(program: Command): void {
       }
 
       try {
-        const content = format === "csv" ? toCsv(sessions) : JSON.stringify(sessions, null, 2);
+        const rows = sessions.map(toExportRow);
+        const content = format === "csv" ? toCsv(sessions) : JSON.stringify(rows, null, 2);
         writeFileSync(outFile, content, "utf-8");
         success(`Exported ${sessions.length} sessions → ${outFile}`);
       } catch (err) {
@@ -65,21 +71,52 @@ export function registerExport(program: Command): void {
     });
 }
 
+function formatDuration(ms: number): string {
+  const totalSec = Math.round(ms / 1000);
+  if (totalSec < 60) return `${totalSec}s`;
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h${m}m`;
+  return `${m}m${s}s`;
+}
+
+function toExportRow(s: Session) {
+  const ev = s.evaluation;
+  return {
+    promptId: s.promptId,
+    prompt: s.prompt ?? "",
+    tool: s.client,
+    model: s.model ?? "",
+    taskType: s.taskType,
+    languages: s.languages ?? [],
+    startedAt: s.startedAt,
+    endedAt: s.endedAt,
+    duration: formatDuration(s.durationMs),
+    promptQuality: ev?.prompt_quality ?? null,
+    contextProvided: ev?.context_provided ?? null,
+    scopeQuality: ev?.scope_quality ?? null,
+    independenceLevel: ev?.independence_level ?? null,
+    taskOutcome: ev?.task_outcome ?? null,
+    iterationCount: ev?.iteration_count ?? null,
+    toolsLeveraged: ev?.tools_leveraged ?? null,
+    filesTouchedCount: s.filesTouchedCount ?? null,
+  };
+}
+
 function toCsv(sessions: Session[]): string {
-  const cols = ["promptId", "client", "taskType", "title", "startedAt", "endedAt", "durationMs", "score", "languages"];
+  if (sessions.length === 0) return "";
+  const first = toExportRow(sessions[0]!);
+  const cols = Object.keys(first) as (keyof ReturnType<typeof toExportRow>)[];
   const header = cols.join(",");
-  const rows = sessions.map((s) =>
-    [
-      s.promptId,
-      s.client,
-      s.taskType,
-      `"${(s.title ?? "").replace(/"/g, '""')}"`,
-      s.startedAt,
-      s.endedAt,
-      s.durationMs,
-      s.score ? Math.round(s.score.overall * 100) : "",
-      (s.languages ?? []).join("|"),
-    ].join(","),
-  );
+  const rows = sessions.map((s) => {
+    const row = toExportRow(s);
+    return cols.map((c) => {
+      const v = row[c];
+      if (Array.isArray(v)) return v.join("|");
+      if (typeof v === "string") return `"${v.replace(/"/g, '""')}"`;
+      return v ?? "";
+    }).join(",");
+  });
   return [header, ...rows].join("\n");
 }
