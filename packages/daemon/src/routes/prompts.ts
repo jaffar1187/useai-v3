@@ -5,7 +5,7 @@ import {
   readV1Sessions,
 } from "@devness/useai-storage";
 import {
-  groupSessionsWithMilestones,
+  groupPromptsWithMilestones,
   groupIntoConversations,
 } from "../lib/stats.js";
 
@@ -79,9 +79,6 @@ promptsRoutes.get("/", async (c) => {
     .filter((s) => !!s.endedAt && s.durationMs > 0)
     .filter((s) => !!s.hash && !!s.signature);
 
-  // Extract milestones from filtered sessions
-  const allMilestones: MilestoneSeal[] = windowFiltered.flatMap(toMilestones);
-
   // Apply filters
   let filtered = windowFiltered;
 
@@ -108,12 +105,16 @@ promptsRoutes.get("/", async (c) => {
     filtered = filtered.filter((s) => matchesSearch(s, searchTerm));
   }
 
-  // Dashboard's UI shows a nested hierarchy: Prompt header → Prompt → Milestones, so daemon sends it to save CPU on every render.
-  const sessionsWithMilestones = groupSessionsWithMilestones(
+  // Restructure milestones to latest useai version.
+  const enrichedMilestones: MilestoneSeal[] = filtered.flatMap(toMilestones);
+
+  //Restructured into {prompts, milestones} as expected by the dashboard, to save cpu wrt renders.
+  const promptsWithMilestones = groupPromptsWithMilestones(
     filtered,
-    allMilestones,
+    enrichedMilestones,
   );
-  const conversations = groupIntoConversations(sessionsWithMilestones);
+
+  const conversations = groupIntoConversations(promptsWithMilestones);
 
   // Paginate
   const total = conversations.length;

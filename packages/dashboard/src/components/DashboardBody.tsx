@@ -112,7 +112,7 @@ export function DashboardBody({
   onDeleteConversation,
   onDeleteMilestone,
   activeTab,
-  onActiveTabChange,
+  onActiveTabChange: _onActiveTabChange,
   aggregationsFetcher,
   promptsFetcher,
 }: DashboardBodyProps) {

@@ -347,15 +347,15 @@ export function filterMilestonesByWindow(
   });
 }
 
-export interface SessionGroup {
+export interface PromptGroup {
   session: SessionSeal;
   milestones: Milestone[];
 }
 
-/** A conversation is a group of sessions sharing the same conversation_id */
+/** A conversation is a group of prompts sharing the same connectionId */
 export interface ConversationGroup {
   conversationId: string | null;
-  sessions: SessionGroup[];
+  prompts: PromptGroup[];
   /** Aggregate evaluation across all sessions in the conversation */
   aggregateEval: AggregateEvaluation | null;
   totalDuration: number;
@@ -378,10 +378,10 @@ export interface AggregateEvaluation {
 }
 
 /** Group ALL sessions with their milestones attached (empty array if none) */
-export function groupSessionsWithMilestones(
+export function groupPromptsWithMilestones(
   sessions: SessionSeal[],
   milestones: Milestone[],
-): SessionGroup[] {
+): PromptGroup[] {
   const milestoneMap = new Map<string, Milestone[]>();
   for (const m of milestones) {
     const existing = milestoneMap.get(m.promptId);
@@ -392,7 +392,7 @@ export function groupSessionsWithMilestones(
     }
   }
 
-  const result: SessionGroup[] = sessions.map((session) => ({
+  const result: PromptGroup[] = sessions.map((session) => ({
     session,
     milestones: milestoneMap.get(session.promptId) ?? [],
   }));
@@ -404,7 +404,7 @@ export function groupSessionsWithMilestones(
 }
 
 /** Compute aggregate evaluation from multiple sessions */
-function computeAggregateEval(sessions: SessionGroup[]): AggregateEvaluation | null {
+function computeAggregateEval(sessions: PromptGroup[]): AggregateEvaluation | null {
   const withEval = sessions.filter((s) => s.session.evaluation);
   if (withEval.length === 0) return null;
 
@@ -437,10 +437,10 @@ function computeAggregateEval(sessions: SessionGroup[]): AggregateEvaluation | n
 
 /** Group sessions into conversations. Sessions without conversation_id are standalone. */
 export function groupIntoConversations(
-  sessionGroups: SessionGroup[],
+  sessionGroups: PromptGroup[],
 ): ConversationGroup[] {
-  const convMap = new Map<string, SessionGroup[]>();
-  const standalone: SessionGroup[] = [];
+  const convMap = new Map<string, PromptGroup[]>();
+  const standalone: PromptGroup[] = [];
 
   for (const sg of sessionGroups) {
     const convId = sg.session.conversationId;
@@ -458,21 +458,21 @@ export function groupIntoConversations(
 
   const result: ConversationGroup[] = [];
 
-  for (const [convId, sessions] of convMap) {
-    // Sort sessions within conversation: latest first (descending by end time)
-    sessions.sort((a, b) => parseTimestamp(b.session.endedAt) - parseTimestamp(a.session.endedAt));
+  for (const [connectionId, prompts] of convMap) {
+    // Sort prompts within conversation: latest first (descending by end time)
+    prompts.sort((a, b) => parseTimestamp(b.session.endedAt) - parseTimestamp(a.session.endedAt));
 
-    const totalDuration = sessions.reduce((sum, s) => sum + Math.round(s.session.durationMs / 1000), 0);
-    const totalMilestones = sessions.reduce((sum, s) => sum + s.milestones.length, 0);
-    // First element is now the latest session (descending order)
-    const startedAt = sessions[sessions.length - 1]!.session.startedAt;
-    const endedAt = sessions[0]!.session.endedAt;
-    const lastSessionAt = sessions[0]!.session.endedAt;
+    const totalDuration = prompts.reduce((sum, p) => sum + Math.round(p.session.durationMs / 1000), 0);
+    const totalMilestones = prompts.reduce((sum, p) => sum + p.milestones.length, 0);
+    // First element is now the latest prompt (descending order)
+    const startedAt = prompts[prompts.length - 1]!.session.startedAt;
+    const endedAt = prompts[0]!.session.endedAt;
+    const lastSessionAt = prompts[0]!.session.endedAt;
 
     result.push({
-      conversationId: convId,
-      sessions,
-      aggregateEval: computeAggregateEval(sessions),
+      conversationId: connectionId,
+      prompts,
+      aggregateEval: computeAggregateEval(prompts),
       totalDuration,
       totalMilestones,
       startedAt,
@@ -481,16 +481,16 @@ export function groupIntoConversations(
     });
   }
 
-  for (const sg of standalone) {
+  for (const pg of standalone) {
     result.push({
       conversationId: null,
-      sessions: [sg],
-      aggregateEval: sg.session.evaluation ? computeAggregateEval([sg]) : null,
-      totalDuration: Math.round(sg.session.durationMs / 1000),
-      totalMilestones: sg.milestones.length,
-      startedAt: sg.session.startedAt,
-      endedAt: sg.session.endedAt,
-      lastSessionAt: sg.session.endedAt,
+      prompts: [pg],
+      aggregateEval: pg.session.evaluation ? computeAggregateEval([pg]) : null,
+      totalDuration: Math.round(pg.session.durationMs / 1000),
+      totalMilestones: pg.milestones.length,
+      startedAt: pg.session.startedAt,
+      endedAt: pg.session.endedAt,
+      lastSessionAt: pg.session.endedAt,
     });
   }
 

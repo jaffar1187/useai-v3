@@ -119,7 +119,7 @@ export function SearchOverlay({ open, onClose, onDeleteSession, onDeleteConversa
   const highlightWords = hasQuery ? debouncedQuery.trim().toLowerCase().split(/\s+/) : [];
 
   // Count total sessions across all conversation groups
-  const sessionCount = results.reduce((sum, c) => sum + c.sessions.length, 0);
+  const sessionCount = results.reduce((sum, c) => sum + c.prompts.length, 0);
 
   return (
     <AnimatePresence>

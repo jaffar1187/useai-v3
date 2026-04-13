@@ -188,7 +188,7 @@ export interface DashboardResponse {
 
 export interface FeedConversation {
   conversationId: string | null;
-  sessions: Array<{
+  prompts: Array<{
     session: SessionSeal;
     milestones: Milestone[];
   }>;

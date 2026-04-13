@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Lock, Shield, Eye, EyeOff, Flag, FolderKanban, 
 import { motion, AnimatePresence } from 'motion/react';
 import type { SessionSeal, Milestone } from '../../lib/api';
 import type { Filters } from '../../lib/types';
-import { groupSessionsWithMilestones, groupIntoConversations } from '../../lib/stats';
+import { groupPromptsWithMilestones, groupIntoConversations } from '../../lib/stats';
 import type { ConversationGroup } from '../../lib/stats';
 import { SessionCard } from './SessionCard';
 import { DeleteButton } from '../DeleteButton';
@@ -67,11 +67,11 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [localShowPublic, setLocalShowPublic] = useState(false);
   const showPublic = globalShowPublic || localShowPublic;
-  const isSingle = group.sessions.length === 1;
+  const isSingle = group.prompts.length === 1;
 
   // For single-session conversations, just render the session card directly
   if (isSingle) {
-    const sg = group.sessions[0]!;
+    const sg = group.prompts[0]!;
     return (
       <SessionCard
         session={sg.session}
@@ -87,7 +87,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
   }
 
   // Multi-session conversation — show a wrapper
-  const client = resolveClient(group.sessions[0]!.session.client);
+  const client = resolveClient(group.prompts[0]!.session.client);
   const color = TOOL_COLORS[client] ?? '#91919a';
   const isCursor = client === 'cursor';
   const iconColor = isCursor ? 'var(--text-primary)' : color;
@@ -100,7 +100,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
   const avgScore = agg ? (agg.prompt_quality + agg.context_provided + agg.scope_quality + agg.independence_level) / 4 : 0;
 
   // Determine conversation titles from first (earliest) session
-  const firstSession = group.sessions[group.sessions.length - 1]!.session;
+  const firstSession = group.prompts[group.prompts.length - 1]!.session;
   const privateConvTitle = firstSession.privateTitle || firstSession.title || firstSession.project || 'Conversation';
   const publicConvTitle = firstSession.title || firstSession.project || 'Conversation';
   const hasPrivacyDifference = privateConvTitle !== publicConvTitle;
@@ -171,7 +171,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
               </div>
 
               <span className="text-[10px] font-bold text-accent/90 bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20 flex-shrink-0">
-                {group.sessions.length} prompts
+                {group.prompts.length} prompts
               </span>
 
             </div>
@@ -179,7 +179,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
             <div className="flex items-center gap-3.5 text-[11px] text-text-secondary font-medium">
               <span className="flex items-center gap-1.5" title="User time">
                 <User className="w-3 h-3 opacity-75" />
-                {formatDuration(computeCoveredSeconds(group.sessions.map(sg => sg.session)))}
+                {formatDuration(computeCoveredSeconds(group.prompts.map(sg => sg.session)))}
               </span>
               <span className="flex items-center gap-1.5" title="AI time">
                 <Bot className="w-3 h-3 opacity-75" />
@@ -264,7 +264,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
                 style={{ backgroundColor: `${color}25` }}
               />
               <div className="space-y-1 pl-10">
-                {group.sessions.map((sg) => (
+                {group.prompts.map((sg) => (
                   <div key={sg.session.promptId} className="relative">
                     {/* Dot on thread line */}
                     <div
@@ -334,7 +334,7 @@ export function SessionList({ sessions = [], milestones = [], preGrouped, filter
     const filteredMilestones = filters.category === 'all'
       ? milestones
       : milestones.filter((m) => m.category === filters.category);
-    const groups = groupSessionsWithMilestones(filtered, filteredMilestones);
+    const groups = groupPromptsWithMilestones(filtered, filteredMilestones);
     return groupIntoConversations(groups);
   }, [preGrouped, sessions, milestones, filters]);
 
@@ -423,7 +423,7 @@ export function SessionList({ sessions = [], milestones = [], preGrouped, filter
 
       {visible.map((conv) => (
         <ConversationCard
-          key={conv.conversationId ?? conv.sessions[0]!.session.promptId}
+          key={conv.conversationId ?? conv.prompts[0]!.session.promptId}
           group={conv}
           defaultExpanded={false}
           globalShowPublic={globalShowPublic}
