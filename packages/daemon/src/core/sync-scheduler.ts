@@ -21,12 +21,12 @@ async function fetchPrompts(days: number): Promise<Session[]> {
     });
     if (!res.ok) break;
     const json = await res.json() as {
-      conversations: Array<{ prompts: Array<{ session: Session }> }>;
+      conversations: Array<{ prompts: Array<{ prompt: Session }> }>;
       has_more: boolean;
     };
     for (const conv of json.conversations) {
-      for (const sg of conv.prompts) {
-        all.push(sg.session);
+      for (const pg of conv.prompts) {
+        all.push(pg.prompt);
       }
     }
     if (!json.has_more) break;

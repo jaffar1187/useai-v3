@@ -348,7 +348,7 @@ export function filterMilestonesByWindow(
 }
 
 export interface PromptGroup {
-  session: SessionSeal;
+  prompt: SessionSeal;
   milestones: Milestone[];
 }
 
@@ -379,7 +379,7 @@ export interface AggregateEvaluation {
 
 /** Group ALL sessions with their milestones attached (empty array if none) */
 export function groupPromptsWithMilestones(
-  sessions: SessionSeal[],
+  prompts: SessionSeal[],
   milestones: Milestone[],
 ): PromptGroup[] {
   const milestoneMap = new Map<string, Milestone[]>();
@@ -392,27 +392,27 @@ export function groupPromptsWithMilestones(
     }
   }
 
-  const result: PromptGroup[] = sessions.map((session) => ({
-    session,
-    milestones: milestoneMap.get(session.promptId) ?? [],
+  const result: PromptGroup[] = prompts.map((prompt) => ({
+    prompt: prompt,
+    milestones: milestoneMap.get(prompt.promptId) ?? [],
   }));
 
   // Sort by session end time, most recent first
-  result.sort((a, b) => parseTimestamp(b.session.endedAt) - parseTimestamp(a.session.endedAt));
+  result.sort((a, b) => parseTimestamp(b.prompt.endedAt) - parseTimestamp(a.prompt.endedAt));
 
   return result;
 }
 
 /** Compute aggregate evaluation from multiple sessions */
-function computeAggregateEval(sessions: PromptGroup[]): AggregateEvaluation | null {
-  const withEval = sessions.filter((s) => s.session.evaluation);
+function computeAggregateEval(prompts: PromptGroup[]): AggregateEvaluation | null {
+  const withEval = prompts.filter((p) => p.prompt.evaluation);
   if (withEval.length === 0) return null;
 
   let promptSum = 0, contextSum = 0, indepSum = 0, scopeSum = 0, toolsSum = 0, iterSum = 0;
   const outcomes: Record<string, number> = {};
 
-  for (const s of withEval) {
-    const e = s.session.evaluation!;
+  for (const p of withEval) {
+    const e = p.prompt.evaluation!;
     promptSum += e.prompt_quality;
     contextSum += e.context_provided;
     indepSum += e.independence_level;
@@ -442,17 +442,17 @@ export function groupIntoConversations(
   const convMap = new Map<string, PromptGroup[]>();
   const standalone: PromptGroup[] = [];
 
-  for (const sg of sessionGroups) {
-    const convId = sg.session.conversationId;
+  for (const pg of sessionGroups) {
+    const convId = pg.prompt.conversationId;
     if (convId) {
       const existing = convMap.get(convId);
       if (existing) {
-        existing.push(sg);
+        existing.push(pg);
       } else {
-        convMap.set(convId, [sg]);
+        convMap.set(convId, [pg]);
       }
     } else {
-      standalone.push(sg);
+      standalone.push(pg);
     }
   }
 
@@ -460,14 +460,14 @@ export function groupIntoConversations(
 
   for (const [connectionId, prompts] of convMap) {
     // Sort prompts within conversation: latest first (descending by end time)
-    prompts.sort((a, b) => parseTimestamp(b.session.endedAt) - parseTimestamp(a.session.endedAt));
+    prompts.sort((a, b) => parseTimestamp(b.prompt.endedAt) - parseTimestamp(a.prompt.endedAt));
 
-    const totalDuration = prompts.reduce((sum, p) => sum + Math.round(p.session.durationMs / 1000), 0);
+    const totalDuration = prompts.reduce((sum, p) => sum + Math.round(p.prompt.durationMs / 1000), 0);
     const totalMilestones = prompts.reduce((sum, p) => sum + p.milestones.length, 0);
     // First element is now the latest prompt (descending order)
-    const startedAt = prompts[prompts.length - 1]!.session.startedAt;
-    const endedAt = prompts[0]!.session.endedAt;
-    const lastSessionAt = prompts[0]!.session.endedAt;
+    const startedAt = prompts[prompts.length - 1]!.prompt.startedAt;
+    const endedAt = prompts[0]!.prompt.endedAt;
+    const lastSessionAt = prompts[0]!.prompt.endedAt;
 
     result.push({
       conversationId: connectionId,
@@ -485,12 +485,12 @@ export function groupIntoConversations(
     result.push({
       conversationId: null,
       prompts: [pg],
-      aggregateEval: pg.session.evaluation ? computeAggregateEval([pg]) : null,
-      totalDuration: Math.round(pg.session.durationMs / 1000),
+      aggregateEval: pg.prompt.evaluation ? computeAggregateEval([pg]) : null,
+      totalDuration: Math.round(pg.prompt.durationMs / 1000),
       totalMilestones: pg.milestones.length,
-      startedAt: pg.session.startedAt,
-      endedAt: pg.session.endedAt,
-      lastSessionAt: pg.session.endedAt,
+      startedAt: pg.prompt.startedAt,
+      endedAt: pg.prompt.endedAt,
+      lastSessionAt: pg.prompt.endedAt,
     });
   }
 

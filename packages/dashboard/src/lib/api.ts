@@ -189,7 +189,7 @@ export interface DashboardResponse {
 export interface FeedConversation {
   conversationId: string | null;
   prompts: Array<{
-    session: SessionSeal;
+    prompt: SessionSeal;
     milestones: Milestone[];
   }>;
   aggregateEval: {

@@ -71,12 +71,12 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
 
   // For single-session conversations, just render the session card directly
   if (isSingle) {
-    const sg = group.prompts[0]!;
+    const pg = group.prompts[0]!;
     return (
       <SessionCard
-        session={sg.session}
-        milestones={sg.milestones}
-        defaultExpanded={defaultExpanded && sg.milestones.length > 0}
+        session={pg.prompt}
+        milestones={pg.milestones}
+        defaultExpanded={defaultExpanded && pg.milestones.length > 0}
         externalShowPublic={globalShowPublic || undefined}
         showFullDate={showFullDate}
         highlightWords={highlightWords}
@@ -87,7 +87,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
   }
 
   // Multi-session conversation — show a wrapper
-  const client = resolveClient(group.prompts[0]!.session.client);
+  const client = resolveClient(group.prompts[0]!.prompt.client);
   const color = TOOL_COLORS[client] ?? '#91919a';
   const isCursor = client === 'cursor';
   const iconColor = isCursor ? 'var(--text-primary)' : color;
@@ -100,7 +100,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
   const avgScore = agg ? (agg.prompt_quality + agg.context_provided + agg.scope_quality + agg.independence_level) / 4 : 0;
 
   // Determine conversation titles from first (earliest) session
-  const firstSession = group.prompts[group.prompts.length - 1]!.session;
+  const firstSession = group.prompts[group.prompts.length - 1]!.prompt;
   const privateConvTitle = firstSession.privateTitle || firstSession.title || firstSession.project || 'Conversation';
   const publicConvTitle = firstSession.title || firstSession.project || 'Conversation';
   const hasPrivacyDifference = privateConvTitle !== publicConvTitle;
@@ -179,7 +179,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
             <div className="flex items-center gap-3.5 text-[11px] text-text-secondary font-medium">
               <span className="flex items-center gap-1.5" title="User time">
                 <User className="w-3 h-3 opacity-75" />
-                {formatDuration(computeCoveredSeconds(group.prompts.map(sg => sg.session)))}
+                {formatDuration(computeCoveredSeconds(group.prompts.map(pg => pg.prompt)))}
               </span>
               <span className="flex items-center gap-1.5" title="AI time">
                 <Bot className="w-3 h-3 opacity-75" />
@@ -264,16 +264,16 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
                 style={{ backgroundColor: `${color}25` }}
               />
               <div className="space-y-1 pl-10">
-                {group.prompts.map((sg) => (
-                  <div key={sg.session.promptId} className="relative">
+                {group.prompts.map((pg) => (
+                  <div key={pg.prompt.promptId} className="relative">
                     {/* Dot on thread line */}
                     <div
                       className="absolute -left-7 top-5 w-2 h-2 rounded-full border-2"
                       style={{ backgroundColor: color, borderColor: `${color}40` }}
                     />
                     <SessionCard
-                      session={sg.session}
-                      milestones={sg.milestones}
+                      session={pg.prompt}
+                      milestones={pg.milestones}
                       defaultExpanded={false}
                       externalShowPublic={showPublic || undefined}
                       hideClientAvatar
@@ -423,7 +423,7 @@ export function SessionList({ sessions = [], milestones = [], preGrouped, filter
 
       {visible.map((conv) => (
         <ConversationCard
-          key={conv.conversationId ?? conv.prompts[0]!.session.promptId}
+          key={conv.conversationId ?? conv.prompts[0]!.prompt.promptId}
           group={conv}
           defaultExpanded={false}
           globalShowPublic={globalShowPublic}

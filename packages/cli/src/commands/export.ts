@@ -27,12 +27,12 @@ async function fetchAllSessions(
     });
     if (!res.ok) throw new Error(`Daemon returned ${res.status}`);
     const json = (await res.json()) as {
-      conversations: Array<{ prompts: Array<{ session: Session }> }>;
+      conversations: Array<{ prompts: Array<{ prompt: Session }> }>;
       has_more: boolean;
     };
     for (const conv of json.conversations) {
-      for (const sg of conv.prompts) {
-        all.push(sg.session);
+      for (const pg of conv.prompts) {
+        all.push(pg.prompt);
       }
     }
     if (!json.has_more) break;

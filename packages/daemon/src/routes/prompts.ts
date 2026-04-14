@@ -108,7 +108,7 @@ promptsRoutes.get("/", async (c) => {
   // Restructure milestones to latest useai version.
   const enrichedMilestones: MilestoneSeal[] = filtered.flatMap(toMilestones);
 
-  //Restructured into {prompts, milestones} as expected by the dashboard, to save cpu wrt renders.
+  //Restructured into {prompts, milestones} as expected by the dashboard for separation of concerns.
   const promptsWithMilestones = groupPromptsWithMilestones(
     filtered,
     enrichedMilestones,
