@@ -13,7 +13,7 @@ interface SearchOverlayProps {
   open: boolean;
   onClose: () => void;
   onDeleteSession?: ((sessionId: string) => void) | undefined;
-  onDeleteConversation?: ((conversationId: string) => void) | undefined;
+  onDeleteConversation?: ((connectionId: string) => void) | undefined;
   onDeleteMilestone?: ((milestoneId: string) => void) | undefined;
 }
 

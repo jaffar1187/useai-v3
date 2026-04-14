@@ -33,7 +33,7 @@ export interface DashboardState {
   setFilter: (key: keyof Filters, value: string) => void;
   setActiveTab: (tab: ActiveTab) => void;
   deleteSession: (sessionId: string) => Promise<void>;
-  deleteConversation: (conversationId: string) => Promise<void>;
+  deleteConversation: (connectionId: string) => Promise<void>;
   deleteMilestone: (milestoneId: string) => Promise<void>;
 }
 
@@ -144,11 +144,11 @@ export const useDashboardStore = create<DashboardState>()(
         }
       },
 
-      deleteConversation: async (conversationId) => {
+      deleteConversation: async (connectionId) => {
         try {
-          await apiDeleteConversation(conversationId);
+          await apiDeleteConversation(connectionId);
         } catch (err) {
-          console.error("Failed to delete conversation:", conversationId, err);
+          console.error("Failed to delete conversation:", connectionId, err);
         }
       },
 

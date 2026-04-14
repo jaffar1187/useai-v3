@@ -97,7 +97,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
   const initials = TOOL_INITIALS[client] ?? client.slice(0, 2).toUpperCase();
   const iconPath = TOOL_ICONS[client];
   const agg = group.aggregateEval;
-  const avgScore = agg ? (agg.prompt_quality + agg.context_provided + agg.scope_quality + agg.independence_level) / 4 : 0;
+  const avgScore = agg ? (agg.promptQuality + agg.contextProvided + agg.scopeQuality + agg.independenceLevel) / 4 : 0;
 
   // Determine conversation titles from first (earliest) session
   const firstSession = group.prompts[group.prompts.length - 1]!.prompt;
@@ -183,7 +183,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
               </span>
               <span className="flex items-center gap-1.5" title="AI time">
                 <Bot className="w-3 h-3 opacity-75" />
-                {formatDuration(group.totalDuration)}
+                {formatDuration(group.aiTime)}
               </span>
 
               <span className="text-text-secondary/80 font-mono tracking-tight">
@@ -212,9 +212,9 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
 
         {/* Action strip */}
         <div className="flex items-center px-2.5 gap-1.5 border-l border-border/30 h-9 self-center">
-          {onDeleteConversation && group.conversationId && (
+          {onDeleteConversation && group.connectionId && (
             <DeleteButton
-              onDelete={() => onDeleteConversation(group.conversationId!)}
+              onDelete={() => onDeleteConversation(group.connectionId!)}
               className="opacity-0 group-hover/conv:opacity-100 focus-within:opacity-100"
             />
           )}
@@ -309,7 +309,7 @@ interface SessionListProps {
   onNavigateNewer?: (() => void) | undefined;
   onNavigateOlder?: (() => void) | undefined;
   onDeleteSession?: ((sessionId: string) => void) | undefined;
-  onDeleteConversation?: ((conversationId: string) => void) | undefined;
+  onDeleteConversation?: ((connectionId: string) => void) | undefined;
   onDeleteMilestone?: ((milestoneId: string) => void) | undefined;
   /** Called when user scrolls near the bottom — for server-side infinite scroll */
   onLoadMore?: (() => void) | undefined;
@@ -423,7 +423,7 @@ export function SessionList({ sessions = [], milestones = [], preGrouped, filter
 
       {visible.map((conv) => (
         <ConversationCard
-          key={conv.conversationId ?? conv.prompts[0]!.prompt.promptId}
+          key={conv.connectionId}
           group={conv}
           defaultExpanded={false}
           globalShowPublic={globalShowPublic}

@@ -73,7 +73,7 @@ export interface SessionEvaluation {
 
 export interface SessionSeal {
   promptId: string;
-  conversationId?: string;
+  connectionId?: string;
   conversationIndex?: number;
   client: string;
   taskType: string;
@@ -187,22 +187,20 @@ export interface DashboardResponse {
 }
 
 export interface FeedConversation {
-  conversationId: string | null;
+  connectionId: string;
   prompts: Array<{
     prompt: SessionSeal;
     milestones: Milestone[];
   }>;
   aggregateEval: {
-    prompt_quality: number;
-    context_provided: number;
-    independence_level: number;
-    scope_quality: number;
-    tools_leveraged: number;
-    total_iterations: number;
-    outcomes: Record<string, number>;
-    session_count: number;
+    promptQuality: number;
+    contextProvided: number;
+    independenceLevel: number;
+    scopeQuality: number;
+    toolsLeveraged: number;
+    promptCount: number;
   } | null;
-  totalDuration: number;
+  aiTime: number;
   totalMilestones: number;
   startedAt: string;
   endedAt: string;
@@ -322,13 +320,13 @@ export function deleteSession(sessionId: string): Promise<{
   return del(`/api/local/sessions/${encodeURIComponent(sessionId)}`);
 }
 
-export function deleteConversation(conversationId: string): Promise<{
+export function deleteConversation(connectionId: string): Promise<{
   deleted: boolean;
   conversation_id: string;
   sessions_removed: number;
   milestones_removed: number;
 }> {
-  return del(`/api/local/conversations/${encodeURIComponent(conversationId)}`);
+  return del(`/api/local/conversations/${encodeURIComponent(connectionId)}`);
 }
 
 export function deleteMilestone(

@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { ChevronDown, Clock, Lock, Shield, Eye, EyeOff, Flag, MessageSquare, FileText, Target, Compass, RefreshCw, Wrench, FolderKanban, Cpu, Image, Bot } from 'lucide-react';
+import { ChevronDown, Clock, Lock, Shield, Eye, EyeOff, Flag, MessageSquare, FileText, Target, Compass, RefreshCw, Wrench, FolderKanban, Cpu, Image, Bot, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { SessionSeal, Milestone, SessionEvaluation } from '../../lib/api';
 import { TOOL_COLORS, TOOL_INITIALS, TOOL_ICONS, CATEGORY_COLORS, TOOL_DISPLAY_NAMES, resolveClient } from '../../constants/tools';
@@ -137,11 +137,13 @@ function EvaluationDetail({
           <RefreshCw className="w-3 h-3 text-text-muted/50" />
           <span className="text-text-muted">Iterations</span>
           <span className="text-text-secondary font-mono font-bold ml-0.5">{evaluation.iteration_count}</span>
+          <span title="Number of follow-up prompts needed to complete this task." className="cursor-default"><Info className="w-2.5 h-2.5 text-text-muted/40" /></span>
         </div>
         <div className="flex items-center gap-1.5 text-[10px] whitespace-nowrap">
           <Wrench className="w-3 h-3 text-text-muted/50" />
           <span className="text-text-muted">Tools</span>
           <span className="text-text-secondary font-mono font-bold ml-0.5">{evaluation.tools_leveraged}</span>
+          <span title="Total tool calls made by the AI during this prompt." className="cursor-default"><Info className="w-2.5 h-2.5 text-text-muted/40" /></span>
         </div>
       </div>
 

@@ -251,7 +251,7 @@ export function SummaryChips({ stats, timeMode = 'user' }: SummaryChipsProps) {
     <>
       {clientSegments.length > 0 && (
         <DonutCard
-          title="Tools"
+          title="AI Tools"
           icon={<Monitor className="w-3.5 h-3.5 text-text-muted" />}
           segments={clientSegments}
         />
