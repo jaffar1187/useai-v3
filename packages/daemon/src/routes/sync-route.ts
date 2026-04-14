@@ -24,14 +24,14 @@ async function fetchAllPrompts(start: string, end: string): Promise<Session[]> {
     if (!res.ok) throw new Error(`Daemon returned ${res.status}`);
     const json = (await res.json()) as {
       conversations: Array<{ prompts: Array<{ prompt: Session }> }>;
-      has_more: boolean;
+      hasMore: boolean;
     };
     for (const conv of json.conversations) {
       for (const pg of conv.prompts) {
         all.push(pg.prompt);
       }
     }
-    if (!json.has_more) break;
+    if (!json.hasMore) break;
     offset += limit;
   }
 

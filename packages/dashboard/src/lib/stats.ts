@@ -243,7 +243,7 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
 
   // Completion rate from sessions with evaluations
   const evaluated = sessions.filter((s) => s.evaluation && typeof s.evaluation === 'object');
-  const completed = evaluated.filter((s) => s.evaluation!.task_outcome === 'completed').length;
+  const completed = evaluated.filter((s) => s.evaluation!.taskOutcome === 'completed').length;
   const completionRate = evaluated.length > 0 ? Math.round((completed / evaluated.length) * 100) : 0;
 
   // Active projects
@@ -409,11 +409,11 @@ function computeAggregateEval(prompts: PromptGroup[]): AggregateEvaluation | nul
   let promptSum = 0, contextSum = 0, indepSum = 0, scopeSum = 0, toolsSum = 0;
   for (const p of withEval) {
     const e = p.prompt.evaluation!;
-    promptSum += e.prompt_quality;
-    contextSum += e.context_provided;
-    indepSum += e.independence_level;
-    scopeSum += e.scope_quality;
-    toolsSum += e.tools_leveraged;
+    promptSum += e.promptQuality;
+    contextSum += e.contextProvided;
+    indepSum += e.independenceLevel;
+    scopeSum += e.scopeQuality;
+    toolsSum += e.toolsLeveraged;
   }
 
   const n = withEval.length;

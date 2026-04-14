@@ -141,7 +141,7 @@ export function useDashboardData({
     })
       .then((data) => {
         setFeedConversations(data.conversations);
-        setFeedHasMore(data.has_more);
+        setFeedHasMore(data.hasMore);
         setFeedLoading(false);
       })
       .catch(() => setFeedLoading(false));
@@ -161,7 +161,7 @@ export function useDashboardData({
     })
       .then((data) => {
         setFeedConversations((prev) => [...prev, ...data.conversations]);
-        setFeedHasMore(data.has_more);
+        setFeedHasMore(data.hasMore);
         setFeedLoading(false);
       })
       .catch(() => setFeedLoading(false));

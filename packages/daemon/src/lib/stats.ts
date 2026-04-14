@@ -484,16 +484,17 @@ export function computeAggregateEval(
     scopeSum = 0,
     toolsSum = 0;
   for (const p of withEval) {
-    const e = p.prompt.evaluation!;
-    promptSum += e.prompt_quality;
-    contextSum += e.context_provided;
-    indepSum += e.independence_level;
-    scopeSum += e.scope_quality;
-    toolsSum += e.tools_leveraged;
+    const e = p.prompt.evaluation as unknown as Record<string, number>;
+    promptSum += e["promptQuality"] ?? e["prompt_quality"] ?? 0;
+    contextSum += e["contextProvided"] ?? e["context_provided"] ?? 0;
+    indepSum += e["independenceLevel"] ?? e["independence_level"] ?? 0;
+    scopeSum += e["scopeQuality"] ?? e["scope_quality"] ?? 0;
+    toolsSum += e["toolsLeveraged"] ?? e["tools_leveraged"] ?? 0;
   }
 
   const n = withEval.length;
   return {
+    //For rounding we are using 10 logic, scale is still 1-5
     promptQuality: Math.round((promptSum / n) * 10) / 10,
     contextProvided: Math.round((contextSum / n) * 10) / 10,
     independenceLevel: Math.round((indepSum / n) * 10) / 10,

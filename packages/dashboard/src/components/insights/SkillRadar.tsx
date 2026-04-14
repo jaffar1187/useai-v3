@@ -56,16 +56,16 @@ export function SkillRadar({ sessions, milestones }: SkillRadarProps) {
     const evaluated = sessions.filter((s) => s.evaluation != null);
 
     // 1. Completion Rate — % completed
-    const completed = evaluated.filter((s) => s.evaluation!.task_outcome === 'completed').length;
+    const completed = evaluated.filter((s) => s.evaluation!.taskOutcome === 'completed').length;
     const completionPct = evaluated.length > 0 ? completed / evaluated.length : 0;
 
     // 2. First-Try Rate — % done in 1 iteration
-    const firstTry = evaluated.filter((s) => s.evaluation!.iteration_count === 1).length;
+    const firstTry = evaluated.filter((s) => s.evaluation!.iterationCount === 1).length;
     const firstTryPct = evaluated.length > 0 ? firstTry / evaluated.length : 0;
 
     // 3. Efficiency — inverted avg iterations (1 iter = 100%, 5+ iter = 0%)
     const avgIter = evaluated.length > 0
-      ? evaluated.reduce((sum, s) => sum + s.evaluation!.iteration_count, 0) / evaluated.length
+      ? evaluated.reduce((sum, s) => sum + s.evaluation!.iterationCount, 0) / evaluated.length
       : 1;
     const efficiency = Math.max(0, Math.min(1, (5 - avgIter) / 4));
 

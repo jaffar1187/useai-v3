@@ -2,10 +2,10 @@ import { motion } from 'motion/react';
 import { Lightbulb } from 'lucide-react';
 
 interface EvaluationAverages {
-  prompt_quality: number;
-  context_provided: number;
-  scope_quality: number;
-  independence_level: number;
+  promptQuality: number;
+  contextProvided: number;
+  scopeQuality: number;
+  independenceLevel: number;
 }
 
 interface ImprovementTipsProps {
@@ -22,51 +22,51 @@ interface Tip {
 function generateTips(evaluation: EvaluationAverages): Tip[] {
   const tips: Tip[] = [];
 
-  if (evaluation.prompt_quality < 4) {
+  if (evaluation.promptQuality < 4) {
     tips.push({
       metric: 'Prompt Quality',
-      score: evaluation.prompt_quality,
-      priority: (4 - evaluation.prompt_quality) * 0.30,
+      score: evaluation.promptQuality,
+      priority: (4 - evaluation.promptQuality) * 0.30,
       message:
-        evaluation.prompt_quality < 3
-          ? `Your prompt_quality score averages ${evaluation.prompt_quality.toFixed(1)}. Try including acceptance criteria and specific expected behavior in your prompts.`
-          : `Your prompt_quality score averages ${evaluation.prompt_quality.toFixed(1)}. Adding edge cases and constraints to your prompts could push this higher.`,
+        evaluation.promptQuality < 3
+          ? `Your prompt quality score averages ${evaluation.promptQuality.toFixed(1)}. Try including acceptance criteria and specific expected behavior in your prompts.`
+          : `Your prompt quality score averages ${evaluation.promptQuality.toFixed(1)}. Adding edge cases and constraints to your prompts could push this higher.`,
     });
   }
 
-  if (evaluation.context_provided < 4) {
+  if (evaluation.contextProvided < 4) {
     tips.push({
       metric: 'Context',
-      score: evaluation.context_provided,
-      priority: (4 - evaluation.context_provided) * 0.25,
+      score: evaluation.contextProvided,
+      priority: (4 - evaluation.contextProvided) * 0.25,
       message:
-        evaluation.context_provided < 3
-          ? `Try providing more file context -- your context_provided score averages ${evaluation.context_provided.toFixed(1)}. Share relevant files, error logs, and constraints upfront.`
-          : `Your context_provided score averages ${evaluation.context_provided.toFixed(1)}. Including related config files or architecture notes could help.`,
+        evaluation.contextProvided < 3
+          ? `Try providing more file context -- your context score averages ${evaluation.contextProvided.toFixed(1)}. Share relevant files, error logs, and constraints upfront.`
+          : `Your context score averages ${evaluation.contextProvided.toFixed(1)}. Including related config files or architecture notes could help.`,
     });
   }
 
-  if (evaluation.scope_quality < 4) {
+  if (evaluation.scopeQuality < 4) {
     tips.push({
       metric: 'Scope',
-      score: evaluation.scope_quality,
-      priority: (4 - evaluation.scope_quality) * 0.20,
+      score: evaluation.scopeQuality,
+      priority: (4 - evaluation.scopeQuality) * 0.20,
       message:
-        evaluation.scope_quality < 3
-          ? `Your scope_quality averages ${evaluation.scope_quality.toFixed(1)}. Try breaking large tasks into focused, well-defined subtasks before starting.`
-          : `Your scope_quality averages ${evaluation.scope_quality.toFixed(1)}. Defining clear boundaries for what is in and out of scope could improve efficiency.`,
+        evaluation.scopeQuality < 3
+          ? `Your scope quality averages ${evaluation.scopeQuality.toFixed(1)}. Try breaking large tasks into focused, well-defined subtasks before starting.`
+          : `Your scope quality averages ${evaluation.scopeQuality.toFixed(1)}. Defining clear boundaries for what is in and out of scope could improve efficiency.`,
     });
   }
 
-  if (evaluation.independence_level < 4) {
+  if (evaluation.independenceLevel < 4) {
     tips.push({
       metric: 'Independence',
-      score: evaluation.independence_level,
-      priority: (4 - evaluation.independence_level) * 0.25,
+      score: evaluation.independenceLevel,
+      priority: (4 - evaluation.independenceLevel) * 0.25,
       message:
-        evaluation.independence_level < 3
-          ? `Your independence_level averages ${evaluation.independence_level.toFixed(1)}. Providing a clear spec with decisions made upfront can reduce back-and-forth.`
-          : `Your independence_level averages ${evaluation.independence_level.toFixed(1)}. Pre-deciding ambiguous choices in your prompt can help the AI execute autonomously.`,
+        evaluation.independenceLevel < 3
+          ? `Your independence level averages ${evaluation.independenceLevel.toFixed(1)}. Providing a clear spec with decisions made upfront can reduce back-and-forth.`
+          : `Your independence level averages ${evaluation.independenceLevel.toFixed(1)}. Pre-deciding ambiguous choices in your prompt can help the AI execute autonomously.`,
     });
   }
 

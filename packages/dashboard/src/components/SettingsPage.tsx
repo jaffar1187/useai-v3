@@ -286,8 +286,8 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
                 description="Numeric ratings for each prompt."
                 checked={draft.capture.evaluation}
                 onChange={(v) => setCapture({ evaluation: v })}
-                info={['prompt_quality', 'context_provided', 'scope_quality', 'independence_level', 'task_outcome', 'iteration_count', 'tools_leveraged']}
-                example="prompt_quality: 4, task_outcome: completed"
+                info={['promptQuality', 'contextProvided', 'scopeQuality', 'independenceLevel', 'taskOutcome', 'iterationCount', 'toolsLeveraged']}
+                example="promptQuality: 4, taskOutcome: completed"
               />
               <SettingToggle
                 label="Milestones"
@@ -309,7 +309,7 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
                 label="Evaluation reasons"
                 description="Text explaining why each score was given."
                 value={draft.capture.evaluation_reasons}
-                info={['prompt_quality_reason', 'context_provided_reason', 'scope_quality_reason', 'independence_level_reason', 'task_outcome_reason', '*_ideal — what would make each score 5/5 (calibrated only)']}
+                info={['promptQualityReason', 'contextProvidedReason', 'scopeQualityReason', 'independenceLevelReason', 'taskOutcomeReason', '*Ideal — what would make each score 5/5 (calibrated only)']}
                 example='"Clear question but missing file context"'
                 options={[
                   { value: 'all', label: 'All scores' },

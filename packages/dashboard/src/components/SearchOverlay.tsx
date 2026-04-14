@@ -87,7 +87,7 @@ export function SearchOverlay({ open, onClose, onDeleteSession, onDeleteConversa
       .then((data) => {
         setResults(data.conversations);
         setTotalResults(data.total);
-        setHasMore(data.has_more);
+        setHasMore(data.hasMore);
         setLoading(false);
       })
       .catch(() => {
@@ -109,7 +109,7 @@ export function SearchOverlay({ open, onClose, onDeleteSession, onDeleteConversa
     })
       .then((data) => {
         setResults((prev) => [...prev, ...data.conversations]);
-        setHasMore(data.has_more);
+        setHasMore(data.hasMore);
         setLoading(false);
       })
       .catch(() => setLoading(false));

@@ -13,6 +13,28 @@ export const promptsRoutes = new Hono();
 
 // --- Conversion helpers ---
 
+function toCamelEvaluation(ev: NonNullable<Session["evaluation"]>) {
+  return {
+    promptQuality: ev.prompt_quality,
+    ...(ev.prompt_quality_reason && { promptQualityReason: ev.prompt_quality_reason }),
+    ...(ev.prompt_quality_ideal && { promptQualityIdeal: ev.prompt_quality_ideal }),
+    contextProvided: ev.context_provided,
+    ...(ev.context_provided_reason && { contextProvidedReason: ev.context_provided_reason }),
+    ...(ev.context_provided_ideal && { contextProvidedIdeal: ev.context_provided_ideal }),
+    scopeQuality: ev.scope_quality,
+    ...(ev.scope_quality_reason && { scopeQualityReason: ev.scope_quality_reason }),
+    ...(ev.scope_quality_ideal && { scopeQualityIdeal: ev.scope_quality_ideal }),
+    independenceLevel: ev.independence_level,
+    ...(ev.independence_level_reason && { independenceLevelReason: ev.independence_level_reason }),
+    ...(ev.independence_level_ideal && { independenceLevelIdeal: ev.independence_level_ideal }),
+    taskOutcome: ev.task_outcome,
+    ...(ev.task_outcome_reason && { taskOutcomeReason: ev.task_outcome_reason }),
+    ...(ev.task_outcome_ideal && { taskOutcomeIdeal: ev.task_outcome_ideal }),
+    iterationCount: ev.iteration_count,
+    toolsLeveraged: ev.tools_leveraged,
+  };
+}
+
 function toMilestones(s: Session) {
   return (s.milestones ?? []).map((m) => ({
     id: m.id,
@@ -105,12 +127,18 @@ promptsRoutes.get("/", async (c) => {
     filtered = filtered.filter((s) => matchesSearch(s, searchTerm));
   }
 
+  // Convert evaluation to camelCase for API response
+  const camelFiltered = filtered.map((s) => ({
+    ...s,
+    evaluation: s.evaluation ? toCamelEvaluation(s.evaluation) : undefined,
+  })) as unknown as Session[];
+
   // Restructure milestones to latest useai version.
-  const enrichedMilestones: MilestoneSeal[] = filtered.flatMap(toMilestones);
+  const enrichedMilestones: MilestoneSeal[] = camelFiltered.flatMap(toMilestones);
 
   //Restructured into {prompts, milestones} as expected by the dashboard for separation of concerns.
   const promptsWithMilestones = groupPromptsWithMilestones(
-    filtered,
+    camelFiltered,
     enrichedMilestones,
   );
 
@@ -123,6 +151,6 @@ promptsRoutes.get("/", async (c) => {
   return c.json({
     total,
     conversations: paginated,
-    has_more: offset + limit < total,
+    hasMore: offset + limit < total,
   });
 });

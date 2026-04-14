@@ -78,8 +78,8 @@ function generateInsights(
   const prevHours = totalHours(prevSessions);
 
   // 1. Evaluation improvement trend
-  const currentPQ = avgEval(sessions, 'prompt_quality');
-  const prevPQ = avgEval(prevSessions, 'prompt_quality');
+  const currentPQ = avgEval(sessions, 'promptQuality');
+  const prevPQ = avgEval(prevSessions, 'promptQuality');
   if (currentPQ !== null && prevPQ !== null && currentPQ > prevPQ + 0.3) {
     insights.push({
       priority: 10,
@@ -127,7 +127,7 @@ function generateInsights(
   // 4. One-shot efficiency
   const evaluated = sessions.filter((s) => s.evaluation != null);
   const oneShot = evaluated.filter(
-    (s) => s.evaluation!.task_outcome === 'completed' && s.evaluation!.iteration_count <= 3,
+    (s) => s.evaluation!.taskOutcome === 'completed' && s.evaluation!.iterationCount <= 3,
   );
   if (evaluated.length >= 3 && oneShot.length > 0) {
     const pct = Math.round((oneShot.length / evaluated.length) * 100);
@@ -196,7 +196,7 @@ function generateInsights(
   }
 
   // 7. Context score insight
-  const currentCtx = avgEval(sessions, 'context_provided');
+  const currentCtx = avgEval(sessions, 'contextProvided');
   if (currentCtx !== null && currentCtx < 3.5) {
     insights.push({
       priority: 4,
@@ -211,7 +211,7 @@ function generateInsights(
 
   // 8. Completion rate
   if (evaluated.length >= 3) {
-    const completed = evaluated.filter((s) => s.evaluation!.task_outcome === 'completed').length;
+    const completed = evaluated.filter((s) => s.evaluation!.taskOutcome === 'completed').length;
     const rate = Math.round((completed / evaluated.length) * 100);
     if (rate === 100) {
       insights.push({

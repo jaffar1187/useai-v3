@@ -16,7 +16,7 @@ export interface EvaluationFramework {
 
 const rubrics: DimensionRubric[] = [
   {
-    dimension: "prompt_quality",
+    dimension: "promptQuality",
     label: "Prompt Quality",
     spaceMapping: "Communication",
     weight: 0.3,
@@ -29,7 +29,7 @@ const rubrics: DimensionRubric[] = [
     },
   },
   {
-    dimension: "context_provided",
+    dimension: "contextProvided",
     label: "Context Provided",
     spaceMapping: "Communication",
     weight: 0.25,
@@ -42,7 +42,7 @@ const rubrics: DimensionRubric[] = [
     },
   },
   {
-    dimension: "independence_level",
+    dimension: "independenceLevel",
     label: "Independence Level",
     spaceMapping: "Efficiency",
     weight: 0.25,
@@ -55,7 +55,7 @@ const rubrics: DimensionRubric[] = [
     },
   },
   {
-    dimension: "scope_quality",
+    dimension: "scopeQuality",
     label: "Scope Quality",
     spaceMapping: "Performance",
     weight: 0.2,

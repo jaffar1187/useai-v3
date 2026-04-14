@@ -52,23 +52,23 @@ async function del<T>(path: string): Promise<T> {
 // ── Data endpoints ───────────────────────────────────────────────────────────
 
 export interface SessionEvaluation {
-  prompt_quality: number;
-  prompt_quality_reason?: string;
-  prompt_quality_ideal?: string;
-  context_provided: number;
-  context_provided_reason?: string;
-  context_provided_ideal?: string;
-  task_outcome: "completed" | "partial" | "abandoned" | "blocked";
-  task_outcome_reason?: string;
-  task_outcome_ideal?: string;
-  iteration_count: number;
-  independence_level: number;
-  independence_level_reason?: string;
-  independence_level_ideal?: string;
-  scope_quality: number;
-  scope_quality_reason?: string;
-  scope_quality_ideal?: string;
-  tools_leveraged: number;
+  promptQuality: number;
+  promptQualityReason?: string;
+  promptQualityIdeal?: string;
+  contextProvided: number;
+  contextProvidedReason?: string;
+  contextProvidedIdeal?: string;
+  taskOutcome: "completed" | "partial" | "abandoned" | "blocked";
+  taskOutcomeReason?: string;
+  taskOutcomeIdeal?: string;
+  iterationCount: number;
+  independenceLevel: number;
+  independenceLevelReason?: string;
+  independenceLevelIdeal?: string;
+  scopeQuality: number;
+  scopeQualityReason?: string;
+  scopeQualityIdeal?: string;
+  toolsLeveraged: number;
 }
 
 export interface SessionSeal {
@@ -210,7 +210,7 @@ export interface FeedConversation {
 export interface FeedResponse {
   total: number;
   conversations: FeedConversation[];
-  has_more: boolean;
+  hasMore: boolean;
 }
 
 export function fetchAggregations(

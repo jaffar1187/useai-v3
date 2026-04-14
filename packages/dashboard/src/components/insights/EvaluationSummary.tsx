@@ -36,11 +36,11 @@ export function EvaluationSummary({ sessions }: EvaluationSummaryProps) {
 
     for (const s of evaluated) {
       const ev = s.evaluation!;
-      promptQualitySum += ev.prompt_quality;
-      contextSum += ev.context_provided;
-      independenceSum += ev.independence_level;
-      scopeSum += ev.scope_quality;
-      iterationSum += ev.iteration_count;
+      promptQualitySum += ev.promptQuality;
+      contextSum += ev.contextProvided;
+      independenceSum += ev.independenceLevel;
+      scopeSum += ev.scopeQuality;
+      iterationSum += ev.iterationCount;
     }
 
     const n = evaluated.length;

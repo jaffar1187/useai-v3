@@ -62,7 +62,7 @@ function CategoryBadge({ category }: { category: string }) {
 }
 
 function computeAvgScore(ev: SessionEvaluation): number {
-  return (ev.prompt_quality + ev.context_provided + ev.scope_quality + ev.independence_level) / 4;
+  return (ev.promptQuality + ev.contextProvided + ev.scopeQuality + ev.independenceLevel) / 4;
 }
 
 function scoreColorClass(score: number): string {
@@ -108,13 +108,13 @@ function EvaluationDetail({
 }) {
   const hasMeta = !!model;
   const metrics = [
-    { label: 'Prompt', value: evaluation.prompt_quality, reason: evaluation.prompt_quality_reason, ideal: evaluation.prompt_quality_ideal, Icon: MessageSquare },
-    { label: 'Context', value: evaluation.context_provided, reason: evaluation.context_provided_reason, ideal: evaluation.context_provided_ideal, Icon: FileText },
-    { label: 'Scope', value: evaluation.scope_quality, reason: evaluation.scope_quality_reason, ideal: evaluation.scope_quality_ideal, Icon: Target },
-    { label: 'Independence', value: evaluation.independence_level, reason: evaluation.independence_level_reason, ideal: evaluation.independence_level_ideal, Icon: Compass },
+    { label: 'Prompt', value: evaluation.promptQuality, reason: evaluation.promptQualityReason, ideal: evaluation.promptQualityIdeal, Icon: MessageSquare },
+    { label: 'Context', value: evaluation.contextProvided, reason: evaluation.contextProvidedReason, ideal: evaluation.contextProvidedIdeal, Icon: FileText },
+    { label: 'Scope', value: evaluation.scopeQuality, reason: evaluation.scopeQualityReason, ideal: evaluation.scopeQualityIdeal, Icon: Target },
+    { label: 'Independence', value: evaluation.independenceLevel, reason: evaluation.independenceLevelReason, ideal: evaluation.independenceLevelIdeal, Icon: Compass },
   ];
 
-  const hasReasons = metrics.some(m => m.reason) || evaluation.task_outcome_reason;
+  const hasReasons = metrics.some(m => m.reason) || evaluation.taskOutcomeReason;
 
   return (
     <div className="px-2.5 py-2 bg-bg-surface-2/30 rounded-md mb-2">
@@ -136,13 +136,13 @@ function EvaluationDetail({
         <div className="flex items-center gap-1.5 text-[10px] whitespace-nowrap">
           <RefreshCw className="w-3 h-3 text-text-muted/50" />
           <span className="text-text-muted">Iterations</span>
-          <span className="text-text-secondary font-mono font-bold ml-0.5">{evaluation.iteration_count}</span>
+          <span className="text-text-secondary font-mono font-bold ml-0.5">{evaluation.iterationCount}</span>
           <span title="Number of follow-up prompts needed to complete this task." className="cursor-default"><Info className="w-2.5 h-2.5 text-text-muted/40" /></span>
         </div>
         <div className="flex items-center gap-1.5 text-[10px] whitespace-nowrap">
           <Wrench className="w-3 h-3 text-text-muted/50" />
           <span className="text-text-muted">Tools</span>
-          <span className="text-text-secondary font-mono font-bold ml-0.5">{evaluation.tools_leveraged}</span>
+          <span className="text-text-secondary font-mono font-bold ml-0.5">{evaluation.toolsLeveraged}</span>
           <span title="Total tool calls made by the AI during this prompt." className="cursor-default"><Info className="w-2.5 h-2.5 text-text-muted/40" /></span>
         </div>
       </div>
@@ -163,15 +163,15 @@ function EvaluationDetail({
                 </div>
               </div>
             ))}
-            {(evaluation.task_outcome_reason || evaluation.task_outcome_ideal) && (
+            {(evaluation.taskOutcomeReason || evaluation.taskOutcomeIdeal) && (
               <>
                 <div className="col-span-2 border-t border-border/15 mt-0.5 mb-0.5" />
                 <span className="text-text-secondary font-bold text-right">Outcome:</span>
                 <div>
-                  {evaluation.task_outcome_reason && <span className="text-text-secondary leading-relaxed">{evaluation.task_outcome_reason}</span>}
-                  {evaluation.task_outcome_ideal && (
+                  {evaluation.taskOutcomeReason && <span className="text-text-secondary leading-relaxed">{evaluation.taskOutcomeReason}</span>}
+                  {evaluation.taskOutcomeIdeal && (
                     <div className="text-amber-500/80 leading-relaxed mt-0.5">
-                      <span className="text-[9px]">Ideal: {evaluation.task_outcome_ideal}</span>
+                      <span className="text-[9px]">Ideal: {evaluation.taskOutcomeIdeal}</span>
                     </div>
                   )}
                 </div>
