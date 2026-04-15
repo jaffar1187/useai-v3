@@ -145,13 +145,13 @@ export function computeMilestoneStats(milestones: Milestone[]): {
  * [startedAt, startedAt + durationMs] for older sessions.
  */
 export function computeClockTimeBreakdown(
-  sessions: Session[],
+  prompts: Session[],
   getKeys: (s: Session) => string[],
 ): Record<string, number> {
   type Event = { time: number; key: string; delta: 1 | -1 };
   const events: Event[] = [];
 
-  for (const s of sessions) {
+  for (const s of prompts) {
     const keys = getKeys(s);
     if (keys.length === 0) continue;
 
@@ -215,7 +215,7 @@ export function computeClockTimeBreakdown(
 // ── Main computeStats ─────────────────────────────────────────────────────────
 
 export function computeStats(
-  sessions: Session[],
+  prompts: Session[],
   milestones: Milestone[] = [],
 ): ComputedStats {
   let totalSeconds = 0;
@@ -225,7 +225,7 @@ export function computeStats(
   const byLanguageAI: Record<string, number> = {};
   const byTaskTypeAI: Record<string, number> = {};
 
-  for (const s of sessions) {
+  for (const s of prompts) {
     const durSec = durationSec(s);
     totalSeconds += durSec;
     filesTouched += s.filesTouchedCount ?? 0;
@@ -248,13 +248,13 @@ export function computeStats(
   }
 
   // Clock-time breakdowns via sweep-line (uses activeSegments, falls back to durationMs)
-  const byClient = computeClockTimeBreakdown(sessions, (s) => [s.client]);
-  const byLanguage = computeClockTimeBreakdown(sessions, (s) => {
+  const byClient = computeClockTimeBreakdown(prompts, (s) => [s.client]);
+  const byLanguage = computeClockTimeBreakdown(prompts, (s) => {
     const langs = (s.languages ?? []).map((l) => l.toLowerCase());
     return langs.length > 0 ? langs : ["other"];
   });
-  const byTaskType = computeClockTimeBreakdown(sessions, (s) => [s.taskType]);
-  const byProjectClock = computeClockTimeBreakdown(sessions, (s) => [
+  const byTaskType = computeClockTimeBreakdown(prompts, (s) => [s.taskType]);
+  const byProjectClock = computeClockTimeBreakdown(prompts, (s) => [
     s.project || "other",
   ]);
 
@@ -264,12 +264,12 @@ export function computeStats(
   let aiMultiplier = 0;
   let peakConcurrency = 0;
 
-  if (sessions.length > 0) {
+  if (prompts.length > 0) {
     let minStart = Infinity;
     let maxEnd = -Infinity;
     const events: { time: number; delta: number }[] = [];
 
-    for (const s of sessions) {
+    for (const s of prompts) {
       const sStart = parseTimestamp(s.startedAt);
       const sEnd = parseTimestamp(s.endedAt);
       if (sStart < minStart) minStart = sStart;
@@ -320,7 +320,7 @@ export function computeStats(
   const milestoneStats = computeMilestoneStats(milestones);
 
   // Completion rate from sessions with evaluations
-  const evaluated = sessions.filter(
+  const evaluated = prompts.filter(
     (s) => s.evaluation && typeof s.evaluation === "object",
   );
   const completed = evaluated.filter(
@@ -339,12 +339,12 @@ export function computeStats(
 
   return {
     totalHours: totalSeconds / 3600,
-    totalSessions: sessions.length,
+    totalSessions: prompts.length,
     actualSpanHours,
     coveredHours,
     aiMultiplier,
     peakConcurrency,
-    currentStreak: calculateStreak(sessions),
+    currentStreak: calculateStreak(prompts),
     filesTouched: Math.round(filesTouched),
     ...milestoneStats,
     totalMilestones: milestones.length,
@@ -363,11 +363,11 @@ export function computeStats(
 
 // ── Streak calculation ────────────────────────────────────────────────────────
 
-export function calculateStreak(sessions: Session[]): number {
-  if (sessions.length === 0) return 0;
+export function calculateStreak(prompts: Session[]): number {
+  if (prompts.length === 0) return 0;
 
   const days = new Set<string>();
-  for (const s of sessions) {
+  for (const s of prompts) {
     if (s.startedAt && s.endedAt && s.durationMs > 0)
       days.add(toLocalDate(s.startedAt));
   }

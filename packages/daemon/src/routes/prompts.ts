@@ -1,60 +1,18 @@
 import { Hono } from "hono";
 import type { Session } from "@devness/useai-types";
 import {
-  readSessionsForDateRange,
-  readV1Sessions,
-} from "@devness/useai-storage";
+  parseTimeRange,
+  getFilteredSessions,
+  toCamelEvaluation,
+  toEnrichedMilestones,
+  type EnrichedMilestone,
+} from "../lib/sessions.js";
 import {
   groupPromptsWithMilestones,
   groupIntoConversations,
 } from "../lib/stats.js";
 
 export const promptsRoutes = new Hono();
-
-// --- Conversion helpers ---
-
-function toCamelEvaluation(ev: NonNullable<Session["evaluation"]>) {
-  return {
-    promptQuality: ev.prompt_quality,
-    ...(ev.prompt_quality_reason && { promptQualityReason: ev.prompt_quality_reason }),
-    ...(ev.prompt_quality_ideal && { promptQualityIdeal: ev.prompt_quality_ideal }),
-    contextProvided: ev.context_provided,
-    ...(ev.context_provided_reason && { contextProvidedReason: ev.context_provided_reason }),
-    ...(ev.context_provided_ideal && { contextProvidedIdeal: ev.context_provided_ideal }),
-    scopeQuality: ev.scope_quality,
-    ...(ev.scope_quality_reason && { scopeQualityReason: ev.scope_quality_reason }),
-    ...(ev.scope_quality_ideal && { scopeQualityIdeal: ev.scope_quality_ideal }),
-    independenceLevel: ev.independence_level,
-    ...(ev.independence_level_reason && { independenceLevelReason: ev.independence_level_reason }),
-    ...(ev.independence_level_ideal && { independenceLevelIdeal: ev.independence_level_ideal }),
-    taskOutcome: ev.task_outcome,
-    ...(ev.task_outcome_reason && { taskOutcomeReason: ev.task_outcome_reason }),
-    ...(ev.task_outcome_ideal && { taskOutcomeIdeal: ev.task_outcome_ideal }),
-    iterationCount: ev.iteration_count,
-    toolsLeveraged: ev.tools_leveraged,
-  };
-}
-
-function toMilestones(s: Session) {
-  return (s.milestones ?? []).map((m) => ({
-    id: m.id,
-    promptId: s.promptId,
-    title: m.title,
-    ...(m.privateTitle && { privateTitle: m.privateTitle }),
-    ...(s.project && { project: s.project }),
-    category: m.category,
-    complexity: m.complexity ?? "medium",
-    durationMinutes: Math.round(s.durationMs / 60000),
-    languages: s.languages ?? [],
-    client: s.client,
-    createdAt: s.endedAt,
-    published: false,
-    publishedAt: null,
-    chainHash: s.hash,
-  }));
-}
-
-type MilestoneSeal = ReturnType<typeof toMilestones>[number];
 
 function matchesSearch(session: Session, term: string): boolean {
   const lower = term.toLowerCase();
@@ -68,13 +26,9 @@ function matchesSearch(session: Session, term: string): boolean {
   return false;
 }
 
-// --- Route ---
-
 promptsRoutes.get("/", async (c) => {
-  const start = c.req.query("start");
-  const end = c.req.query("end");
-
-  if (!start || !end || !start.includes("Z") || !end.includes("Z")) {
+  const range = parseTimeRange(c.req.query("start"), c.req.query("end"));
+  if (!range) {
     return c.json(
       { error: "start and end query params required (ISO string)" },
       400,
@@ -88,18 +42,7 @@ promptsRoutes.get("/", async (c) => {
   const projectFilter = c.req.query("project") ?? null;
   const searchTerm = c.req.query("search") ?? null;
 
-  // Read sessions for the date range, and v1 sessions are converted to the structure of latest version.
-  const [v3Sessions, v1Sessions] = await Promise.all([
-    readSessionsForDateRange(start, end),
-    readV1Sessions(),
-  ]);
-
-  // Combine and filter by ISO string comparison — only show signed sessions
-  const allSessions: Session[] = [...v3Sessions, ...v1Sessions];
-  const windowFiltered = allSessions
-    .filter((s) => s.startedAt <= end && s.endedAt >= start)
-    .filter((s) => !!s.endedAt && s.durationMs > 0)
-    .filter((s) => !!s.hash && !!s.signature);
+  const windowFiltered = await getFilteredSessions(range.start, range.end);
 
   // Apply filters
   let filtered = windowFiltered;
@@ -133,10 +76,10 @@ promptsRoutes.get("/", async (c) => {
     evaluation: s.evaluation ? toCamelEvaluation(s.evaluation) : undefined,
   })) as unknown as Session[];
 
-  // Restructure milestones to latest useai version.
-  const enrichedMilestones: MilestoneSeal[] = camelFiltered.flatMap(toMilestones);
+  // Enrich milestones with parent session metadata
+  const enrichedMilestones: EnrichedMilestone[] = camelFiltered.flatMap(toEnrichedMilestones);
 
-  //Restructured into {prompts, milestones} as expected by the dashboard for separation of concerns.
+  // Group into {prompt, milestones} as expected by the dashboard
   const promptsWithMilestones = groupPromptsWithMilestones(
     camelFiltered,
     enrichedMilestones,
