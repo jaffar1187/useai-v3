@@ -66,7 +66,7 @@ export function registerStats(program: Command): void {
         label("Independence", formatRating(stats.evaluation.independenceLevel));
       }
 
-      if (Object.keys(stats.byProject).length > 0) {
+      if (Object.keys(stats.byProjectAiTime).length > 0) {
         console.log();
         dim("By project:");
         const MAX_PROJECTS = 6;
@@ -80,12 +80,12 @@ export function registerStats(program: Command): void {
         const overflowAI =
           projectEntries
             .slice(MAX_PROJECTS)
-            .reduce((s, [k]) => s + (stats.byProject[k] ?? 0), 0) +
-          (stats.byProject["other"] ?? 0);
+            .reduce((s, [k]) => s + (stats.byProjectAiTime[k] ?? 0), 0) +
+          (stats.byProjectAiTime["other"] ?? 0);
         const rows = visible.map(([k, v]) => [
           k,
           formatSeconds(v),
-          formatSeconds(stats.byProject[k] ?? 0),
+          formatSeconds(stats.byProjectAiTime[k] ?? 0),
         ]);
         if (overflowClock > 0 || overflowAI > 0) {
           rows.push([
@@ -110,10 +110,10 @@ export function registerStats(program: Command): void {
         );
       }
 
-      if (Object.keys(stats.byClient).length > 0) {
+      if (Object.keys(stats.byToolClockTime).length > 0) {
         console.log();
         dim("By tool:");
-        const rows = Object.entries(stats.byClient)
+        const rows = Object.entries(stats.byToolClockTime)
           .sort((a, b) => b[1] - a[1])
           .map(([k, v]) => [
             k,
@@ -123,26 +123,26 @@ export function registerStats(program: Command): void {
         table(["Tool", "clock", "ai"], rows);
       }
 
-      if (Object.keys(stats.byLanguage).length > 0) {
+      if (Object.keys(stats.byLanguageClockTime).length > 0) {
         console.log();
         dim("By language:");
         const MAX_LANGS = 6;
-        const langEntries = Object.entries(stats.byLanguage)
+        const langEntries = Object.entries(stats.byLanguageClockTime)
           .filter(([key]) => key !== "other")
           .sort((a, b) => b[1] - a[1]);
         const visibleLangs = langEntries.slice(0, MAX_LANGS);
         const langOverflowClock =
           langEntries.slice(MAX_LANGS).reduce((s, [, v]) => s + v, 0) +
-          (stats.byLanguage["other"] ?? 0);
+          (stats.byLanguageClockTime["other"] ?? 0);
         const langOverflowAI =
           langEntries
             .slice(MAX_LANGS)
-            .reduce((s, [k]) => s + (stats.byLanguageDuration[k] ?? 0), 0) +
-          (stats.byLanguageDuration["other"] ?? 0);
+            .reduce((s, [k]) => s + (stats.byLanguageAiTime[k] ?? 0), 0) +
+          (stats.byLanguageAiTime["other"] ?? 0);
         const langRows = visibleLangs.map(([k, v]) => [
           k,
           formatSeconds(v),
-          formatSeconds(stats.byLanguageDuration[k] ?? 0),
+          formatSeconds(stats.byLanguageAiTime[k] ?? 0),
         ]);
         if (langOverflowClock > 0 || langOverflowAI > 0) {
           langRows.push([
@@ -154,15 +154,15 @@ export function registerStats(program: Command): void {
         table(["Language", "clock", "ai"], langRows);
       }
 
-      if (Object.keys(stats.byTaskType).length > 0) {
+      if (Object.keys(stats.byTaskTypeClockTime).length > 0) {
         console.log();
         dim("By task type:");
-        const rows = Object.entries(stats.byTaskType)
+        const rows = Object.entries(stats.byTaskTypeClockTime)
           .sort((a, b) => b[1] - a[1])
           .map(([k, v]) => [
             k.replace(/_/g, "-"),
             formatSeconds(v),
-            formatSeconds(stats.byTaskTypeDuration[k] ?? 0),
+            formatSeconds(stats.byTaskTypeAiTime[k] ?? 0),
           ]);
         table(["Type", "clock", "ai"], rows);
       }

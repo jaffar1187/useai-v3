@@ -37,16 +37,16 @@ export interface ComputedStats {
   totalMilestones: number;
   completionRate: number;
   activeProjects: number;
-  byClient: Record<string, number>;
-  byLanguage: Record<string, number>;
-  byTaskType: Record<string, number>;
-  byProject: Record<string, number>;
+  byToolClockTime: Record<string, number>;
+  byLanguageClockTime: Record<string, number>;
+  byTaskTypeClockTime: Record<string, number>;
+  byProjectAiTime: Record<string, number>;
   /** Clock-time project breakdown via shared sweep-line */
   byProjectClock: Record<string, number>;
   /** Cumulative session duration breakdowns — no concurrency dedup */
   byAiToolDuration: Record<string, number>;
-  byLanguageDuration: Record<string, number>;
-  byTaskTypeDuration: Record<string, number>;
+  byLanguageAiTime: Record<string, number>;
+  byTaskTypeAiTime: Record<string, number>;
 }
 
 export function computeMilestoneStats(milestones: Milestone[]): {
@@ -145,39 +145,39 @@ function computeClockTimeBreakdown(
 export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = []): ComputedStats {
   let totalSeconds = 0;
   let filesTouched = 0;
-  const byProject: Record<string, number> = {};
+  const byProjectAiTime: Record<string, number> = {};
   const byAiToolDuration: Record<string, number> = {};
-  const byLanguageDuration: Record<string, number> = {};
-  const byTaskTypeDuration: Record<string, number> = {};
+  const byLanguageAiTime: Record<string, number> = {};
+  const byTaskTypeAiTime: Record<string, number> = {};
 
   for (const s of sessions) {
     totalSeconds += Math.round(s.durationMs / 1000);
     filesTouched += s.filesTouched;
 
     const project = s.project || 'other';
-    byProject[project] = (byProject[project] ?? 0) + Math.round(s.durationMs / 1000);
+    byProjectAiTime[project] = (byProjectAiTime[project] ?? 0) + Math.round(s.durationMs / 1000);
 
     byAiToolDuration[s.client] = (byAiToolDuration[s.client] ?? 0) + Math.round(s.durationMs / 1000);
-    byTaskTypeDuration[s.taskType] = (byTaskTypeDuration[s.taskType] ?? 0) + Math.round(s.durationMs / 1000);
+    byTaskTypeAiTime[s.taskType] = (byTaskTypeAiTime[s.taskType] ?? 0) + Math.round(s.durationMs / 1000);
 
     const langs = s.languages.map((l) => l.toLowerCase());
     if (langs.length > 0) {
       const share = Math.round(s.durationMs / 1000) / langs.length;
       for (const lang of langs) {
-        byLanguageDuration[lang] = (byLanguageDuration[lang] ?? 0) + share;
+        byLanguageAiTime[lang] = (byLanguageAiTime[lang] ?? 0) + share;
       }
     } else {
-      byLanguageDuration['other'] = (byLanguageDuration["other"] ?? 0) + Math.round(s.durationMs / 1000);
+      byLanguageAiTime['other'] = (byLanguageAiTime["other"] ?? 0) + Math.round(s.durationMs / 1000);
     }
   }
 
   // Clock-time breakdowns via sweep-line (uses active_segments, falls back to duration_seconds)
-  const byClient = computeClockTimeBreakdown(sessions, (s) => [s.client]);
-  const byLanguage = computeClockTimeBreakdown(sessions, (s) => {
+  const byToolClockTime = computeClockTimeBreakdown(sessions, (s) => [s.client]);
+  const byLanguageClockTime = computeClockTimeBreakdown(sessions, (s) => {
     const langs = s.languages.map((l) => l.toLowerCase());
     return langs.length > 0 ? langs : ['other'];
   });
-  const byTaskType = computeClockTimeBreakdown(sessions, (s) => [s.taskType]);
+  const byTaskTypeClockTime = computeClockTimeBreakdown(sessions, (s) => [s.taskType]);
   const byProjectClock = computeClockTimeBreakdown(sessions, (s) => [s.project || 'other']);
 
   // Actual time span, covered time, and peak concurrency (sweep-line)
@@ -247,7 +247,7 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
   const completionRate = evaluated.length > 0 ? Math.round((completed / evaluated.length) * 100) : 0;
 
   // Active projects
-  const activeProjects = Object.keys(byProject).length;
+  const activeProjects = Object.keys(byProjectAiTime).length;
 
   return {
     totalHours: totalSeconds / 3600,
@@ -262,14 +262,14 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
     totalMilestones: milestones.length,
     completionRate,
     activeProjects,
-    byClient,
-    byLanguage,
-    byTaskType,
-    byProject,
+    byToolClockTime,
+    byLanguageClockTime,
+    byTaskTypeClockTime,
+    byProjectAiTime,
     byProjectClock,
     byAiToolDuration,
-    byLanguageDuration,
-    byTaskTypeDuration,
+    byLanguageAiTime,
+    byTaskTypeAiTime,
   };
 }
 

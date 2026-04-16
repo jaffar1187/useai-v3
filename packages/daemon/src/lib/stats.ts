@@ -50,16 +50,16 @@ export interface ComputedStats {
   totalMilestones: number;
   completionRate: number;
   activeProjects: number;
-  byClient: Record<string, number>;
-  byLanguage: Record<string, number>;
-  byTaskType: Record<string, number>;
-  byProject: Record<string, number>;
+  byToolClockTime: Record<string, number>;
+  byLanguageClockTime: Record<string, number>;
+  byTaskTypeClockTime: Record<string, number>;
+  byProjectAiTime: Record<string, number>;
   /** Clock-time project breakdown via shared sweep-line */
   byProjectClock: Record<string, number>;
   /** Cumulative session duration breakdowns — no concurrency dedup */
   byAiToolDuration: Record<string, number>;
-  byLanguageDuration: Record<string, number>;
-  byTaskTypeDuration: Record<string, number>;
+  byLanguageAiTime: Record<string, number>;
+  byTaskTypeAiTime: Record<string, number>;
 }
 
 export interface PromptGroup {
@@ -182,6 +182,7 @@ export function computeClockTimeBreakdown(
     }
   }
 
+  //ascending time, for tie breaker delta -1 comes before 1 always in final sort.
   events.sort((a, b) => a.time - b.time || a.delta - b.delta);
 
   const map: Record<string, number> = {};
@@ -220,10 +221,10 @@ export function computeStats(
 ): ComputedStats {
   let totalSeconds = 0;
   let filesTouched = 0;
-  const byProject: Record<string, number> = {};
+  const byProjectAiTime: Record<string, number> = {};
   const byAiToolDuration: Record<string, number> = {};
-  const byLanguageDuration: Record<string, number> = {};
-  const byTaskTypeDuration: Record<string, number> = {};
+  const byLanguageAiTime: Record<string, number> = {};
+  const byTaskTypeAiTime: Record<string, number> = {};
 
   for (const s of prompts) {
     const durSec = durationSec(s);
@@ -231,29 +232,31 @@ export function computeStats(
     filesTouched += s.filesTouchedCount ?? 0;
 
     const project = s.project || "other";
-    byProject[project] = (byProject[project] ?? 0) + durSec;
+    byProjectAiTime[project] = (byProjectAiTime[project] ?? 0) + durSec;
 
     byAiToolDuration[s.client] = (byAiToolDuration[s.client] ?? 0) + durSec;
-    byTaskTypeDuration[s.taskType] = (byTaskTypeDuration[s.taskType] ?? 0) + durSec;
+    byTaskTypeAiTime[s.taskType] = (byTaskTypeAiTime[s.taskType] ?? 0) + durSec;
 
     const langs = (s.languages ?? []).map((l) => l.toLowerCase());
     if (langs.length > 0) {
       const share = durSec / langs.length;
       for (const lang of langs) {
-        byLanguageDuration[lang] = (byLanguageDuration[lang] ?? 0) + share;
+        byLanguageAiTime[lang] = (byLanguageAiTime[lang] ?? 0) + share;
       }
     } else {
-      byLanguageDuration["other"] = (byLanguageDuration["other"] ?? 0) + durSec;
+      byLanguageAiTime["other"] = (byLanguageAiTime["other"] ?? 0) + durSec;
     }
   }
 
   // Clock-time breakdowns via sweep-line (uses activeSegments, falls back to durationMs)
-  const byClient = computeClockTimeBreakdown(prompts, (s) => [s.client]);
-  const byLanguage = computeClockTimeBreakdown(prompts, (s) => {
+  const byToolClockTime = computeClockTimeBreakdown(prompts, (s) => [s.client]);
+  const byLanguageClockTime = computeClockTimeBreakdown(prompts, (s) => {
     const langs = (s.languages ?? []).map((l) => l.toLowerCase());
     return langs.length > 0 ? langs : ["other"];
   });
-  const byTaskType = computeClockTimeBreakdown(prompts, (s) => [s.taskType]);
+  const byTaskTypeClockTime = computeClockTimeBreakdown(prompts, (s) => [
+    s.taskType,
+  ]);
   const byProjectClock = computeClockTimeBreakdown(prompts, (s) => [
     s.project || "other",
   ]);
@@ -330,7 +333,7 @@ export function computeStats(
     evaluated.length > 0 ? Math.round((completed / evaluated.length) * 100) : 0;
 
   // Active projects
-  const activeProjects = Object.keys(byProject).length;
+  const activeProjects = Object.keys(byProjectAiTime).length;
 
   const dropZero = (rec: Record<string, number>) =>
     Object.fromEntries(
@@ -350,14 +353,14 @@ export function computeStats(
     totalMilestones: milestones.length,
     completionRate,
     activeProjects,
-    byClient: dropZero(byClient),
-    byLanguage: dropZero(byLanguage),
-    byTaskType: dropZero(byTaskType),
-    byProject: dropZero(byProject),
+    byToolClockTime: dropZero(byToolClockTime),
+    byLanguageClockTime: dropZero(byLanguageClockTime),
+    byTaskTypeClockTime: dropZero(byTaskTypeClockTime),
+    byProjectAiTime: dropZero(byProjectAiTime),
     byProjectClock: dropZero(byProjectClock),
     byAiToolDuration: dropZero(byAiToolDuration),
-    byLanguageDuration: dropZero(byLanguageDuration),
-    byTaskTypeDuration: dropZero(byTaskTypeDuration),
+    byLanguageAiTime: dropZero(byLanguageAiTime),
+    byTaskTypeAiTime: dropZero(byTaskTypeAiTime),
   };
 }
 

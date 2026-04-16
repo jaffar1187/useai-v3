@@ -328,7 +328,7 @@ export function DashboardBody({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ProjectAllocation
               byProjectClock={data.stats.byProjectClock}
-              byProject={data.stats.byProject}
+              byProjectAiTime={data.stats.byProjectAiTime}
               timeMode={timeMode}
             />
             <ComplexityDistribution
@@ -340,8 +340,8 @@ export function DashboardBody({
           </div>
 
           <TaskTypeBreakdown
-            byTaskType={data.stats.byTaskType}
-            byTaskTypeDuration={data.stats.byTaskTypeDuration}
+            byTaskTypeClockTime={data.stats.byTaskTypeClockTime}
+            byTaskTypeAiTime={data.stats.byTaskTypeAiTime}
             sessions={data.filteredSessions}
             milestones={data.filteredMilestones}
             showPublic={globalShowPublic}

@@ -28,7 +28,7 @@ function formatTime(seconds: number): string {
 
 interface ProjectAllocationProps {
   byProjectClock: Record<string, number>;
-  byProject: Record<string, number>;
+  byProjectAiTime: Record<string, number>;
   timeMode: TimeMode;
 }
 
@@ -79,10 +79,10 @@ function buildSegments(data: Record<string, number>): Segment[] {
   return result;
 }
 
-export function ProjectAllocation({ byProjectClock, byProject, timeMode }: ProjectAllocationProps) {
+export function ProjectAllocation({ byProjectClock, byProjectAiTime, timeMode }: ProjectAllocationProps) {
   const [hovered, setHovered] = useState<string | null>(null);
 
-  const data = timeMode === 'user' ? byProjectClock : byProject;
+  const data = timeMode === 'user' ? byProjectClock : byProjectAiTime;
   const segments = useMemo(() => buildSegments(data), [data]);
 
   if (segments.length === 0) return null;

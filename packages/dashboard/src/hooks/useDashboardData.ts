@@ -47,14 +47,14 @@ const EMPTY_STATS: DashboardResponse["stats"] = {
   totalMilestones: 0,
   completionRate: 0,
   activeProjects: 0,
-  byClient: {},
-  byLanguage: {},
-  byTaskType: {},
-  byProject: {},
+  byToolClockTime: {},
+  byLanguageClockTime: {},
+  byTaskTypeClockTime: {},
+  byProjectAiTime: {},
   byProjectClock: {},
   byAiToolDuration: {},
-  byLanguageDuration: {},
-  byTaskTypeDuration: {},
+  byLanguageAiTime: {},
+  byTaskTypeAiTime: {},
 };
 
 export interface UseDashboardDataOptions {

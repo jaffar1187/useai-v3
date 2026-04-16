@@ -13,21 +13,21 @@ export interface StatsData {
   featuresShipped: number;
   bugsFixed: number;
   /** Clock-time seconds per client */
-  byClient: Record<string, number>;
+  byToolClockTime: Record<string, number>;
   /** Cumulative session duration seconds per client */
   byAiToolDuration: Record<string, number>;
   /** Clock-time seconds per task type */
-  byTaskType: Record<string, number>;
+  byTaskTypeClockTime: Record<string, number>;
   /** Cumulative session duration seconds per task type */
-  byTaskTypeDuration: Record<string, number>;
+  byTaskTypeAiTime: Record<string, number>;
   /** Clock-time seconds per project */
-  byProject: Record<string, number>;
+  byProjectAiTime: Record<string, number>;
   /** Clock-time seconds per project (sweep-line) */
   byProjectClock: Record<string, number>;
   /** Clock-time seconds per language */
-  byLanguage: Record<string, number>;
+  byLanguageClockTime: Record<string, number>;
   /** Cumulative session duration seconds per language */
-  byLanguageDuration: Record<string, number>;
+  byLanguageAiTime: Record<string, number>;
   /** Milestone complexity distribution */
   complexity: { simple: number; medium: number; complex: number };
   /** Evaluation averages (1-5 scale), null if no evaluated sessions */
@@ -60,14 +60,14 @@ export async function getStats(start: string, end: string): Promise<StatsData> {
       filesTouched: number;
       featuresShipped: number;
       bugsFixed: number;
-      byClient: Record<string, number>;
+      byToolClockTime: Record<string, number>;
       byAiToolDuration: Record<string, number>;
-      byTaskType: Record<string, number>;
-      byTaskTypeDuration: Record<string, number>;
-      byProject: Record<string, number>;
+      byTaskTypeClockTime: Record<string, number>;
+      byTaskTypeAiTime: Record<string, number>;
+      byProjectAiTime: Record<string, number>;
       byProjectClock: Record<string, number>;
-      byLanguage: Record<string, number>;
-      byLanguageDuration: Record<string, number>;
+      byLanguageClockTime: Record<string, number>;
+      byLanguageAiTime: Record<string, number>;
     };
     complexity: { simple: number; medium: number; complex: number };
     evaluation: {
@@ -89,14 +89,14 @@ export async function getStats(start: string, end: string): Promise<StatsData> {
     filesTouched: json.stats.filesTouched,
     featuresShipped: json.stats.featuresShipped,
     bugsFixed: json.stats.bugsFixed,
-    byClient: json.stats.byClient,
+    byToolClockTime: json.stats.byToolClockTime,
     byAiToolDuration: json.stats.byAiToolDuration,
-    byTaskType: json.stats.byTaskType,
-    byTaskTypeDuration: json.stats.byTaskTypeDuration,
-    byProject: json.stats.byProject,
+    byTaskTypeClockTime: json.stats.byTaskTypeClockTime,
+    byTaskTypeAiTime: json.stats.byTaskTypeAiTime,
+    byProjectAiTime: json.stats.byProjectAiTime,
     byProjectClock: json.stats.byProjectClock,
-    byLanguage: json.stats.byLanguage,
-    byLanguageDuration: json.stats.byLanguageDuration,
+    byLanguageClockTime: json.stats.byLanguageClockTime,
+    byLanguageAiTime: json.stats.byLanguageAiTime,
     complexity: json.complexity,
     evaluation: json.evaluation,
   };

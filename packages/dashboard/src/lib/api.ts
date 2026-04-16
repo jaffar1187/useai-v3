@@ -145,14 +145,14 @@ export interface DashboardResponse {
     totalMilestones: number;
     completionRate: number;
     activeProjects: number;
-    byClient: Record<string, number>;
-    byLanguage: Record<string, number>;
-    byTaskType: Record<string, number>;
-    byProject: Record<string, number>;
+    byToolClockTime: Record<string, number>;
+    byLanguageClockTime: Record<string, number>;
+    byTaskTypeClockTime: Record<string, number>;
+    byProjectAiTime: Record<string, number>;
     byProjectClock: Record<string, number>;
     byAiToolDuration: Record<string, number>;
-    byLanguageDuration: Record<string, number>;
-    byTaskTypeDuration: Record<string, number>;
+    byLanguageAiTime: Record<string, number>;
+    byTaskTypeAiTime: Record<string, number>;
   };
   evaluation: {
     sessionCount: number;
