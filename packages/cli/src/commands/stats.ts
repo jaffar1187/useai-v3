@@ -118,7 +118,7 @@ export function registerStats(program: Command): void {
           .map(([k, v]) => [
             k,
             formatSeconds(v),
-            formatSeconds(stats.byClientAI[k] ?? 0),
+            formatSeconds(stats.byAiToolDuration[k] ?? 0),
           ]);
         table(["Tool", "clock", "ai"], rows);
       }
@@ -137,12 +137,12 @@ export function registerStats(program: Command): void {
         const langOverflowAI =
           langEntries
             .slice(MAX_LANGS)
-            .reduce((s, [k]) => s + (stats.byLanguageAI[k] ?? 0), 0) +
-          (stats.byLanguageAI["other"] ?? 0);
+            .reduce((s, [k]) => s + (stats.byLanguageDuration[k] ?? 0), 0) +
+          (stats.byLanguageDuration["other"] ?? 0);
         const langRows = visibleLangs.map(([k, v]) => [
           k,
           formatSeconds(v),
-          formatSeconds(stats.byLanguageAI[k] ?? 0),
+          formatSeconds(stats.byLanguageDuration[k] ?? 0),
         ]);
         if (langOverflowClock > 0 || langOverflowAI > 0) {
           langRows.push([
@@ -162,7 +162,7 @@ export function registerStats(program: Command): void {
           .map(([k, v]) => [
             k.replace(/_/g, "-"),
             formatSeconds(v),
-            formatSeconds(stats.byTaskTypeAI[k] ?? 0),
+            formatSeconds(stats.byTaskTypeDuration[k] ?? 0),
           ]);
         table(["Type", "clock", "ai"], rows);
       }

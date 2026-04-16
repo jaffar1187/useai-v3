@@ -56,10 +56,10 @@ export interface ComputedStats {
   byProject: Record<string, number>;
   /** Clock-time project breakdown via shared sweep-line */
   byProjectClock: Record<string, number>;
-  /** AI-time (sum of durationMs) breakdowns — no concurrency dedup */
-  byClientAI: Record<string, number>;
-  byLanguageAI: Record<string, number>;
-  byTaskTypeAI: Record<string, number>;
+  /** Cumulative session duration breakdowns — no concurrency dedup */
+  byAiToolDuration: Record<string, number>;
+  byLanguageDuration: Record<string, number>;
+  byTaskTypeDuration: Record<string, number>;
 }
 
 export interface PromptGroup {
@@ -221,9 +221,9 @@ export function computeStats(
   let totalSeconds = 0;
   let filesTouched = 0;
   const byProject: Record<string, number> = {};
-  const byClientAI: Record<string, number> = {};
-  const byLanguageAI: Record<string, number> = {};
-  const byTaskTypeAI: Record<string, number> = {};
+  const byAiToolDuration: Record<string, number> = {};
+  const byLanguageDuration: Record<string, number> = {};
+  const byTaskTypeDuration: Record<string, number> = {};
 
   for (const s of prompts) {
     const durSec = durationSec(s);
@@ -233,17 +233,17 @@ export function computeStats(
     const project = s.project || "other";
     byProject[project] = (byProject[project] ?? 0) + durSec;
 
-    byClientAI[s.client] = (byClientAI[s.client] ?? 0) + durSec;
-    byTaskTypeAI[s.taskType] = (byTaskTypeAI[s.taskType] ?? 0) + durSec;
+    byAiToolDuration[s.client] = (byAiToolDuration[s.client] ?? 0) + durSec;
+    byTaskTypeDuration[s.taskType] = (byTaskTypeDuration[s.taskType] ?? 0) + durSec;
 
     const langs = (s.languages ?? []).map((l) => l.toLowerCase());
     if (langs.length > 0) {
       const share = durSec / langs.length;
       for (const lang of langs) {
-        byLanguageAI[lang] = (byLanguageAI[lang] ?? 0) + share;
+        byLanguageDuration[lang] = (byLanguageDuration[lang] ?? 0) + share;
       }
     } else {
-      byLanguageAI["other"] = (byLanguageAI["other"] ?? 0) + durSec;
+      byLanguageDuration["other"] = (byLanguageDuration["other"] ?? 0) + durSec;
     }
   }
 
@@ -355,9 +355,9 @@ export function computeStats(
     byTaskType: dropZero(byTaskType),
     byProject: dropZero(byProject),
     byProjectClock: dropZero(byProjectClock),
-    byClientAI: dropZero(byClientAI),
-    byLanguageAI: dropZero(byLanguageAI),
-    byTaskTypeAI: dropZero(byTaskTypeAI),
+    byAiToolDuration: dropZero(byAiToolDuration),
+    byLanguageDuration: dropZero(byLanguageDuration),
+    byTaskTypeDuration: dropZero(byTaskTypeDuration),
   };
 }
 

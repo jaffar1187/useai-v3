@@ -14,20 +14,20 @@ export interface StatsData {
   bugsFixed: number;
   /** Clock-time seconds per client */
   byClient: Record<string, number>;
-  /** AI-time seconds per client */
-  byClientAI: Record<string, number>;
+  /** Cumulative session duration seconds per client */
+  byAiToolDuration: Record<string, number>;
   /** Clock-time seconds per task type */
   byTaskType: Record<string, number>;
-  /** AI-time seconds per task type */
-  byTaskTypeAI: Record<string, number>;
+  /** Cumulative session duration seconds per task type */
+  byTaskTypeDuration: Record<string, number>;
   /** Clock-time seconds per project */
   byProject: Record<string, number>;
   /** Clock-time seconds per project (sweep-line) */
   byProjectClock: Record<string, number>;
   /** Clock-time seconds per language */
   byLanguage: Record<string, number>;
-  /** AI-time seconds per language */
-  byLanguageAI: Record<string, number>;
+  /** Cumulative session duration seconds per language */
+  byLanguageDuration: Record<string, number>;
   /** Milestone complexity distribution */
   complexity: { simple: number; medium: number; complex: number };
   /** Evaluation averages (1-5 scale), null if no evaluated sessions */
@@ -61,13 +61,13 @@ export async function getStats(start: string, end: string): Promise<StatsData> {
       featuresShipped: number;
       bugsFixed: number;
       byClient: Record<string, number>;
-      byClientAI: Record<string, number>;
+      byAiToolDuration: Record<string, number>;
       byTaskType: Record<string, number>;
-      byTaskTypeAI: Record<string, number>;
+      byTaskTypeDuration: Record<string, number>;
       byProject: Record<string, number>;
       byProjectClock: Record<string, number>;
       byLanguage: Record<string, number>;
-      byLanguageAI: Record<string, number>;
+      byLanguageDuration: Record<string, number>;
     };
     complexity: { simple: number; medium: number; complex: number };
     evaluation: {
@@ -90,13 +90,13 @@ export async function getStats(start: string, end: string): Promise<StatsData> {
     featuresShipped: json.stats.featuresShipped,
     bugsFixed: json.stats.bugsFixed,
     byClient: json.stats.byClient,
-    byClientAI: json.stats.byClientAI,
+    byAiToolDuration: json.stats.byAiToolDuration,
     byTaskType: json.stats.byTaskType,
-    byTaskTypeAI: json.stats.byTaskTypeAI,
+    byTaskTypeDuration: json.stats.byTaskTypeDuration,
     byProject: json.stats.byProject,
     byProjectClock: json.stats.byProjectClock,
     byLanguage: json.stats.byLanguage,
-    byLanguageAI: json.stats.byLanguageAI,
+    byLanguageDuration: json.stats.byLanguageDuration,
     complexity: json.complexity,
     evaluation: json.evaluation,
   };

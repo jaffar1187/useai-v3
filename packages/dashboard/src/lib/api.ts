@@ -150,9 +150,9 @@ export interface DashboardResponse {
     byTaskType: Record<string, number>;
     byProject: Record<string, number>;
     byProjectClock: Record<string, number>;
-    byClientAI: Record<string, number>;
-    byLanguageAI: Record<string, number>;
-    byTaskTypeAI: Record<string, number>;
+    byAiToolDuration: Record<string, number>;
+    byLanguageDuration: Record<string, number>;
+    byTaskTypeDuration: Record<string, number>;
   };
   evaluation: {
     sessionCount: number;

@@ -43,10 +43,10 @@ export interface ComputedStats {
   byProject: Record<string, number>;
   /** Clock-time project breakdown via shared sweep-line */
   byProjectClock: Record<string, number>;
-  /** AI-time (sum of duration_seconds) breakdowns — no concurrency dedup */
-  byClientAI: Record<string, number>;
-  byLanguageAI: Record<string, number>;
-  byTaskTypeAI: Record<string, number>;
+  /** Cumulative session duration breakdowns — no concurrency dedup */
+  byAiToolDuration: Record<string, number>;
+  byLanguageDuration: Record<string, number>;
+  byTaskTypeDuration: Record<string, number>;
 }
 
 export function computeMilestoneStats(milestones: Milestone[]): {
@@ -146,9 +146,9 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
   let totalSeconds = 0;
   let filesTouched = 0;
   const byProject: Record<string, number> = {};
-  const byClientAI: Record<string, number> = {};
-  const byLanguageAI: Record<string, number> = {};
-  const byTaskTypeAI: Record<string, number> = {};
+  const byAiToolDuration: Record<string, number> = {};
+  const byLanguageDuration: Record<string, number> = {};
+  const byTaskTypeDuration: Record<string, number> = {};
 
   for (const s of sessions) {
     totalSeconds += Math.round(s.durationMs / 1000);
@@ -157,17 +157,17 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
     const project = s.project || 'other';
     byProject[project] = (byProject[project] ?? 0) + Math.round(s.durationMs / 1000);
 
-    byClientAI[s.client] = (byClientAI[s.client] ?? 0) + Math.round(s.durationMs / 1000);
-    byTaskTypeAI[s.taskType] = (byTaskTypeAI[s.taskType] ?? 0) + Math.round(s.durationMs / 1000);
+    byAiToolDuration[s.client] = (byAiToolDuration[s.client] ?? 0) + Math.round(s.durationMs / 1000);
+    byTaskTypeDuration[s.taskType] = (byTaskTypeDuration[s.taskType] ?? 0) + Math.round(s.durationMs / 1000);
 
     const langs = s.languages.map((l) => l.toLowerCase());
     if (langs.length > 0) {
       const share = Math.round(s.durationMs / 1000) / langs.length;
       for (const lang of langs) {
-        byLanguageAI[lang] = (byLanguageAI[lang] ?? 0) + share;
+        byLanguageDuration[lang] = (byLanguageDuration[lang] ?? 0) + share;
       }
     } else {
-      byLanguageAI['other'] = (byLanguageAI["other"] ?? 0) + Math.round(s.durationMs / 1000);
+      byLanguageDuration['other'] = (byLanguageDuration["other"] ?? 0) + Math.round(s.durationMs / 1000);
     }
   }
 
@@ -267,9 +267,9 @@ export function computeStats(sessions: SessionSeal[], milestones: Milestone[] = 
     byTaskType,
     byProject,
     byProjectClock,
-    byClientAI,
-    byLanguageAI,
-    byTaskTypeAI,
+    byAiToolDuration,
+    byLanguageDuration,
+    byTaskTypeDuration,
   };
 }
 

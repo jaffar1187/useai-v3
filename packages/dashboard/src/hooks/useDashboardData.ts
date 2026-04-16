@@ -52,9 +52,9 @@ const EMPTY_STATS: DashboardResponse["stats"] = {
   byTaskType: {},
   byProject: {},
   byProjectClock: {},
-  byClientAI: {},
-  byLanguageAI: {},
-  byTaskTypeAI: {},
+  byAiToolDuration: {},
+  byLanguageDuration: {},
+  byTaskTypeDuration: {},
 };
 
 export interface UseDashboardDataOptions {

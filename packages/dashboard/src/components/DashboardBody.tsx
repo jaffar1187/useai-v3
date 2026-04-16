@@ -341,7 +341,7 @@ export function DashboardBody({
 
           <TaskTypeBreakdown
             byTaskType={data.stats.byTaskType}
-            byTaskTypeAI={data.stats.byTaskTypeAI}
+            byTaskTypeDuration={data.stats.byTaskTypeDuration}
             sessions={data.filteredSessions}
             milestones={data.filteredMilestones}
             showPublic={globalShowPublic}

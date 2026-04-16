@@ -232,8 +232,8 @@ function DonutCard({
 }
 
 export function SummaryChips({ stats, timeMode = 'user' }: SummaryChipsProps) {
-  const clientData = timeMode === 'user' ? stats.byClient : stats.byClientAI;
-  const langData = timeMode === 'user' ? stats.byLanguage : stats.byLanguageAI;
+  const clientData = timeMode === 'user' ? stats.byClient : stats.byAiToolDuration;
+  const langData = timeMode === 'user' ? stats.byLanguage : stats.byLanguageDuration;
 
   const clientSegments = useMemo(
     () => buildSegments(clientData, LANG_COLORS, TOOL_DISPLAY_NAMES, TOOL_COLORS),

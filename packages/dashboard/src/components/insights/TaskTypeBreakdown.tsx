@@ -44,16 +44,16 @@ function formatDate(iso: string): string {
 
 interface TaskTypeBreakdownProps {
   byTaskType: Record<string, number>;
-  byTaskTypeAI?: Record<string, number>;
+  byTaskTypeDuration?: Record<string, number>;
   sessions?: SessionSeal[];
   milestones?: Milestone[];
   showPublic?: boolean;
   timeMode?: TimeMode;
 }
 
-export function TaskTypeBreakdown({ byTaskType, byTaskTypeAI, sessions = [], milestones = [], showPublic = false, timeMode = 'user' }: TaskTypeBreakdownProps) {
+export function TaskTypeBreakdown({ byTaskType, byTaskTypeDuration, sessions = [], milestones = [], showPublic = false, timeMode = 'user' }: TaskTypeBreakdownProps) {
 
-  const data = timeMode === 'user' || !byTaskTypeAI ? byTaskType : byTaskTypeAI;
+  const data = timeMode === 'user' || !byTaskTypeDuration ? byTaskType : byTaskTypeDuration;
 
   const entries = Object.entries(data)
     .filter(([, seconds]) => seconds > 0)
