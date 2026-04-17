@@ -115,7 +115,6 @@ function StatCard({
 interface StatsBarProps {
   totalHours: number;
   totalSessions: number;
-  actualSpanHours: number;
   coveredHours: number;
   aiMultiplier: number;
   peakConcurrency: number;

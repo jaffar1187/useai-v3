@@ -133,7 +133,6 @@ export interface DashboardResponse {
   stats: {
     totalHours: number;
     totalSessions: number;
-    actualSpanHours: number;
     coveredHours: number;
     aiMultiplier: number;
     peakConcurrency: number;

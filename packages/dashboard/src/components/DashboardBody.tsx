@@ -152,7 +152,6 @@ export function DashboardBody({
       <StatsBar
         totalHours={data.stats.totalHours}
         totalSessions={data.stats.totalSessions}
-        actualSpanHours={data.stats.actualSpanHours}
         coveredHours={data.stats.coveredHours}
         aiMultiplier={data.stats.aiMultiplier}
         peakConcurrency={data.stats.peakConcurrency}

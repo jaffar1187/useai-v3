@@ -35,7 +35,6 @@ export type UseStore = <T>(selector: (s: DashboardDataStore) => T) => T;
 const EMPTY_STATS: DashboardResponse["stats"] = {
   totalHours: 0,
   totalSessions: 0,
-  actualSpanHours: 0,
   coveredHours: 0,
   aiMultiplier: 0,
   peakConcurrency: 0,

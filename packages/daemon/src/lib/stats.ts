@@ -34,8 +34,6 @@ export interface Milestone {
 export interface ComputedStats {
   totalHours: number;
   totalSessions: number;
-  /** Wall-clock span from earliest session start to latest session end (hours) */
-  actualSpanHours: number;
   /** Union of all active session intervals (idle-excluded) — real user time where at least 1 session was active (hours) */
   coveredHours: number;
   /** Ratio of total AI time to user time (totalHours / coveredHours). >= 1.0 always. */
@@ -182,17 +180,16 @@ export function computeClockTimeBreakdown(
     }
   }
 
-  //ascending time, for tie breaker delta -1 comes before 1 always in final sort.
+  //core time logic do not edit unless you know the flow thoroughly.(sweep happens here)
   events.sort((a, b) => a.time - b.time || a.delta - b.delta);
 
+  //Logic of count distribution(time taken by each language for ex.)
   const map: Record<string, number> = {};
   const activeCount: Record<string, number> = {};
   let prevTime = 0;
 
   for (const e of events) {
-    const activeKeys = Object.keys(activeCount).filter(
-      (k) => activeCount[k]! > 0,
-    );
+    const activeKeys = Object.keys(activeCount);
     if (activeKeys.length > 0 && e.time > prevTime) {
       const sliceMs = e.time - prevTime;
       const share = sliceMs / activeKeys.length;
@@ -206,6 +203,7 @@ export function computeClockTimeBreakdown(
     if (activeCount[e.key] === 0) delete activeCount[e.key];
   }
 
+  //ms to seconds conversion.
   const result: Record<string, number> = {};
   for (const [key, ms] of Object.entries(map)) {
     if (ms > 0) result[key] = ms / 1000;
@@ -226,6 +224,10 @@ export function computeStats(
   const byLanguageAiTime: Record<string, number> = {};
   const byTaskTypeAiTime: Record<string, number> = {};
 
+  //insights calculation, excluding milestone chart
+
+  //Note converting durationMs to seconds.
+  //AI time calculation
   for (const s of prompts) {
     const durSec = durationSec(s);
     totalSeconds += durSec;
@@ -248,7 +250,7 @@ export function computeStats(
     }
   }
 
-  // Clock-time breakdowns via sweep-line (uses activeSegments, falls back to durationMs)
+  // Clock-time calculation, breakdowns via sweep-line (uses activeSegments, falls back to durationMs)
   const byToolClockTime = computeClockTimeBreakdown(prompts, (s) => [s.client]);
   const byLanguageClockTime = computeClockTimeBreakdown(prompts, (s) => {
     const langs = (s.languages ?? []).map((l) => l.toLowerCase());
@@ -261,22 +263,19 @@ export function computeStats(
     s.project || "other",
   ]);
 
+  //prompts page calculations
+
   // Actual time span, covered time, and peak concurrency (sweep-line)
-  let actualSpanHours = 0;
   let coveredHours = 0;
   let aiMultiplier = 0;
   let peakConcurrency = 0;
 
   if (prompts.length > 0) {
-    let minStart = Infinity;
-    let maxEnd = -Infinity;
     const events: { time: number; delta: number }[] = [];
 
     for (const s of prompts) {
       const sStart = parseTimestamp(s.startedAt);
       const sEnd = parseTimestamp(s.endedAt);
-      if (sStart < minStart) minStart = sStart;
-      if (sEnd > maxEnd) maxEnd = sEnd;
 
       if (s.activeSegments && s.activeSegments.length > 0) {
         // Use actual active segments for accurate union
@@ -292,8 +291,6 @@ export function computeStats(
         events.push({ time: activeEnd, delta: -1 });
       }
     }
-
-    actualSpanHours = (maxEnd - minStart) / 3600000;
 
     // Sort events: by time, then ends (-1) before starts (+1) at same timestamp
     events.sort((a, b) => a.time - b.time || a.delta - b.delta);
@@ -343,7 +340,6 @@ export function computeStats(
   return {
     totalHours: totalSeconds / 3600,
     totalSessions: prompts.length,
-    actualSpanHours,
     coveredHours,
     aiMultiplier,
     peakConcurrency,
