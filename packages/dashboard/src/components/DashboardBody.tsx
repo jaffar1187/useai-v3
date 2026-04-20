@@ -348,12 +348,9 @@ export function DashboardBody({
           />
 
           <ActivityStrip
-            sessions={data.allSessionsForStrip}
+            activity={data.activity}
             timeScale={data.timeScale}
             effectiveTime={data.effectiveTime}
-            isLive={data.isLive}
-            onDayClick={data.handleDayClick}
-            highlightDate={data.highlightDate}
             timeMode={timeMode}
           />
 

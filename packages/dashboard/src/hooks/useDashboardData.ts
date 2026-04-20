@@ -209,6 +209,17 @@ export function useDashboardData({
   const filteredSessions = serverData?.sessions ?? [];
   const filteredMilestones = serverData?.milestones ?? [];
   const allSessionsForStrip = filteredSessions;
+  const activity = serverData?.activity ?? {
+    hourlyClockTime: [],
+    hourlyAiTime: [],
+    dailyClockTime: [],
+    dailyAiTime: [],
+    weeklyClockTime: [],
+    weeklyAiTime: [],
+    monthlyClockTime: [],
+    monthlyAiTime: [],
+    effectiveDate: "",
+  };
 
   // ── Navigation ─────────────────────────────────────────────────────────
   const outsideWindowCounts = useMemo(() => {
@@ -304,6 +315,7 @@ export function useDashboardData({
     filteredSessions,
     filteredMilestones,
     allSessionsForStrip,
+    activity,
 
     // Feed
     feedConversations,

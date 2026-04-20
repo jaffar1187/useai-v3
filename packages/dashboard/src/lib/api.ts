@@ -165,6 +165,17 @@ export interface DashboardResponse {
   complexity: { simple: number; medium: number; complex: number };
   sessions: SessionSeal[];
   milestones: Milestone[];
+  activity: {
+    hourlyClockTime: Array<{ hour: number; minutes: number }>;
+    hourlyAiTime: Array<{ hour: number; minutes: number }>;
+    dailyClockTime: Array<{ date: string; hours: number }>;
+    dailyAiTime: Array<{ date: string; hours: number }>;
+    weeklyClockTime: Array<{ label: string; hours: number }>;
+    weeklyAiTime: Array<{ label: string; hours: number }>;
+    monthlyClockTime: Array<{ label: string; hours: number }>;
+    monthlyAiTime: Array<{ label: string; hours: number }>;
+    effectiveDate: string;
+  };
 }
 
 export interface FeedConversation {
