@@ -1,9 +1,8 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp, Lock, Shield, Eye, EyeOff, Flag, FolderKanban, User, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { SessionSeal, Milestone } from '../../lib/api';
 import type { Filters } from '../../lib/types';
-import { groupPromptsWithMilestones, groupIntoConversations } from '../../lib/stats';
 import type { ConversationGroup } from '../../lib/stats';
 import { SessionCard } from './SessionCard';
 import { DeleteButton } from '../DeleteButton';
@@ -318,25 +317,10 @@ interface SessionListProps {
 
 const BATCH_SIZE = 25;
 
-export function SessionList({ sessions = [], milestones = [], preGrouped, filters, globalShowPublic, showFullDate, highlightWords, outsideWindowCounts, onNavigateNewer, onNavigateOlder, onDeleteSession, onDeleteConversation, onDeleteMilestone, onLoadMore, hasMore }: SessionListProps) {
+export function SessionList({ preGrouped, globalShowPublic, showFullDate, highlightWords, outsideWindowCounts, onNavigateNewer, onNavigateOlder, onDeleteSession, onDeleteConversation, onDeleteMilestone, onLoadMore, hasMore }: SessionListProps) {
   // If pre-grouped conversations are provided, use them directly
   // Otherwise compute from raw sessions/milestones (legacy/search mode)
-  const conversations = useMemo(() => {
-    if (preGrouped) return preGrouped;
-
-    // Legacy: filter + group client-side
-    const filtered = sessions.filter((s) => {
-      if (filters.tool !== 'all' && s.client !== filters.tool) return false;
-      if (filters.language !== 'all' && !s.languages.includes(filters.language)) return false;
-      if (filters.project !== 'all' && (s.project ?? '') !== filters.project) return false;
-      return true;
-    });
-    const filteredMilestones = filters.category === 'all'
-      ? milestones
-      : milestones.filter((m) => m.category === filters.category);
-    const groups = groupPromptsWithMilestones(filtered, filteredMilestones);
-    return groupIntoConversations(groups);
-  }, [preGrouped, sessions, milestones, filters]);
+  const conversations = preGrouped ?? [];
 
   // Progressive rendering — show conversations in batches
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
