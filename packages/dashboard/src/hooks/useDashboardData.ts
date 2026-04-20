@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
-  SessionSeal,
   DashboardResponse,
   FeedConversation,
 } from "../lib/api";
@@ -201,21 +200,19 @@ export function useDashboardData({
   // ── Destructure server data ────────────────────────────────────────────
   const stats = serverData?.stats ?? EMPTY_STATS;
   const evaluation = serverData?.evaluation ?? null;
-  const outsideWindow = serverData?.outsideWindow ?? { before: 0, after: 0 };
   const complexityData = serverData?.complexity ?? {
     simple: 0,
     medium: 0,
     complex: 0,
   };
-  const displaySessionCount = serverData?.displaySessionCount ?? 0;
-  const filteredSessions = serverData?.filteredSessions ?? [];
-  const filteredMilestones = serverData?.filteredMilestones ?? [];
-  const allSessionsLight = serverData?.allSessionsLight ?? [];
-  const allSessionsForStrip = allSessionsLight as unknown as SessionSeal[];
+  const displaySessionCount = serverData?.sessionCount ?? 0;
+  const filteredSessions = serverData?.sessions ?? [];
+  const filteredMilestones = serverData?.milestones ?? [];
+  const allSessionsForStrip = filteredSessions;
 
   // ── Navigation ─────────────────────────────────────────────────────────
   const outsideWindowCounts = useMemo(() => {
-    if (isLive && outsideWindow.before === 0) return undefined;
+    if (isLive) return undefined;
     const scaleLabel = SCALE_LABELS[timeScale];
     const fmt = (iso: string) =>
       new Date(iso).toLocaleTimeString([], {
@@ -235,17 +232,15 @@ export function useDashboardData({
     const olderRef = jumpScale(timeScale, effectiveTime, -1);
     const olderWindow = getTimeWindow(timeScale, olderRef);
     const olderLabel = `View prev ${scaleLabel} · ${label(olderWindow.start)} – ${label(olderWindow.end)}`;
-    if (isLive) {
-      return { before: outsideWindow.before, after: 0, olderLabel };
-    }
     const newerRef = jumpScale(timeScale, effectiveTime, 1);
     const newerWindow = getTimeWindow(timeScale, newerRef);
     return {
-      ...outsideWindow,
+      before: 1,
+      after: 1,
       newerLabel: `View next ${scaleLabel} · ${label(newerWindow.start)} – ${label(newerWindow.end)}`,
       olderLabel,
     };
-  }, [outsideWindow, effectiveTime, isLive, timeScale, windowStart, windowEnd]);
+  }, [effectiveTime, isLive, timeScale, windowStart, windowEnd]);
 
   const handleNavigateNewer = useCallback(() => {
     const next = jumpScale(timeScale, effectiveTime, 1);

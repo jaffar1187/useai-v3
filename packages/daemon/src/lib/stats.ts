@@ -311,9 +311,8 @@ export function computeStats(
       }
     }
 
+    //1 hour is 3600000 milliseconds
     coveredHours = coveredMs / 3600000;
-    // Multiplier = total AI time / time where AI was active (not the full span)
-    // 1.0x = no parallelism, 2.0x = avg 2 sessions running when active
     aiMultiplier = coveredHours > 0 ? totalSeconds / 3600 / coveredHours : 0;
   }
 

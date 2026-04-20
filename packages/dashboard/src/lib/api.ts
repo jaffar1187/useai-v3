@@ -160,29 +160,11 @@ export interface DashboardResponse {
     scopeQuality: number;
     independenceLevel: number;
   } | null;
-  dailySummaries: Array<{
-    date: string;
-    sessions: number;
-    totalHours: number;
-    clients: Record<string, number>;
-    taskTypes: Record<string, number>;
-  }>;
   sessionCount: number;
   milestoneCount: number;
-  displaySessionCount: number;
-  outsideWindow: { before: number; after: number };
   complexity: { simple: number; medium: number; complex: number };
-  filteredSessions: SessionSeal[];
-  filteredMilestones: Milestone[];
-  allSessionsLight: Array<{
-    promptId: string;
-    startedAt: string;
-    endedAt: string;
-    durationMs: number;
-    activeSegments?: [string, string][];
-    client: string;
-    languages: string[];
-  }>;
+  sessions: SessionSeal[];
+  milestones: Milestone[];
 }
 
 export interface FeedConversation {

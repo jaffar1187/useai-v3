@@ -7,7 +7,6 @@ function toLocalDate(iso: string | Date): string {
 }
 
 // Module-level timestamp cache — avoids repeated new Date(iso).getTime()
-// across filterSessionsByWindow, countSessionsOutsideWindow, etc.
 const _tsCache = new Map<string, number>();
 export function parseTimestamp(iso: string): number {
   let v = _tsCache.get(iso);
@@ -45,49 +44,6 @@ export interface ComputedStats {
   byAiToolDuration: Record<string, number>;
   byLanguageAiTime: Record<string, number>;
   byTaskTypeAiTime: Record<string, number>;
-}
-
-/** Count sessions that fall entirely outside a time window */
-export function countSessionsOutsideWindow(
-  allSessions: SessionSeal[],
-  windowStart: number,
-  windowEnd: number,
-): { before: number; after: number } {
-  let before = 0;
-  let after = 0;
-  for (const s of allSessions) {
-    if (!s.endedAt || s.durationMs <= 0) continue;
-    const sEnd = parseTimestamp(s.endedAt);
-    const sStart = parseTimestamp(s.startedAt);
-    if (sEnd < windowStart) before++;
-    else if (sStart > windowEnd) after++;
-  }
-  return { before, after };
-}
-
-/** Filter sessions that overlap with a time window */
-export function filterSessionsByWindow(
-  sessions: SessionSeal[],
-  start: number,
-  end: number,
-): SessionSeal[] {
-  return sessions.filter((s) => {
-    const sStart = parseTimestamp(s.startedAt);
-    const sEnd = parseTimestamp(s.endedAt);
-    return sStart <= end && sEnd >= start;
-  });
-}
-
-/** Filter milestones by time window */
-export function filterMilestonesByWindow(
-  milestones: Milestone[],
-  start: number,
-  end: number,
-): Milestone[] {
-  return milestones.filter((m) => {
-    const t = parseTimestamp(m.createdAt);
-    return t >= start && t <= end;
-  });
 }
 
 export interface PromptGroup {
@@ -215,21 +171,6 @@ export function groupIntoConversations(
   result.sort((a, b) => parseTimestamp(b.lastSessionAt) - parseTimestamp(a.lastSessionAt));
 
   return result;
-}
-
-/** Get a human-readable label for the current time window */
-export function getTimeContextLabel(windowStart: number, windowEnd: number, isLive: boolean): string {
-  if (isLive) return 'Live';
-
-  const midpoint = (windowStart + windowEnd) / 2;
-  const midDate = new Date(midpoint);
-  const today = new Date();
-  const yesterday = new Date(Date.now() - 86400000);
-
-  if (midDate.toDateString() === today.toDateString()) return 'Today';
-  if (midDate.toDateString() === yesterday.toDateString()) return 'Yesterday';
-
-  return midDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 /** Merge overlapping/adjacent time intervals into non-overlapping spans */

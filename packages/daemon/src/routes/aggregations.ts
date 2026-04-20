@@ -11,7 +11,7 @@ export const aggregationsRoutes = new Hono();
 
 // ── Projection helpers ───────────────────────────────────────────────────────
 
-function toFilteredSession(s: Session) {
+function toSessionSummary(s: Session) {
   return {
     promptId: s.promptId,
     client: s.client,
@@ -23,25 +23,11 @@ function toFilteredSession(s: Session) {
     endedAt: s.endedAt,
     durationMs: s.durationMs,
     languages: s.languages ?? [],
-    ...(s.evaluation && { evaluation: s.evaluation }),
     ...(s.activeSegments && { activeSegments: s.activeSegments }),
-    ...(s.connectionId && { connectionId: s.connectionId }),
-    filesTouchedCount: s.filesTouchedCount ?? 0,
-    ...(s.model && { model: s.model }),
   };
 }
 
-function toLightSession(s: Session) {
-  return {
-    promptId: s.promptId,
-    startedAt: s.startedAt,
-    endedAt: s.endedAt,
-    durationMs: s.durationMs,
-    ...(s.activeSegments && { activeSegments: s.activeSegments }),
-    client: s.client,
-    languages: s.languages ?? [],
-  };
-}
+
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -62,11 +48,6 @@ function countBy<T>(
     result[key] = (result[key] ?? 0) + 1;
   }
   return result;
-}
-
-function toLocalDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 // ── Route ────────────────────────────────────────────────────────────────────
@@ -117,31 +98,6 @@ aggregationsRoutes.get("/", async (c) => {
         }
       : null;
 
-  // Daily summaries
-  const dailyMap = new Map<string, Session[]>();
-  for (const s of filteredSessions) {
-    const date = toLocalDate(s.startedAt);
-    const arr = dailyMap.get(date);
-    if (arr) arr.push(s);
-    else dailyMap.set(date, [s]);
-  }
-
-  const dailySummaries = [...dailyMap.entries()]
-    .sort(([a], [b]) => b.localeCompare(a))
-    .map(([date, daySessions]) => {
-      const totalSeconds = daySessions.reduce(
-        (sum, s) => sum + Math.round(s.durationMs / 1000),
-        0,
-      );
-      return {
-        date,
-        sessions: daySessions.length,
-        totalHours: totalSeconds / 3600,
-        clients: countBy(daySessions, (s) => s.client),
-        taskTypes: countBy(daySessions, (s) => s.taskType),
-      };
-    });
-
   // Complexity distribution
   let simple = 0,
     medium = 0,
@@ -155,20 +111,14 @@ aggregationsRoutes.get("/", async (c) => {
     else if (comp === "complex") complex++;
   }
 
-  // Display sessions
-  const displaySessions = filteredSessions;
-
   return c.json({
     window: { start: range.start, end: range.end },
     stats,
     evaluation: evalSummary,
-    dailySummaries,
     sessionCount: filteredSessions.length,
     milestoneCount: milestones.length,
-    displaySessionCount: displaySessions.length,
     complexity: { simple, medium, complex },
-    filteredSessions: displaySessions.map(toFilteredSession),
-    filteredMilestones: milestones,
-    allSessionsLight: filteredSessions.map(toLightSession),
+    sessions: filteredSessions.map(toSessionSummary),
+    milestones,
   });
 });
