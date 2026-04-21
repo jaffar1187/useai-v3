@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getConfig } from "@devness/useai-storage";
+
 import { TaskTypeSchema } from "@devness/useai-types";
 import type { PromptContext } from "../core/prompt-context.js";
 import {
@@ -84,8 +84,7 @@ export function registerStartTool(server: McpServer, ctx: PromptContext): void {
       model,
       prompt_images,
     }) => {
-      const config = await getConfig().catch(() => null);
-      const framework = config?.evaluation.framework ?? "space";
+      const framework = "calibrated";
 
       const isNested = ctx.startedAt !== null;
 

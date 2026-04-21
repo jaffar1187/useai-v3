@@ -29,11 +29,8 @@ configRoutes.get("/full", async (c) => {
       promptImages: config.capture.promptImages,
     },
     sync: {
-      includeLeaderboardStats: config.sync.includeLeaderboardStats,
-      evaluationScores: config.sync.includeEvaluation,
-      milestones: config.sync.includeMilestones,
-      includePrivateDetails: config.sync.includePrivateDetails,
-      evaluationReasons: config.sync.includeEvaluationReasons,
+      leaderboardStats: config.sync.leaderboardStats,
+      evaluationReasons: config.sync.evaluationReasons,
       autoSync: config.sync.autoSync,
       ...(config.sync.autoSync && { intervalHours: config.sync.intervalMinutes / 60 }),
     },
@@ -62,11 +59,8 @@ configRoutes.patch("/", async (c) => {
     const autoSync = sync["autoSync"] === true;
     current.sync = {
       ...current.sync,
-      includeLeaderboardStats: sync["includeLeaderboardStats"] === true,
-      includeEvaluation: sync["evaluationScores"] === true,
-      includeMilestones: sync["milestones"] === true,
-      includePrivateDetails: sync["includePrivateDetails"] === true,
-      includeEvaluationReasons: (sync["evaluationReasons"] as "none" | "below_perfect" | "all") ?? "none",
+      leaderboardStats: sync["leaderboardStats"] === true,
+      evaluationReasons: (sync["evaluationReasons"] as "none" | "belowPerfect" | "all") ?? "none",
       autoSync,
       ...(autoSync && typeof sync["intervalHours"] === "number" && {
         intervalMinutes: (sync["intervalHours"] as number) * 60,
@@ -85,11 +79,8 @@ configRoutes.patch("/", async (c) => {
       promptImages: current.capture.promptImages,
     },
     sync: {
-      includeLeaderboardStats: current.sync.includeLeaderboardStats,
-      evaluationScores: current.sync.includeEvaluation,
-      milestones: current.sync.includeMilestones,
-      includePrivateDetails: current.sync.includePrivateDetails,
-      evaluationReasons: current.sync.includeEvaluationReasons,
+      leaderboardStats: current.sync.leaderboardStats,
+      evaluationReasons: current.sync.evaluationReasons,
       autoSync: current.sync.autoSync,
       ...(current.sync.autoSync && { intervalHours: current.sync.intervalMinutes / 60 }),
     },

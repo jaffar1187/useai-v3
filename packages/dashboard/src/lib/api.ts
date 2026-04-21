@@ -336,11 +336,8 @@ export interface FullConfig {
     promptImages: boolean;
   };
   sync: {
-    includeLeaderboardStats: boolean;
-    evaluationScores: boolean;
-    milestones: boolean;
-    includePrivateDetails: boolean;
-    evaluationReasons: "none" | "below_perfect" | "all";
+    leaderboardStats: boolean;
+    evaluationReasons: "none" | "belowPerfect" | "all";
     autoSync: boolean;
     intervalHours: number;
   };

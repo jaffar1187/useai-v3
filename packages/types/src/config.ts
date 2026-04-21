@@ -38,15 +38,9 @@ export const UseaiConfigSchema = z.object({
       intervalMinutes: z.number().default(30),
 
       // Sync anonymous aggregates (total hours, session counts, streaks, language breakdown)
-      includeLeaderboardStats: z.boolean().default(true),
-      // e.g. { prompt_quality: 4, context_provided: 5, scope_quality: 3, ... }
-      includeEvaluation: z.boolean().default(true),
-      // e.g. [{ title: "Implemented auth flow", category: "feature", complexity: "medium" }]
-      includeMilestones: z.boolean().default(true),
-      // Sync private titles and project names. When false, these are stripped before upload for privacy.
-      includePrivateDetails: z.boolean().default(true),
-      // e.g. "below_perfect" → stores reasons only for scores below 5/5
-      includeEvaluationReasons: z.enum(["none", "below_perfect", "all"]).default("below_perfect"),
+      leaderboardStats: z.boolean().default(true),
+      // Controls whether evaluation reason/ideal text is synced (scores are always synced)
+      evaluationReasons: z.enum(["none", "belowPerfect", "all"]).default("none"),
     })
     .default({}),
 

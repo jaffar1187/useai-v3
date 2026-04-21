@@ -15,7 +15,7 @@ function sanitizeSession(
   session: Session,
   sync: UseaiConfig["sync"],
 ): SanitizedSession {
-  // ── Always sent (core session data) ───────────────────────────────────
+  // ── Always sent ───────────────────────────────────
   const result: Record<string, unknown> = {
     promptId: session.promptId,
     connectionId: session.connectionId,
@@ -35,61 +35,52 @@ function sanitizeSession(
     signature: session.signature,
   };
 
-  // ── Evaluation scores (toggle: evaluationScores) ──────────────────────
-  // Fields: promptQuality, contextProvided, scopeQuality,
-  //         independenceLevel, taskOutcome, iterationCount, toolsLeveraged
-  if (sync.includeEvaluation && session.evaluation) {
+  // ── Evaluation (scores always sent, reasons controlled by evaluationReasons) ─
+  if (session.evaluation) {
     const ev = session.evaluation;
     const evalObj: Record<string, unknown> = {
-      prompt_quality: ev.prompt_quality,
-      context_provided: ev.context_provided,
-      scope_quality: ev.scope_quality,
-      independence_level: ev.independence_level,
-      task_outcome: ev.task_outcome,
-      iteration_count: ev.iteration_count,
-      tools_leveraged: ev.tools_leveraged,
+      promptQuality: ev.prompt_quality,
+      contextProvided: ev.context_provided,
+      scopeQuality: ev.scope_quality,
+      independenceLevel: ev.independence_level,
+      taskOutcome: ev.task_outcome,
+      iterationCount: ev.iteration_count,
+      toolsLeveraged: ev.tools_leveraged,
     };
 
-    // ── Evaluation reasons (dropdown: evaluationReasons) ────────────────
-    // Fields: promptQualityReason, contextProvidedReason,
-    //         scopeQualityReason, independenceLevelReason,
-    //         taskOutcomeReason, *Ideal (calibrated only)
-    if (sync.includeEvaluationReasons === "all") {
-      evalObj["prompt_quality_reason"] = ev.prompt_quality_reason;
-      evalObj["context_provided_reason"] = ev.context_provided_reason;
-      evalObj["scope_quality_reason"] = ev.scope_quality_reason;
-      evalObj["independence_level_reason"] = ev.independence_level_reason;
-      evalObj["task_outcome_reason"] = ev.task_outcome_reason;
-      evalObj["prompt_quality_ideal"] = ev.prompt_quality_ideal;
-      evalObj["context_provided_ideal"] = ev.context_provided_ideal;
-      evalObj["scope_quality_ideal"] = ev.scope_quality_ideal;
-      evalObj["independence_level_ideal"] = ev.independence_level_ideal;
-      evalObj["task_outcome_ideal"] = ev.task_outcome_ideal;
-    } else if (sync.includeEvaluationReasons === "below_perfect") {
-      if (ev.prompt_quality < 5) { evalObj["prompt_quality_reason"] = ev.prompt_quality_reason; evalObj["prompt_quality_ideal"] = ev.prompt_quality_ideal; }
-      if (ev.context_provided < 5) { evalObj["context_provided_reason"] = ev.context_provided_reason; evalObj["context_provided_ideal"] = ev.context_provided_ideal; }
-      if (ev.scope_quality < 5) { evalObj["scope_quality_reason"] = ev.scope_quality_reason; evalObj["scope_quality_ideal"] = ev.scope_quality_ideal; }
-      if (ev.independence_level < 5) { evalObj["independence_level_reason"] = ev.independence_level_reason; evalObj["independence_level_ideal"] = ev.independence_level_ideal; }
-      evalObj["task_outcome_reason"] = ev.task_outcome_reason;
-      evalObj["task_outcome_ideal"] = ev.task_outcome_ideal;
+    if (sync.evaluationReasons === "all") {
+      evalObj["promptQualityReason"] = ev.prompt_quality_reason;
+      evalObj["contextProvidedReason"] = ev.context_provided_reason;
+      evalObj["scopeQualityReason"] = ev.scope_quality_reason;
+      evalObj["independenceLevelReason"] = ev.independence_level_reason;
+      evalObj["taskOutcomeReason"] = ev.task_outcome_reason;
+      evalObj["promptQualityIdeal"] = ev.prompt_quality_ideal;
+      evalObj["contextProvidedIdeal"] = ev.context_provided_ideal;
+      evalObj["scopeQualityIdeal"] = ev.scope_quality_ideal;
+      evalObj["independenceLevelIdeal"] = ev.independence_level_ideal;
+      evalObj["taskOutcomeIdeal"] = ev.task_outcome_ideal;
+    } else if (sync.evaluationReasons === "belowPerfect") {
+      if (ev.prompt_quality < 5) { evalObj["promptQualityReason"] = ev.prompt_quality_reason; evalObj["promptQualityIdeal"] = ev.prompt_quality_ideal; }
+      if (ev.context_provided < 5) { evalObj["contextProvidedReason"] = ev.context_provided_reason; evalObj["contextProvidedIdeal"] = ev.context_provided_ideal; }
+      if (ev.scope_quality < 5) { evalObj["scopeQualityReason"] = ev.scope_quality_reason; evalObj["scopeQualityIdeal"] = ev.scope_quality_ideal; }
+      if (ev.independence_level < 5) { evalObj["independenceLevelReason"] = ev.independence_level_reason; evalObj["independenceLevelIdeal"] = ev.independence_level_ideal; }
+      evalObj["taskOutcomeReason"] = ev.task_outcome_reason;
+      evalObj["taskOutcomeIdeal"] = ev.task_outcome_ideal;
     }
     // "none" — scores only, no reasons
 
     result["evaluation"] = evalObj;
   }
 
-  // ── Milestones (toggle: milestones) ───────────────────────────────────
-  // Fields: title, privateTitle, category, complexity
-  if (sync.includeMilestones && session.milestones) {
+  // ── Milestones (always synced, only visible to owner) ──────────────────
+  if (session.milestones) {
     result["milestones"] = session.milestones;
   }
 
-  // ── Private details (toggle: includePrivateDetails) ───────────────────
+  // ── Private details (always synced, only visible to owner on web) ────
   // Fields: privateTitle, project
-  if (sync.includePrivateDetails) {
-    result["privateTitle"] = session.privateTitle;
-    result["project"] = session.project;
-  }
+  result["privateTitle"] = session.privateTitle;
+  result["project"] = session.project;
 
   return result as unknown as SanitizedSession;
 }
@@ -98,7 +89,9 @@ function sanitizeSession(
 // Group by date
 // ---------------------------------------------------------------------------
 
-function groupByDate(sessions: SanitizedSession[]): Map<string, SanitizedSession[]> {
+function groupByDate(
+  sessions: SanitizedSession[],
+): Map<string, SanitizedSession[]> {
   const byDate = new Map<string, SanitizedSession[]>();
   for (const s of sessions) {
     const date = s.startedAt.slice(0, 10);
@@ -129,7 +122,9 @@ interface DaemonAggregationsResponse {
 }
 
 /** Fetch aggregated stats for a single date from the daemon. */
-async function fetchDaemonAggregations(date: string): Promise<DaemonAggregationsResponse | null> {
+async function fetchDaemonAggregations(
+  date: string,
+): Promise<DaemonAggregationsResponse | null> {
   const start = `${date}T00:00:00.000Z`;
   const end = `${date}T23:59:59.999Z`;
   const params = new URLSearchParams({ start, end });
@@ -157,12 +152,17 @@ async function fetchSessionsFromDaemon(days: number): Promise<Session[]> {
   const limit = 50;
 
   while (true) {
-    const params = new URLSearchParams({ start, end, offset: String(offset), limit: String(limit) });
+    const params = new URLSearchParams({
+      start,
+      end,
+      offset: String(offset),
+      limit: String(limit),
+    });
     const res = await fetch(`${DAEMON_URL}/api/local/prompts?${params}`, {
       signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) break;
-    const json = await res.json() as {
+    const json = (await res.json()) as {
       conversations: Array<{ prompts: Array<{ prompt: Session }> }>;
       hasMore: boolean;
     };
@@ -218,13 +218,22 @@ export async function syncPrompts(
       multiplier = agg.stats.aiMultiplier;
       streakDays = agg.stats.currentStreak;
       clients = Object.fromEntries(
-        Object.entries(agg.stats.byAiToolDuration).map(([k, h]) => [k, Math.round(h * 3600)]),
+        Object.entries(agg.stats.byAiToolDuration).map(([k, h]) => [
+          k,
+          Math.round(h * 3600),
+        ]),
       );
       taskTypes = Object.fromEntries(
-        Object.entries(agg.stats.byTaskTypeAiTime).map(([k, h]) => [k, Math.round(h * 3600)]),
+        Object.entries(agg.stats.byTaskTypeAiTime).map(([k, h]) => [
+          k,
+          Math.round(h * 3600),
+        ]),
       );
       languages = Object.fromEntries(
-        Object.entries(agg.stats.byLanguageAiTime).map(([k, h]) => [k, Math.round(h * 3600)]),
+        Object.entries(agg.stats.byLanguageAiTime).map(([k, h]) => [
+          k,
+          Math.round(h * 3600),
+        ]),
       );
     } else {
       // Fallback: compute from sessions if daemon is unavailable
@@ -237,7 +246,7 @@ export async function syncPrompts(
         aiTimeSeconds += secs;
         clients[s.client] = (clients[s.client] ?? 0) + secs;
         taskTypes[s.taskType] = (taskTypes[s.taskType] ?? 0) + secs;
-        for (const lang of (s.languages ?? [])) {
+        for (const lang of s.languages ?? []) {
           languages[lang] = (languages[lang] ?? 0) + secs;
         }
       }
@@ -261,7 +270,10 @@ export async function syncPrompts(
       syncSignature: "",
     };
 
-    const res = await apiFetch<{ synced?: boolean; sessions_inserted?: number }>("/api/sync", {
+    const res = await apiFetch<{
+      synced?: boolean;
+      sessions_inserted?: number;
+    }>("/api/sync", {
       method: "POST",
       token,
       body: payload,
@@ -270,7 +282,9 @@ export async function syncPrompts(
     if (res.ok) {
       result.synced += daySessions.length;
     } else {
-      console.error(`[sync] Failed for ${date}: ${res.error} (status ${res.status})`);
+      console.error(
+        `[sync] Failed for ${date}: ${res.error} (status ${res.status})`,
+      );
       result.errors += daySessions.length;
     }
   }
@@ -311,7 +325,10 @@ export async function syncV1Sessions(
   const byDate = new Map<string, V1Session[]>();
   for (const s of sessions) {
     const date = (s.started_at ?? "").slice(0, 10);
-    if (!date) { result.skipped++; continue; }
+    if (!date) {
+      result.skipped++;
+      continue;
+    }
     const arr = byDate.get(date);
     if (arr) arr.push(s);
     else byDate.set(date, [s]);
@@ -327,8 +344,9 @@ export async function syncV1Sessions(
       const secs = s.duration_seconds ?? 0;
       aiTimeSeconds += secs;
       if (s.client) clients[s.client] = (clients[s.client] ?? 0) + secs;
-      if (s.task_type) taskTypes[s.task_type] = (taskTypes[s.task_type] ?? 0) + secs;
-      for (const lang of (s.languages ?? [])) {
+      if (s.task_type)
+        taskTypes[s.task_type] = (taskTypes[s.task_type] ?? 0) + secs;
+      for (const lang of s.languages ?? []) {
         languages[lang] = (languages[lang] ?? 0) + secs;
       }
     }

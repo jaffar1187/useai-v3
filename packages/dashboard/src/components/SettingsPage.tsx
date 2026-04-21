@@ -268,47 +268,37 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
               <div className="py-2">
                 <div className="flex items-center gap-1">
                   <span className="text-xs font-medium text-text-primary">Leaderboard Stats</span>
-                  <InfoTooltip fields={['promptId', 'connectionId', 'client', 'taskType', 'title', 'model', 'startedAt', 'endedAt', 'durationMs', 'languages', 'filesTouchedCount', 'activeSegments', 'promptImageCount', 'prevHash', 'hash', 'signature', '— Daily totals —', 'userTimeSeconds', 'aiTimeSeconds', 'multiplier', 'promptCount', 'streakDays', 'taskTypes', 'clients']} example="aiTimeSeconds: 7200, userTimeSeconds: 3600, multiplier: 2.0" />
+                  <InfoTooltip fields={['promptId', 'connectionId', 'client', 'taskType', 'title', 'model', 'startedAt', 'endedAt', 'durationMs', 'languages', 'filesTouchedCount', 'activeSegments', 'promptImageCount', 'prevHash', 'hash', 'signature', '— Evaluation scores —', 'promptQuality', 'contextProvided', 'scopeQuality', 'independenceLevel', 'taskOutcome', 'iterationCount', 'toolsLeveraged', '— Daily totals —', 'userTimeSeconds', 'aiTimeSeconds', 'multiplier', 'promptCount', 'streakDays', 'taskTypes', 'clients']} example="aiTimeSeconds: 7200, promptQuality: 4, taskOutcome: completed" />
                 </div>
-                <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">Daily totals — always included with sync.</div>
+                <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">Session data, evaluation scores, and daily totals — always included with sync.</div>
               </div>
-              <SettingToggle
-                label="Evaluation scores"
-                description="Numeric ratings for each prompt."
-                checked={draft.sync.evaluationScores}
-                onChange={(v) => setSync({ evaluationScores: v })}
-                info={['promptQuality', 'contextProvided', 'scopeQuality', 'independenceLevel', 'taskOutcome', 'iterationCount', 'toolsLeveraged']}
-                example="promptQuality: 4, taskOutcome: completed"
-              />
-              <SettingToggle
-                label="Milestones"
-                description="List of accomplishments logged during each prompt."
-                checked={draft.sync.milestones}
-                onChange={(v) => setSync({ milestones: v })}
-                info={['title', 'privateTitle', 'category', 'complexity']}
-                example='title: "Built login page", category: "feature"'
-              />
-              <SettingToggle
-                label="Private details"
-                description={`Detailed prompt titles and project names.${orgs.length > 0 ? ' Also visible to org admins.' : ''}`}
-                info={['privateTitle', 'project']}
-                example='private_title: "Fixed auth bug in login.ts"'
-                checked={draft.sync.includePrivateDetails}
-                onChange={(v) => setSync({ includePrivateDetails: v })}
-              />
               <SettingSelect
                 label="Evaluation reasons"
                 description="Text explaining why each score was given."
                 value={draft.sync.evaluationReasons}
-                info={['promptQualityReason', 'contextProvidedReason', 'scopeQualityReason', 'independenceLevelReason', 'taskOutcomeReason', '*Ideal — what would make each score 5/5 (calibrated only)']}
+                info={['promptQualityReason', 'contextProvidedReason', 'scopeQualityReason', 'independenceLevelReason', 'taskOutcomeReason', '*Ideal — what would make each score 5/5']}
                 example='"Clear question but missing file context"'
                 options={[
-                  { value: 'all', label: 'All scores' },
-                  { value: 'below_perfect', label: 'Below perfect only' },
+                  { value: 'all', label: 'All reasons' },
+                  { value: 'belowPerfect', label: 'Below 5/5 only' },
                   { value: 'none', label: 'None' },
                 ]}
                 onChange={(v) => setSync({ evaluationReasons: v as FullConfig['sync']['evaluationReasons'] })}
               />
+              <div className="py-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-xs font-medium text-text-primary">Milestones</span>
+                  <InfoTooltip fields={['title', 'privateTitle', 'category', 'complexity']} example='title: "Built login page", category: "feature"' />
+                </div>
+                <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">Always synced — only visible to you as the owner, never shown publicly.</div>
+              </div>
+              <div className="py-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-xs font-medium text-text-primary">Private details</span>
+                  <InfoTooltip fields={['privateTitle', 'project']} example='privateTitle: "Fixed auth bug in login.ts"' />
+                </div>
+                <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">Always synced — only visible to you as the owner, never shown publicly.</div>
+              </div>
             </div>}
           </div>
         </div>
