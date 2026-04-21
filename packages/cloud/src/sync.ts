@@ -157,8 +157,11 @@ async function fetchDaemonAggregations(
 // ---------------------------------------------------------------------------
 
 async function fetchSessionsFromDaemon(days: number): Promise<Session[]> {
-  const start = new Date(Date.now() - days * 86400000).toISOString();
-  const end = new Date().toISOString();
+  const now = new Date();
+  const startDate = new Date(now);
+  startDate.setDate(startDate.getDate() - days);
+  const start = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}T00:00:00.000Z`;
+  const end = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T23:59:59.999Z`;
   const all: Session[] = [];
   let offset = 0;
   const limit = 50;
