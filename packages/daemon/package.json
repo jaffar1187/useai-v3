@@ -22,7 +22,6 @@
     "@devness/useai-types": "workspace:*",
     "@devness/useai-storage": "workspace:*",
     "@devness/useai": "workspace:*",
-    "@devness/useai-scoring": "workspace:*",
     "@devness/useai-cloud": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "hono": "^4.0.0",

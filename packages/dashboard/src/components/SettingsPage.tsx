@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Camera, BarChart3, Cloud, AlertTriangle, ChevronDown, Save, Check, Loader2, HardDrive, CloudUpload, ScrollText, Info } from 'lucide-react';
+import { Camera, Cloud, AlertTriangle, ChevronDown, Save, Check, Loader2, HardDrive, CloudUpload, ScrollText, Info } from 'lucide-react';
 import type { FullConfig, UserOrg } from '../lib/api';
 import { fetchFullConfig, patchConfig, fetchMyOrgs } from '../lib/api';
 import { useDashboardStore } from '../store';
@@ -29,7 +29,7 @@ function InfoTooltip({ fields, example }: { fields: string[]; example?: string |
         <Info className="w-3 h-3" />
       </button>
       {show && (
-        <div className="absolute left-5 bottom-0 z-[100] w-52 p-2 rounded-md border shadow-lg text-[10px] leading-relaxed" style={{ backgroundColor: 'var(--bg-surface-2)', borderColor: 'var(--border)', color: 'var(--text-muted)', opacity: 1 }}>
+        <div className="absolute left-5 bottom-0 z-[100] w-52 p-2 rounded-md border shadow-lg text-[10px] leading-relaxed max-h-72 overflow-y-auto" style={{ backgroundColor: 'var(--bg-surface-2)', borderColor: 'var(--border)', color: 'var(--text-muted)', opacity: 1 }}>
           <div className="font-medium text-text-secondary mb-1">Fields synced:</div>
           <div className="font-mono space-y-0.5">
             {fields.map(f => <div key={f}>{f}</div>)}
@@ -188,7 +188,6 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
       const result = await patchConfig({
         capture: draft.capture,
         sync: draft.sync,
-        evaluationFramework: draft.evaluationFramework,
       });
       const { instructionsUpdated, ...config } = result;
       setSaved(config);
@@ -209,10 +208,6 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
   // Local draft setters (no API calls)
   const setSync = useCallback((partial: Partial<FullConfig['sync']>) => {
     setDraft((d) => d ? { ...d, sync: { ...d.sync, ...partial } } : d);
-  }, []);
-
-  const setFramework = useCallback((v: string) => {
-    setDraft((d) => d ? { ...d, evaluationFramework: v } : d);
   }, []);
 
   if (error) {
@@ -273,7 +268,7 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
               <div className="py-2">
                 <div className="flex items-center gap-1">
                   <span className="text-xs font-medium text-text-primary">Leaderboard Stats</span>
-                  <InfoTooltip fields={['totalSeconds', 'userTimeSeconds', 'aiTimeSeconds', 'multiplier', 'promptCount', 'streakDays', 'languages', 'taskTypes', 'clients']} example="aiTimeSeconds: 7200, userTimeSeconds: 3600, multiplier: 2.0" />
+                  <InfoTooltip fields={['promptId', 'connectionId', 'client', 'taskType', 'title', 'model', 'startedAt', 'endedAt', 'durationMs', 'languages', 'filesTouchedCount', 'activeSegments', 'promptImageCount', 'prevHash', 'hash', 'signature', '— Daily totals —', 'userTimeSeconds', 'aiTimeSeconds', 'multiplier', 'promptCount', 'streakDays', 'taskTypes', 'clients']} example="aiTimeSeconds: 7200, userTimeSeconds: 3600, multiplier: 2.0" />
                 </div>
                 <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">Daily totals — always included with sync.</div>
               </div>
@@ -317,33 +312,6 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
             </div>}
           </div>
         </div>
-      </section>
-
-      {/* Evaluation */}
-      <section className="bg-bg-surface-1 border border-border/50 rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <BarChart3 className="w-4 h-4 text-text-muted" />
-          <h2 className="text-xs font-bold text-text-muted uppercase tracking-widest">Evaluation</h2>
-        </div>
-        <p className="text-[11px] text-text-muted mb-3">How prompts are scored.</p>
-
-        <SettingSelect
-          label="Framework"
-          description="Scoring algorithm used for prompt evaluations."
-          value={draft.evaluationFramework}
-          options={[
-            { value: 'space', label: 'SPACE (weighted)' },
-            { value: 'calibrated', label: 'CALIBRATED (gap analysis)' },
-            { value: 'raw', label: 'RAW (deprecated)' },
-          ]}
-          onChange={setFramework}
-        />
-        {draft.evaluationFramework !== 'calibrated' && (
-          <div className="flex items-center gap-1.5 mt-2 px-2.5 py-1.5 rounded-md text-[10px]" style={{ color: '#fbbf24', borderColor: 'rgba(251,191,36,0.2)', backgroundColor: 'rgba(251,191,36,0.05)', border: '1px solid rgba(251,191,36,0.2)' }}>
-            <AlertTriangle className="w-3 h-3 shrink-0" />
-            We recommend using CALIBRATED for the most accurate session scoring with gap analysis.
-          </div>
-        )}
       </section>
 
       {/* Cloud Sync */}

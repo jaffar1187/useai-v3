@@ -24,7 +24,6 @@ configRoutes.get("/full", async (c) => {
     mode: "local" as const,
     authenticated: Boolean(config.auth.token),
     email: config.auth.user?.email ?? null,
-    evaluationFramework: config.evaluation.framework,
     capture: {
       prompt: config.capture.prompt,
       promptImages: config.capture.promptImages,
@@ -47,7 +46,6 @@ configRoutes.patch("/", async (c) => {
   const current = await getConfig();
   const capture = body["capture"] as Record<string, unknown> | undefined;
   const sync = body["sync"] as Record<string, unknown> | undefined;
-  const fw = body["evaluationFramework"] as string | undefined;
 
   // 1. Local Only — Prompts, Prompt images
   if (capture) {
@@ -76,10 +74,6 @@ configRoutes.patch("/", async (c) => {
     };
   }
 
-  if (fw && (fw === "space" || fw === "aps" || fw === "raw" || fw === "calibrated")) {
-    current.evaluation = { ...current.evaluation, framework: fw };
-  }
-
   await saveConfig(current);
 
   return c.json({
@@ -90,7 +84,6 @@ configRoutes.patch("/", async (c) => {
       prompt: current.capture.prompt,
       promptImages: current.capture.promptImages,
     },
-    evaluationFramework: current.evaluation.framework,
     sync: {
       includeLeaderboardStats: current.sync.includeLeaderboardStats,
       evaluationScores: current.sync.includeEvaluation,

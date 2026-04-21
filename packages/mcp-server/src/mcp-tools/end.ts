@@ -12,13 +12,7 @@ import { buildSessionRecord } from "@devness/useai-crypto";
 import {
   appendSession,
   getOrCreateKeystore,
-  getConfig,
 } from "@devness/useai-storage";
-import {
-  computeSpaceScore,
-  computeRawScore,
-  computeCalibratedScore,
-} from "@devness/useai-scoring";
 import {
   TaskTypeSchema,
   MilestoneCategorySchema,
@@ -206,24 +200,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         targetCtx.childPausedMs,
       );
 
-      // Pick scoring framework from config (default: space)
-      const config = await getConfig().catch(() => null);
-      const framework = config?.evaluation.framework ?? "space";
       const sessionEval = evaluation as SessionEvaluation | undefined;
-
-      const score = (() => {
-        if (framework === "calibrated" && sessionEval) {
-          return computeCalibratedScore(sessionEval);
-        }
-        if (framework === "raw" && sessionEval) {
-          return computeRawScore(sessionEval);
-        }
-        return computeSpaceScore({
-          durationMs,
-          taskType: task_type ?? targetCtx.taskType,
-          ...(sessionEval && { evaluation: sessionEval }),
-        });
-      })();
 
       const milestones: Milestone[] = (milestonesInput ?? []).map((m) => ({
         id: `mil_${randomUUID()}`,
@@ -246,7 +223,6 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         endedAt: endedAt.toISOString(),
         durationMs,
         ...(activeSegments.length > 0 && { activeSegments }),
-        score,
         milestones,
         languages: languages ?? [],
         ...(targetCtx.privateTitle && { privateTitle: targetCtx.privateTitle }),
@@ -319,7 +295,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
             content: [
               {
                 type: "text" as const,
-                text: `Session ${fullSession.promptId} sealed. Duration: ${fmtDuration(durationMs)}, Score: ${Math.round(score.overall * 100)}%. Resumed parent session (depth ${ctx.sessionDepth}).`,
+                text: `Session ${fullSession.promptId} sealed. Duration: ${fmtDuration(durationMs)}. Resumed parent session (depth ${ctx.sessionDepth}).`,
               },
             ],
           };
@@ -329,7 +305,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
           content: [
             {
               type: "text" as const,
-              text: `Session ${fullSession.promptId} sealed. Duration: ${fmtDuration(durationMs)}, Score: ${Math.round(score.overall * 100)}%`,
+              text: `Session ${fullSession.promptId} sealed. Duration: ${fmtDuration(durationMs)}.`,
             },
           ],
         };
@@ -340,7 +316,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         content: [
           {
             type: "text" as const,
-            text: `Session ${fullSession.promptId} sealed. Duration: ${fmtDuration(durationMs)}, Score: ${Math.round(score.overall * 100)}%`,
+            text: `Session ${fullSession.promptId} sealed. Duration: ${fmtDuration(durationMs)}.`,
           },
         ],
       };

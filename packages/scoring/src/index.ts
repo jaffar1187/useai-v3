@@ -1,5 +1,3 @@
-export { computeAPS } from "./aps.js";
-export type { APSResult, APSComponents } from "./aps.js";
-export { computeSpaceScore } from "./space.js";
-export { computeRawScore } from "./raw.js";
-export { computeCalibratedScore } from "./calibrated.js";
+// Scoring algorithms have been removed. The framework name "calibrated" is
+// defined in the types package and tells the AI to generate *_ideal fields.
+// This package is intentionally empty.

@@ -344,7 +344,6 @@ export interface FullConfig {
     autoSync: boolean;
     intervalHours: number;
   };
-  evaluationFramework: string;
   authenticated: boolean;
   email: string | null;
 }

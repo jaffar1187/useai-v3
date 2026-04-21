@@ -6,11 +6,10 @@ export type SanitizedSession = Omit<Session, "prompt">;
 /** Per-date sync payload sent to the cloud. */
 export interface SyncPayload {
   date: string;
-  totalSeconds: number;
   /** Wall-clock user time — union of active intervals, concurrent sessions deduped (seconds) */
-  userTimeSeconds?: number;
+  userTimeSeconds: number;
   /** Total AI time — sum of all session durations, no dedup (seconds) */
-  aiTimeSeconds?: number;
+  aiTimeSeconds: number;
   /** AI time / user time ratio. >= 1.0 when sessions overlap. */
   multiplier?: number;
   /** Number of prompts (sessions) for this day */
