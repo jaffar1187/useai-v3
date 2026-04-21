@@ -60,10 +60,22 @@ function sanitizeSession(
       evalObj["independenceLevelIdeal"] = ev.independence_level_ideal;
       evalObj["taskOutcomeIdeal"] = ev.task_outcome_ideal;
     } else if (sync.evaluationReasons === "belowPerfect") {
-      if (ev.prompt_quality < 5) { evalObj["promptQualityReason"] = ev.prompt_quality_reason; evalObj["promptQualityIdeal"] = ev.prompt_quality_ideal; }
-      if (ev.context_provided < 5) { evalObj["contextProvidedReason"] = ev.context_provided_reason; evalObj["contextProvidedIdeal"] = ev.context_provided_ideal; }
-      if (ev.scope_quality < 5) { evalObj["scopeQualityReason"] = ev.scope_quality_reason; evalObj["scopeQualityIdeal"] = ev.scope_quality_ideal; }
-      if (ev.independence_level < 5) { evalObj["independenceLevelReason"] = ev.independence_level_reason; evalObj["independenceLevelIdeal"] = ev.independence_level_ideal; }
+      if (ev.prompt_quality < 5) {
+        evalObj["promptQualityReason"] = ev.prompt_quality_reason;
+        evalObj["promptQualityIdeal"] = ev.prompt_quality_ideal;
+      }
+      if (ev.context_provided < 5) {
+        evalObj["contextProvidedReason"] = ev.context_provided_reason;
+        evalObj["contextProvidedIdeal"] = ev.context_provided_ideal;
+      }
+      if (ev.scope_quality < 5) {
+        evalObj["scopeQualityReason"] = ev.scope_quality_reason;
+        evalObj["scopeQualityIdeal"] = ev.scope_quality_ideal;
+      }
+      if (ev.independence_level < 5) {
+        evalObj["independenceLevelReason"] = ev.independence_level_reason;
+        evalObj["independenceLevelIdeal"] = ev.independence_level_ideal;
+      }
       evalObj["taskOutcomeReason"] = ev.task_outcome_reason;
       evalObj["taskOutcomeIdeal"] = ev.task_outcome_ideal;
     }
@@ -199,65 +211,24 @@ export async function syncPrompts(
   // Group by date for per-day cloud sync
   const byDate = groupByDate(sanitized);
 
+  // Build all payloads first, then send in one batch request
+  const payloads: SyncPayload[] = [];
+
   for (const [date, daySessions] of byDate) {
-    // 5. Fetch pre-computed stats from daemon aggregations endpoint
     const agg = await fetchDaemonAggregations(date);
+    if (!agg) continue;
 
-    let userTimeSeconds: number;
-    let aiTimeSeconds: number;
-    let multiplier: number;
-    let streakDays: number;
-    let clients: Record<string, number>;
-    let taskTypes: Record<string, number>;
-    let languages: Record<string, number>;
+    const clockTimeSeconds = Math.round(agg.stats.coveredHours * 3600);
+    const aiTimeSeconds = Math.round(agg.stats.totalHours * 3600);
+    const multiplier = agg.stats.aiMultiplier;
+    const streakDays = agg.stats.currentStreak;
+    const clients = agg.stats.byAiToolDuration;
+    const taskTypes = agg.stats.byTaskTypeAiTime;
+    const languages = agg.stats.byLanguageAiTime;
 
-    if (agg) {
-      // Use daemon-computed stats
-      userTimeSeconds = Math.round(agg.stats.coveredHours * 3600);
-      aiTimeSeconds = Math.round(agg.stats.totalHours * 3600);
-      multiplier = agg.stats.aiMultiplier;
-      streakDays = agg.stats.currentStreak;
-      clients = Object.fromEntries(
-        Object.entries(agg.stats.byAiToolDuration).map(([k, h]) => [
-          k,
-          Math.round(h * 3600),
-        ]),
-      );
-      taskTypes = Object.fromEntries(
-        Object.entries(agg.stats.byTaskTypeAiTime).map(([k, h]) => [
-          k,
-          Math.round(h * 3600),
-        ]),
-      );
-      languages = Object.fromEntries(
-        Object.entries(agg.stats.byLanguageAiTime).map(([k, h]) => [
-          k,
-          Math.round(h * 3600),
-        ]),
-      );
-    } else {
-      // Fallback: compute from sessions if daemon is unavailable
-      aiTimeSeconds = 0;
-      clients = {};
-      taskTypes = {};
-      languages = {};
-      for (const s of daySessions) {
-        const secs = Math.round(s.durationMs / 1000);
-        aiTimeSeconds += secs;
-        clients[s.client] = (clients[s.client] ?? 0) + secs;
-        taskTypes[s.taskType] = (taskTypes[s.taskType] ?? 0) + secs;
-        for (const lang of s.languages ?? []) {
-          languages[lang] = (languages[lang] ?? 0) + secs;
-        }
-      }
-      userTimeSeconds = aiTimeSeconds;
-      multiplier = 1;
-      streakDays = 0;
-    }
-
-    const payload: SyncPayload = {
+    payloads.push({
       date,
-      userTimeSeconds,
+      clockTimeSeconds,
       aiTimeSeconds,
       multiplier,
       promptCount: daySessions.length,
@@ -268,115 +239,30 @@ export async function syncPrompts(
       sessions: daySessions,
       clientVersion: CLIENT_VERSION,
       syncSignature: "",
-    };
-
-    const res = await apiFetch<{
-      synced?: boolean;
-      sessions_inserted?: number;
-    }>("/api/sync", {
-      method: "POST",
-      token,
-      body: payload,
     });
-
-    if (res.ok) {
-      result.synced += daySessions.length;
-    } else {
-      console.error(
-        `[sync] Failed for ${date}: ${res.error} (status ${res.status})`,
-      );
-      result.errors += daySessions.length;
-    }
   }
 
-  // Milestones are synced via _milestones embedded in each session — the cloud
-  // /api/sync endpoint extracts and upserts them. No separate publish needed.
+  // Send all payloads in a single batch request
+  const totalSessions = payloads.reduce((n, p) => n + p.sessions.length, 0);
+
+  const batchRes = await apiFetch<{
+    synced?: boolean;
+    results?: Array<{ synced?: boolean; sessions_inserted?: number }>;
+  }>("/api/sync", {
+    method: "POST",
+    token,
+    body: payloads,
+  });
+
+  if (batchRes.ok) {
+    result.synced += totalSessions;
+  } else {
+    console.error(
+      `[sync] Batch failed: ${batchRes.error} (status ${batchRes.status})`,
+    );
+    result.errors += totalSessions;
+  }
 
   return result;
 }
 
-// ---------------------------------------------------------------------------
-// V1 sync — sends pre-assembled snake_case sessions directly to server
-// ---------------------------------------------------------------------------
-
-interface V1Session {
-  session_id: string;
-  client: string;
-  task_type: string;
-  started_at: string;
-  ended_at: string;
-  duration_seconds: number;
-  languages?: string[];
-  [key: string]: unknown;
-}
-
-/**
- * Sync v1 (legacy) sessions that are already in snake_case format.
- * Groups by date and sends in the old server format (no clientVersion).
- */
-export async function syncV1Sessions(
-  token: string,
-  sessions: V1Session[],
-): Promise<SyncResult> {
-  const result: SyncResult = { synced: 0, skipped: 0, errors: 0 };
-  if (sessions.length === 0) return result;
-
-  // Group by date
-  const byDate = new Map<string, V1Session[]>();
-  for (const s of sessions) {
-    const date = (s.started_at ?? "").slice(0, 10);
-    if (!date) {
-      result.skipped++;
-      continue;
-    }
-    const arr = byDate.get(date);
-    if (arr) arr.push(s);
-    else byDate.set(date, [s]);
-  }
-
-  for (const [date, daySessions] of byDate) {
-    let aiTimeSeconds = 0;
-    const clients: Record<string, number> = {};
-    const taskTypes: Record<string, number> = {};
-    const languages: Record<string, number> = {};
-
-    for (const s of daySessions) {
-      const secs = s.duration_seconds ?? 0;
-      aiTimeSeconds += secs;
-      if (s.client) clients[s.client] = (clients[s.client] ?? 0) + secs;
-      if (s.task_type)
-        taskTypes[s.task_type] = (taskTypes[s.task_type] ?? 0) + secs;
-      for (const lang of s.languages ?? []) {
-        languages[lang] = (languages[lang] ?? 0) + secs;
-      }
-    }
-
-    // Strip prompt before sending (local only)
-    const cleaned = daySessions.map(({ prompt: _p, ...rest }) => rest);
-
-    const payload = {
-      date,
-      aiTimeSeconds,
-      userTimeSeconds: aiTimeSeconds,
-      clients,
-      taskTypes,
-      languages,
-      sessions: cleaned,
-      syncSignature: "",
-    };
-
-    const res = await apiFetch<{ synced?: boolean }>("/api/sync", {
-      method: "POST",
-      token,
-      body: payload,
-    });
-
-    if (res.ok) {
-      result.synced += daySessions.length;
-    } else {
-      result.errors += daySessions.length;
-    }
-  }
-
-  return result;
-}

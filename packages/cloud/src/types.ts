@@ -7,7 +7,7 @@ export type SanitizedSession = Omit<Session, "prompt">;
 export interface SyncPayload {
   date: string;
   /** Wall-clock user time — union of active intervals, concurrent sessions deduped (seconds) */
-  userTimeSeconds: number;
+  clockTimeSeconds: number;
   /** Total AI time — sum of all session durations, no dedup (seconds) */
   aiTimeSeconds: number;
   /** AI time / user time ratio. >= 1.0 when sessions overlap. */
@@ -22,21 +22,6 @@ export interface SyncPayload {
   sessions: SanitizedSession[];
   clientVersion: string;
   syncSignature: string;
-}
-
-export interface MilestonePublishPayload {
-  milestones: Array<{
-    id: string;
-    session_id: string;
-    title: string;
-    private_title?: string;
-    category: string;
-    complexity: string;
-    duration_minutes: number;
-    languages: string[];
-    client: string;
-    chain_hash: string;
-  }>;
 }
 
 export interface SyncResult {

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { sendOtp, verifyOtp, CloudAuthError } from "@devness/useai-cloud";
-import { getConfig, patchConfig } from "@devness/useai-storage";
+import { getConfig, patchConfig, saveConfig } from "@devness/useai-storage";
 
 function errorResponse(err: unknown): { message: string; status: ContentfulStatusCode } {
   if (err instanceof CloudAuthError) {
@@ -37,6 +37,7 @@ authRoutes.post("/verify-otp", async (c) => {
 
 authRoutes.post("/logout", async (c) => {
   const config = await getConfig();
-  await patchConfig({ ...config, auth: {} });
+  config.auth = { token: undefined, user: undefined } as unknown as typeof config.auth;
+  await saveConfig(config);
   return c.json({ ok: true });
 });

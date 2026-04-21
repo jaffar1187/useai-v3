@@ -268,7 +268,7 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
               <div className="py-2">
                 <div className="flex items-center gap-1">
                   <span className="text-xs font-medium text-text-primary">Leaderboard Stats</span>
-                  <InfoTooltip fields={['promptId', 'connectionId', 'client', 'taskType', 'title', 'model', 'startedAt', 'endedAt', 'durationMs', 'languages', 'filesTouchedCount', 'activeSegments', 'promptImageCount', 'prevHash', 'hash', 'signature', '— Evaluation scores —', 'promptQuality', 'contextProvided', 'scopeQuality', 'independenceLevel', 'taskOutcome', 'iterationCount', 'toolsLeveraged', '— Daily totals —', 'userTimeSeconds', 'aiTimeSeconds', 'multiplier', 'promptCount', 'streakDays', 'taskTypes', 'clients']} example="aiTimeSeconds: 7200, promptQuality: 4, taskOutcome: completed" />
+                  <InfoTooltip fields={['promptId', 'connectionId', 'client', 'taskType', 'title', 'model', 'startedAt', 'endedAt', 'durationMs', 'languages', 'filesTouchedCount', 'activeSegments', 'promptImageCount', 'prevHash', 'hash', 'signature', '— Evaluation scores —', 'promptQuality', 'contextProvided', 'scopeQuality', 'independenceLevel', 'taskOutcome', 'iterationCount', 'toolsLeveraged', '— Daily totals —', 'clockTimeSeconds', 'aiTimeSeconds', 'multiplier', 'promptCount', 'streakDays', 'taskTypes', 'clients']} example="aiTimeSeconds: 7200, promptQuality: 4, taskOutcome: completed" />
                 </div>
                 <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">Session data, evaluation scores, and daily totals — always included with sync.</div>
               </div>

@@ -312,8 +312,8 @@ export function computeStats(
     }
 
     //1 hour is 3600000 milliseconds
-    coveredHours = coveredMs / 3600000;
-    aiMultiplier = coveredHours > 0 ? totalSeconds / 3600 / coveredHours : 0;
+    coveredHours = Math.round((coveredMs / 3600000) * 100) / 100;
+    aiMultiplier = coveredHours > 0 ? Math.round((totalSeconds / 3600 / coveredHours) * 100) / 100 : 0;
   }
 
   const milestoneStats = computeMilestoneStats(milestones);
@@ -333,11 +333,13 @@ export function computeStats(
 
   const dropZero = (rec: Record<string, number>) =>
     Object.fromEntries(
-      Object.entries(rec).filter(([, v]) => Math.round(v) > 0),
+      Object.entries(rec)
+        .filter(([, v]) => Math.round(v) > 0)
+        .map(([k, v]) => [k, Math.round(v)]),
     );
 
   return {
-    totalHours: totalSeconds / 3600,
+    totalHours: Math.round((totalSeconds / 3600) * 100) / 100,
     totalSessions: prompts.length,
     coveredHours,
     aiMultiplier,

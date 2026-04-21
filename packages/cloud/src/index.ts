@@ -9,9 +9,9 @@ export {
   CloudAuthError,
 } from "./auth.js";
 
-export { syncPrompts, syncV1Sessions } from "./sync.js";
+export { syncPrompts } from "./sync.js";
 
 export { fetchLeaderboard } from "./leaderboard.js";
 export type { FetchLeaderboardOptions } from "./leaderboard.js";
 
-export type { SanitizedSession, SyncPayload, MilestonePublishPayload, SyncResult } from "./types.js";
+export type { SanitizedSession, SyncPayload, SyncResult } from "./types.js";
