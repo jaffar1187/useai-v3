@@ -188,12 +188,12 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
       const result = await patchConfig({
         capture: draft.capture,
         sync: draft.sync,
-        evaluation_framework: draft.evaluation_framework,
+        evaluationFramework: draft.evaluationFramework,
       });
-      const { instructions_updated, ...config } = result;
+      const { instructionsUpdated, ...config } = result;
       setSaved(config);
       setDraft(structuredClone(config));
-      setSaveResult(instructions_updated ?? []);
+      setSaveResult(instructionsUpdated ?? []);
       setSaveState('saved');
       setTimeout(() => setSaveState('idle'), 3000);
     } catch {
@@ -207,16 +207,12 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
   }, [saved]);
 
   // Local draft setters (no API calls)
-  const setCapture = useCallback((partial: Partial<FullConfig['capture']>) => {
-    setDraft((d) => d ? { ...d, capture: { ...d.capture, ...partial } } : d);
-  }, []);
-
   const setSync = useCallback((partial: Partial<FullConfig['sync']>) => {
     setDraft((d) => d ? { ...d, sync: { ...d.sync, ...partial } } : d);
   }, []);
 
   const setFramework = useCallback((v: string) => {
-    setDraft((d) => d ? { ...d, evaluation_framework: v } : d);
+    setDraft((d) => d ? { ...d, evaluationFramework: v } : d);
   }, []);
 
   if (error) {
@@ -277,23 +273,23 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
               <div className="py-2">
                 <div className="flex items-center gap-1">
                   <span className="text-xs font-medium text-text-primary">Leaderboard Stats</span>
-                  <InfoTooltip fields={['total_seconds', 'user_time_seconds', 'ai_time_seconds', 'multiplier', 'prompt_count', 'streak_days', 'languages', 'task_types', 'clients']} example="ai_time_seconds: 7200, user_time_seconds: 3600, multiplier: 2.0" />
+                  <InfoTooltip fields={['totalSeconds', 'userTimeSeconds', 'aiTimeSeconds', 'multiplier', 'promptCount', 'streakDays', 'languages', 'taskTypes', 'clients']} example="aiTimeSeconds: 7200, userTimeSeconds: 3600, multiplier: 2.0" />
                 </div>
                 <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">Daily totals — always included with sync.</div>
               </div>
               <SettingToggle
                 label="Evaluation scores"
                 description="Numeric ratings for each prompt."
-                checked={draft.capture.evaluation}
-                onChange={(v) => setCapture({ evaluation: v })}
+                checked={draft.sync.evaluationScores}
+                onChange={(v) => setSync({ evaluationScores: v })}
                 info={['promptQuality', 'contextProvided', 'scopeQuality', 'independenceLevel', 'taskOutcome', 'iterationCount', 'toolsLeveraged']}
                 example="promptQuality: 4, taskOutcome: completed"
               />
               <SettingToggle
                 label="Milestones"
                 description="List of accomplishments logged during each prompt."
-                checked={draft.capture.milestones}
-                onChange={(v) => setCapture({ milestones: v })}
+                checked={draft.sync.milestones}
+                onChange={(v) => setSync({ milestones: v })}
                 info={['title', 'privateTitle', 'category', 'complexity']}
                 example='title: "Built login page", category: "feature"'
               />
@@ -302,13 +298,13 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
                 description={`Detailed prompt titles and project names.${orgs.length > 0 ? ' Also visible to org admins.' : ''}`}
                 info={['privateTitle', 'project']}
                 example='private_title: "Fixed auth bug in login.ts"'
-                checked={draft.sync.include_private_details}
-                onChange={(v) => setSync({ include_private_details: v })}
+                checked={draft.sync.includePrivateDetails}
+                onChange={(v) => setSync({ includePrivateDetails: v })}
               />
               <SettingSelect
                 label="Evaluation reasons"
                 description="Text explaining why each score was given."
-                value={draft.capture.evaluation_reasons}
+                value={draft.sync.evaluationReasons}
                 info={['promptQualityReason', 'contextProvidedReason', 'scopeQualityReason', 'independenceLevelReason', 'taskOutcomeReason', '*Ideal — what would make each score 5/5 (calibrated only)']}
                 example='"Clear question but missing file context"'
                 options={[
@@ -316,7 +312,7 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
                   { value: 'below_perfect', label: 'Below perfect only' },
                   { value: 'none', label: 'None' },
                 ]}
-                onChange={(v) => setCapture({ evaluation_reasons: v as FullConfig['capture']['evaluation_reasons'] })}
+                onChange={(v) => setSync({ evaluationReasons: v as FullConfig['sync']['evaluationReasons'] })}
               />
             </div>}
           </div>
@@ -334,7 +330,7 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
         <SettingSelect
           label="Framework"
           description="Scoring algorithm used for prompt evaluations."
-          value={draft.evaluation_framework}
+          value={draft.evaluationFramework}
           options={[
             { value: 'space', label: 'SPACE (weighted)' },
             { value: 'calibrated', label: 'CALIBRATED (gap analysis)' },
@@ -342,7 +338,7 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
           ]}
           onChange={setFramework}
         />
-        {draft.evaluation_framework !== 'calibrated' && (
+        {draft.evaluationFramework !== 'calibrated' && (
           <div className="flex items-center gap-1.5 mt-2 px-2.5 py-1.5 rounded-md text-[10px]" style={{ color: '#fbbf24', borderColor: 'rgba(251,191,36,0.2)', backgroundColor: 'rgba(251,191,36,0.05)', border: '1px solid rgba(251,191,36,0.2)' }}>
             <AlertTriangle className="w-3 h-3 shrink-0" />
             We recommend using CALIBRATED for the most accurate session scoring with gap analysis.
@@ -366,11 +362,11 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
           <SettingToggle
             label="Auto-sync"
             description="Automatically sync data on a schedule."
-            checked={draft.sync.auto_sync}
-            onChange={(v) => setSync({ auto_sync: v })}
+            checked={draft.sync.autoSync}
+            onChange={(v) => setSync({ autoSync: v })}
           />
 
-          {draft.sync.auto_sync && (
+          {draft.sync.autoSync && (
             <div className="space-y-3 pt-2">
               {orgs.length > 0 && (
                 <div className="px-0.5">
@@ -393,7 +389,7 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
                 <SettingSelect
                   label="Sync interval"
                   description="How often to sync data."
-                  value={String(draft.sync.interval_hours)}
+                  value={String(draft.sync.intervalHours)}
                   options={[
                     { value: '0.25', label: 'Every 15 minutes' },
                     { value: '0.5', label: 'Every 30 minutes' },
@@ -404,7 +400,7 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
                     { value: '12', label: 'Every 12 hours' },
                     { value: '24', label: 'Every 24 hours' },
                   ]}
-                  onChange={(v) => setSync({ interval_hours: Number(v) })}
+                  onChange={(v) => setSync({ intervalHours: Number(v) })}
                 />
               </div>
             </div>

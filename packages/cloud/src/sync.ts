@@ -1,4 +1,5 @@
 import type { Session, SessionEvaluation, UseaiConfig } from "@devness/useai-types";
+const DAEMON_URL = "http://127.0.0.1:19200";
 import { apiFetch } from "./api-client.js";
 import type { SanitizedSession, SyncPayload, SyncResult } from "./types.js";
 
@@ -14,25 +15,35 @@ function sanitizeEvaluation(
 ): SessionEvaluation {
   if (includeEvaluationReasons === "all") return evaluation;
 
-  // Strip all *_reason fields for "none" or "below_perfect"
-  const {
-    prompt_quality_reason: _pqr,
-    context_provided_reason: _cpr,
-    task_outcome_reason: _tor,
-    independence_level_reason: _ilr,
-    scope_quality_reason: _sqr,
-    ...rest
-  } = evaluation;
+  if (includeEvaluationReasons === "none") {
+    // Strip all *_reason and *_ideal fields
+    const {
+      prompt_quality_reason: _pqr, prompt_quality_ideal: _pqi,
+      context_provided_reason: _cpr, context_provided_ideal: _cpi,
+      task_outcome_reason: _tor, task_outcome_ideal: _toi,
+      independence_level_reason: _ilr, independence_level_ideal: _ili,
+      scope_quality_reason: _sqr, scope_quality_ideal: _sqi,
+      ...rest
+    } = evaluation;
+    return rest;
+  }
 
-  return rest;
+  // "below_perfect" — keep reasons only for scores below 5
+  const result = { ...evaluation };
+  if (result.prompt_quality === 5) { delete result.prompt_quality_reason; delete result.prompt_quality_ideal; }
+  if (result.context_provided === 5) { delete result.context_provided_reason; delete result.context_provided_ideal; }
+  if (result.independence_level === 5) { delete result.independence_level_reason; delete result.independence_level_ideal; }
+  if (result.scope_quality === 5) { delete result.scope_quality_reason; delete result.scope_quality_ideal; }
+  // task_outcome is a string not a number — always keep its reason
+  return result;
 }
 
 function sanitizeSession(
   session: Session,
   sync: UseaiConfig["sync"],
 ): SanitizedSession {
-  // Always strip prompt (stays local)
-  const { prompt: _prompt, ...withoutPrompt } = session;
+  // Always strip prompt and promptImages (stays local)
+  const { prompt: _prompt, promptImages: _images, ...withoutPrompt } = session;
 
   // Strip private details if includePrivateDetails is false
   if (!sync.includePrivateDetails) {
@@ -40,150 +51,25 @@ function sanitizeSession(
     delete withoutPrompt.project;
   }
 
-  // Optionally strip evaluation
+  // Strip milestones if includeMilestones is false
+  if (!sync.includeMilestones) {
+    (withoutPrompt as Record<string, unknown>)["milestones"] = undefined;
+  }
+
+  // Strip evaluation if includeEvaluation is false
   if (!sync.includeEvaluation || !withoutPrompt.evaluation) {
     const { evaluation: _eval, ...withoutEval } = withoutPrompt;
     return withoutEval;
   }
 
+  // Sanitize evaluation reasons based on setting
   return {
     ...withoutPrompt,
     evaluation: sanitizeEvaluation(
       withoutPrompt.evaluation,
-      sync.includePrivateDetails ? sync.includeEvaluationReasons : "none",
+      sync.includeEvaluationReasons,
     ),
   };
-}
-
-// ---------------------------------------------------------------------------
-// Deduplication
-// ---------------------------------------------------------------------------
-
-function deduplicateSessions(sessions: Session[]): Session[] {
-  const map = new Map<string, Session>();
-  for (const session of sessions) {
-    const existing = map.get(session.promptId);
-    if (!existing || session.durationMs > existing.durationMs) {
-      map.set(session.promptId, session);
-    }
-  }
-  return Array.from(map.values());
-}
-
-// ---------------------------------------------------------------------------
-// Chain validation
-// ---------------------------------------------------------------------------
-
-function hasValidChainLinks(sessions: Session[]): boolean {
-  const sorted = [...sessions].sort((a, b) =>
-    a.startedAt.localeCompare(b.startedAt),
-  );
-  for (let i = 1; i < sorted.length; i++) {
-    const prev = sorted[i - 1];
-    const curr = sorted[i];
-    if (prev && curr && curr.prevHash !== "0".repeat(64) && curr.prevHash !== prev.hash) {
-      return false;
-    }
-  }
-  return true;
-}
-
-function filterValidSessions(sessions: Session[]): Session[] {
-  // Remove sessions with no hash (unsigned)
-  const signed = sessions.filter((s) => s.hash && s.signature);
-
-  // Group by connectionId and validate chain linkage per connection
-  const byConnection = new Map<string, Session[]>();
-  for (const session of signed) {
-    const group = byConnection.get(session.connectionId) ?? [];
-    group.push(session);
-    byConnection.set(session.connectionId, group);
-  }
-
-  const valid: Session[] = [];
-  for (const group of byConnection.values()) {
-    if (hasValidChainLinks(group)) {
-      valid.push(...group);
-    } else {
-      // Include sessions that have valid individual hashes even if chain is broken
-      valid.push(...group.filter((s) => s.hash.length === 64));
-    }
-  }
-  return valid;
-}
-
-// ---------------------------------------------------------------------------
-// User time — union of active intervals (concurrent sessions deduped)
-// ---------------------------------------------------------------------------
-
-function computeUserTimeSeconds(sessions: SanitizedSession[]): number {
-  const intervals: [number, number][] = [];
-
-  for (const s of sessions) {
-    const sStart = new Date(s.startedAt).getTime();
-    const sEnd = new Date(s.endedAt).getTime();
-    if (sEnd <= sStart) continue;
-
-    if (s.activeSegments && s.activeSegments.length > 0) {
-      for (const [segStart, segEnd] of s.activeSegments) {
-        const t0 = new Date(segStart).getTime();
-        const t1 = new Date(segEnd).getTime();
-        if (t1 > t0) intervals.push([t0, t1]);
-      }
-    } else {
-      // Backward compat: approximate with [start, start + duration]
-      const durationMs = s.durationMs;
-      const activeEnd = Math.min(sStart + durationMs, sEnd);
-      if (activeEnd > sStart) intervals.push([sStart, activeEnd]);
-    }
-  }
-
-  if (intervals.length === 0) return 0;
-
-  // Merge overlapping intervals
-  intervals.sort((a, b) => a[0] - b[0]);
-  const merged: [number, number][] = [intervals[0]!];
-  for (let i = 1; i < intervals.length; i++) {
-    const [start, end] = intervals[i]!;
-    const last = merged[merged.length - 1]!;
-    if (start <= last[1]) {
-      last[1] = Math.max(last[1], end);
-    } else {
-      merged.push([start, end]);
-    }
-  }
-
-  let totalMs = 0;
-  for (const [start, end] of merged) {
-    totalMs += end - start;
-  }
-  return Math.round(totalMs / 1000);
-}
-
-// ---------------------------------------------------------------------------
-// Streak — consecutive days with at least one session
-// ---------------------------------------------------------------------------
-
-function computeStreakDays(allDates: string[]): number {
-  if (allDates.length === 0) return 0;
-
-  const days = [...new Set(allDates)].sort().reverse();
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-
-  if (days[0] !== today && days[0] !== yesterday) return 0;
-
-  let streak = 1;
-  for (let i = 1; i < days.length; i++) {
-    const prev = new Date(days[i - 1]!).getTime();
-    const curr = new Date(days[i]!).getTime();
-    if (prev - curr === 86400000) {
-      streak++;
-    } else {
-      break;
-    }
-  }
-  return streak;
 }
 
 // ---------------------------------------------------------------------------
@@ -202,72 +88,160 @@ function groupByDate(sessions: SanitizedSession[]): Map<string, SanitizedSession
 }
 
 // ---------------------------------------------------------------------------
+// Daemon aggregations response shape (subset we use)
+// ---------------------------------------------------------------------------
+
+interface DaemonStats {
+  totalHours: number;
+  coveredHours: number;
+  aiMultiplier: number;
+  currentStreak: number;
+  byAiToolDuration: Record<string, number>;
+  byLanguageAiTime: Record<string, number>;
+  byTaskTypeAiTime: Record<string, number>;
+}
+
+interface DaemonAggregationsResponse {
+  stats: DaemonStats;
+  sessionCount: number;
+}
+
+/** Fetch aggregated stats for a single date from the daemon. */
+async function fetchDaemonAggregations(date: string): Promise<DaemonAggregationsResponse | null> {
+  const start = `${date}T00:00:00.000Z`;
+  const end = `${date}T23:59:59.999Z`;
+  const params = new URLSearchParams({ start, end });
+
+  try {
+    const res = await fetch(`${DAEMON_URL}/api/local/aggregations?${params}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as DaemonAggregationsResponse;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Fetch sessions from daemon
+// ---------------------------------------------------------------------------
+
+async function fetchSessionsFromDaemon(days: number): Promise<Session[]> {
+  const start = new Date(Date.now() - days * 86400000).toISOString();
+  const end = new Date().toISOString();
+  const all: Session[] = [];
+  let offset = 0;
+  const limit = 50;
+
+  while (true) {
+    const params = new URLSearchParams({ start, end, offset: String(offset), limit: String(limit) });
+    const res = await fetch(`${DAEMON_URL}/api/local/prompts?${params}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) break;
+    const json = await res.json() as {
+      conversations: Array<{ prompts: Array<{ prompt: Session }> }>;
+      hasMore: boolean;
+    };
+    for (const conv of json.conversations) {
+      for (const pg of conv.prompts) {
+        all.push(pg.prompt);
+      }
+    }
+    if (!json.hasMore) break;
+    offset += limit;
+  }
+
+  return all;
+}
+
+// ---------------------------------------------------------------------------
 // Main sync
 // ---------------------------------------------------------------------------
 
 export async function syncPrompts(
   token: string,
-  sessions: Session[],
   config: UseaiConfig,
+  days?: number,
 ): Promise<SyncResult> {
   const result: SyncResult = { synced: 0, skipped: 0, errors: 0 };
 
+  const sessions = await fetchSessionsFromDaemon(days ?? 180);
+
   if (sessions.length === 0) return result;
 
-  // 1. Deduplicate
-  const deduped = deduplicateSessions(sessions);
-  result.skipped += sessions.length - deduped.length;
+  // Sanitize (strip private data based on user's privacy settings)
+  const sanitized = sessions.map((s) => sanitizeSession(s, config.sync));
 
-  // 2. Validate chain
-  const valid = filterValidSessions(deduped);
-  result.skipped += deduped.length - valid.length;
-
-  // 3. Sanitize
-  const sanitized = valid.map((s) => sanitizeSession(s, config.sync));
-
-  // 4. Group by date and send per-date payloads
+  // Group by date for per-day cloud sync
   const byDate = groupByDate(sanitized);
 
-  // Collect all dates for streak calculation
-  const allDates = [...byDate.keys()];
-  const streakDays = computeStreakDays(allDates);
-
   for (const [date, daySessions] of byDate) {
-    let totalSeconds = 0;
-    const clients: Record<string, number> = {};
-    const taskTypes: Record<string, number> = {};
-    const languages: Record<string, number> = {};
+    // 5. Fetch pre-computed stats from daemon aggregations endpoint
+    const agg = await fetchDaemonAggregations(date);
 
-    for (const s of daySessions) {
-      const secs = Math.round(s.durationMs / 1000);
-      totalSeconds += secs;
-      clients[s.client] = (clients[s.client] ?? 0) + secs;
-      taskTypes[s.taskType] = (taskTypes[s.taskType] ?? 0) + secs;
-      for (const lang of (s.languages ?? [])) {
-        languages[lang] = (languages[lang] ?? 0) + secs;
+    let totalSeconds: number;
+    let userTimeSeconds: number;
+    let aiTimeSeconds: number;
+    let multiplier: number;
+    let streakDays: number;
+    let clients: Record<string, number>;
+    let taskTypes: Record<string, number>;
+    let languages: Record<string, number>;
+
+    if (agg) {
+      // Use daemon-computed stats — no need to recompute
+      totalSeconds = Math.round(agg.stats.totalHours * 3600);
+      userTimeSeconds = Math.round(agg.stats.coveredHours * 3600);
+      aiTimeSeconds = totalSeconds;
+      multiplier = agg.stats.aiMultiplier;
+      streakDays = agg.stats.currentStreak;
+      // Convert hours → seconds for per-tool/language/taskType breakdowns
+      clients = Object.fromEntries(
+        Object.entries(agg.stats.byAiToolDuration).map(([k, h]) => [k, Math.round(h * 3600)]),
+      );
+      taskTypes = Object.fromEntries(
+        Object.entries(agg.stats.byTaskTypeAiTime).map(([k, h]) => [k, Math.round(h * 3600)]),
+      );
+      languages = Object.fromEntries(
+        Object.entries(agg.stats.byLanguageAiTime).map(([k, h]) => [k, Math.round(h * 3600)]),
+      );
+    } else {
+      // Fallback: compute from sessions if daemon is unavailable
+      totalSeconds = 0;
+      clients = {};
+      taskTypes = {};
+      languages = {};
+      for (const s of daySessions) {
+        const secs = Math.round(s.durationMs / 1000);
+        totalSeconds += secs;
+        clients[s.client] = (clients[s.client] ?? 0) + secs;
+        taskTypes[s.taskType] = (taskTypes[s.taskType] ?? 0) + secs;
+        for (const lang of (s.languages ?? [])) {
+          languages[lang] = (languages[lang] ?? 0) + secs;
+        }
       }
+      userTimeSeconds = totalSeconds;
+      aiTimeSeconds = totalSeconds;
+      multiplier = 1;
+      streakDays = 0;
     }
-
-    const userTimeSeconds = computeUserTimeSeconds(daySessions);
-    const aiTimeSeconds = totalSeconds;
-    const multiplier = userTimeSeconds > 0
-      ? Math.round((aiTimeSeconds / userTimeSeconds) * 100) / 100
-      : 0;
 
     const payload: SyncPayload = {
       date,
-      total_seconds: totalSeconds,
-      user_time_seconds: userTimeSeconds,
-      ai_time_seconds: aiTimeSeconds,
+      totalSeconds,
+      userTimeSeconds,
+      aiTimeSeconds,
       multiplier,
-      prompt_count: daySessions.length,
-      streak_days: streakDays,
+      promptCount: daySessions.length,
+      streakDays,
       clients,
-      task_types: taskTypes,
+      taskTypes,
       languages,
       sessions: daySessions,
       clientVersion: CLIENT_VERSION,
-      sync_signature: "",
+      syncSignature: "",
     };
 
     const res = await apiFetch<{ synced?: boolean; sessions_inserted?: number }>("/api/sync", {
@@ -347,12 +321,12 @@ export async function syncV1Sessions(
 
     const payload = {
       date,
-      total_seconds: totalSeconds,
+      totalSeconds,
       clients,
-      task_types: taskTypes,
+      taskTypes,
       languages,
       sessions: cleaned,
-      sync_signature: "",
+      syncSignature: "",
     };
 
     const res = await apiFetch<{ synced?: boolean }>("/api/sync", {
@@ -370,4 +344,3 @@ export async function syncV1Sessions(
 
   return result;
 }
-

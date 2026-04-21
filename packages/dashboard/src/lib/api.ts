@@ -122,8 +122,8 @@ export interface LocalConfig {
   authenticated: boolean;
   email: string | null;
   username: string | null;
-  last_sync_at: string | null;
-  auto_sync: boolean;
+  lastSyncAt: string | null;
+  autoSync: boolean;
 }
 
 // ── Server-side computed endpoints ────────────────────────────────────────
@@ -278,7 +278,7 @@ export async function postVerifyOtp(
 
 export async function postSync(): Promise<{
   success: boolean;
-  last_sync_at?: string;
+  lastSyncAt?: string;
   error?: string;
 }> {
   return post("/api/local/sync");
@@ -333,18 +333,18 @@ export interface FullConfig {
   mode: "local" | "cloud";
   capture: {
     prompt: boolean;
-    prompt_images: boolean;
-    evaluation: boolean;
-    evaluation_reasons: "none" | "below_perfect" | "all";
-    milestones: boolean;
+    promptImages: boolean;
   };
   sync: {
-    auto_sync: boolean;
-    interval_hours: number;
-    include_leaderboard_stats: boolean;
-    include_private_details: boolean;
+    includeLeaderboardStats: boolean;
+    evaluationScores: boolean;
+    milestones: boolean;
+    includePrivateDetails: boolean;
+    evaluationReasons: "none" | "below_perfect" | "all";
+    autoSync: boolean;
+    intervalHours: number;
   };
-  evaluation_framework: string;
+  evaluationFramework: string;
   authenticated: boolean;
   email: string | null;
 }
@@ -387,6 +387,6 @@ export function fetchFullConfig(): Promise<FullConfig> {
 
 export function patchConfig(
   updates: Record<string, unknown>,
-): Promise<FullConfig & { instructions_updated?: string[] }> {
+): Promise<FullConfig & { instructionsUpdated?: string[] }> {
   return patch("/api/local/config", updates);
 }

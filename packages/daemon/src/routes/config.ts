@@ -11,8 +11,8 @@ configRoutes.get("/", async (c) => {
     authenticated: Boolean(config.auth.token),
     email: config.auth.user?.email ?? null,
     username: config.auth.user?.username ?? null,
-    last_sync_at: config.lastSyncAt ?? null,
-    auto_sync: config.sync.autoSync,
+    lastSyncAt: config.lastSyncAt ?? null,
+    autoSync: config.sync.autoSync,
   });
 });
 
@@ -24,75 +24,59 @@ configRoutes.get("/full", async (c) => {
     mode: "local" as const,
     authenticated: Boolean(config.auth.token),
     email: config.auth.user?.email ?? null,
-    evaluation_framework: config.evaluation.framework,
+    evaluationFramework: config.evaluation.framework,
     capture: {
       prompt: config.capture.prompt,
-      prompt_images: config.capture.promptImages,
-      evaluation: config.sync.includeEvaluation,
-      evaluation_reasons: config.sync.includeEvaluationReasons,
-      milestones: config.sync.includeMilestones,
+      promptImages: config.capture.promptImages,
     },
     sync: {
-      auto_sync: config.sync.autoSync,
-      interval_hours: config.sync.intervalMinutes / 60,
-      include_leaderboard_stats: config.sync.includeLeaderboardStats,
-      include_private_details: config.sync.includePrivateDetails,
+      includeLeaderboardStats: config.sync.includeLeaderboardStats,
+      evaluationScores: config.sync.includeEvaluation,
+      milestones: config.sync.includeMilestones,
+      includePrivateDetails: config.sync.includePrivateDetails,
+      evaluationReasons: config.sync.includeEvaluationReasons,
+      autoSync: config.sync.autoSync,
+      ...(config.sync.autoSync && { intervalHours: config.sync.intervalMinutes / 60 }),
     },
   });
 });
 
-// PATCH /api/local/config — accepts dashboard-shaped updates and translates to v3
+// PATCH /api/local/config — dashboard sends full state, translate to v3 and save
 configRoutes.patch("/", async (c) => {
   const body = (await c.req.json()) as Record<string, unknown>;
   const current = await getConfig();
+  const capture = body["capture"] as Record<string, unknown> | undefined;
+  const sync = body["sync"] as Record<string, unknown> | undefined;
+  const fw = body["evaluationFramework"] as string | undefined;
 
-  const bodyCapture = body["capture"];
-  if (bodyCapture && typeof bodyCapture === "object") {
-    const capture = bodyCapture as Record<string, unknown>;
-    const prompt = capture["prompt"];
-    const promptImages = capture["prompt_images"];
-    const evaluation = capture["evaluation"];
-    const milestones = capture["milestones"];
-    const evaluationReasons = capture["evaluation_reasons"];
+  // 1. Local Only — Prompts, Prompt images
+  if (capture) {
     current.capture = {
-      ...current.capture,
-      ...(typeof prompt === "boolean" && { prompt }),
-      ...(typeof promptImages === "boolean" && { promptImages }),
+      prompt: capture["prompt"] === true,
+      promptImages: capture["promptImages"] === true,
     };
+  }
+
+  // 2. Sync Config — Leaderboard, Evaluation scores, Milestones, Private details, Eval reasons
+  // 3. Evaluation — Framework
+  // 4. Auto Sync — toggle + interval
+  if (sync) {
+    const autoSync = sync["autoSync"] === true;
     current.sync = {
       ...current.sync,
-      ...(typeof evaluation === "boolean" && { includeEvaluation: evaluation }),
-      ...(typeof milestones === "boolean" && { includeMilestones: milestones }),
-      ...(typeof evaluationReasons === "string" && {
-        includeEvaluationReasons: evaluationReasons as "none" | "below_perfect" | "all",
+      includeLeaderboardStats: sync["includeLeaderboardStats"] === true,
+      includeEvaluation: sync["evaluationScores"] === true,
+      includeMilestones: sync["milestones"] === true,
+      includePrivateDetails: sync["includePrivateDetails"] === true,
+      includeEvaluationReasons: (sync["evaluationReasons"] as "none" | "below_perfect" | "all") ?? "none",
+      autoSync,
+      ...(autoSync && typeof sync["intervalHours"] === "number" && {
+        intervalMinutes: (sync["intervalHours"] as number) * 60,
       }),
     };
   }
 
-  const bodySync = body["sync"];
-  if (bodySync && typeof bodySync === "object") {
-    const sync = bodySync as Record<string, unknown>;
-    const autoSync = sync["auto_sync"];
-    const intervalHours = sync["interval_hours"];
-    const includeLeaderboardStats = sync["include_leaderboard_stats"];
-    const includePrivateDetails = sync["include_private_details"];
-    current.sync = {
-      ...current.sync,
-      ...(typeof autoSync === "boolean" && { autoSync }),
-      ...(typeof intervalHours === "number" && {
-        intervalMinutes: intervalHours * 60,
-      }),
-      ...(typeof includeLeaderboardStats === "boolean" && { includeLeaderboardStats }),
-      ...(typeof includePrivateDetails === "boolean" && { includePrivateDetails }),
-    };
-  }
-
-  //aps and raw are for backward compatibility, not in use right now.
-  const fw = body["evaluation_framework"];
-  if (
-    typeof fw === "string" &&
-    (fw === "space" || fw === "aps" || fw === "raw" || fw === "calibrated")
-  ) {
+  if (fw && (fw === "space" || fw === "aps" || fw === "raw" || fw === "calibrated")) {
     current.evaluation = { ...current.evaluation, framework: fw };
   }
 
@@ -102,20 +86,20 @@ configRoutes.patch("/", async (c) => {
     mode: "local" as const,
     authenticated: Boolean(current.auth.token),
     email: current.auth.user?.email ?? null,
-    evaluation_framework: current.evaluation.framework,
     capture: {
       prompt: current.capture.prompt,
-      prompt_images: current.capture.promptImages,
-      evaluation: current.sync.includeEvaluation,
-      evaluation_reasons: current.sync.includeEvaluationReasons,
-      milestones: current.sync.includeMilestones,
+      promptImages: current.capture.promptImages,
     },
+    evaluationFramework: current.evaluation.framework,
     sync: {
-      auto_sync: current.sync.autoSync,
-      interval_hours: current.sync.intervalMinutes / 60,
-      include_leaderboard_stats: current.sync.includeLeaderboardStats,
-      include_private_details: current.sync.includePrivateDetails,
+      includeLeaderboardStats: current.sync.includeLeaderboardStats,
+      evaluationScores: current.sync.includeEvaluation,
+      milestones: current.sync.includeMilestones,
+      includePrivateDetails: current.sync.includePrivateDetails,
+      evaluationReasons: current.sync.includeEvaluationReasons,
+      autoSync: current.sync.autoSync,
+      ...(current.sync.autoSync && { intervalHours: current.sync.intervalMinutes / 60 }),
     },
-    instructions_updated: [] as string[],
+    instructionsUpdated: [] as string[],
   });
 });

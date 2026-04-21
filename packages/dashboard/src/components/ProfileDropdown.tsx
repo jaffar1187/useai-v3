@@ -337,7 +337,7 @@ export const ProfileDropdown = forwardRef<ProfileDropdownHandle, ProfileDropdown
               {(config.email?.[0] ?? '?').toUpperCase()}
             </span>
             {/* Sync status dot */}
-            <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-bg-base ${config.last_sync_at ? 'bg-success' : 'bg-warning'}`} />
+            <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-bg-base ${config.lastSyncAt ? 'bg-success' : 'bg-warning'}`} />
           </div>
           <ChevronDown className={`w-3 h-3 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
@@ -384,7 +384,7 @@ export const ProfileDropdown = forwardRef<ProfileDropdownHandle, ProfileDropdown
               <div className="px-4 py-2 border-t border-border/50">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-text-muted font-mono uppercase tracking-tighter">
-                    Last sync: {formatLastSync(config.last_sync_at)}
+                    Last sync: {formatLastSync(config.lastSyncAt)}
                   </span>
                   <div className="flex items-center gap-2">
                     {msg && (
