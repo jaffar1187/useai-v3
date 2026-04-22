@@ -74,8 +74,8 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
     return (
       <SessionCard
         session={pg.prompt}
-        milestones={pg.milestones}
-        defaultExpanded={defaultExpanded && pg.milestones.length > 0}
+        milestones={pg.milestones ?? []}
+        defaultExpanded={defaultExpanded && (pg.milestones?.length ?? 0) > 0}
         externalShowPublic={globalShowPublic || undefined}
         showFullDate={showFullDate}
         highlightWords={highlightWords}
@@ -272,7 +272,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
                     />
                     <SessionCard
                       session={pg.prompt}
-                      milestones={pg.milestones}
+                      milestones={pg.milestones ?? []}
                       defaultExpanded={false}
                       externalShowPublic={showPublic || undefined}
                       hideClientAvatar
@@ -405,9 +405,9 @@ export function SessionList({ preGrouped, globalShowPublic, showFullDate, highli
         </button>
       )}
 
-      {visible.map((conv) => (
+      {visible.map((conv, i) => (
         <ConversationCard
-          key={conv.connectionId}
+          key={conv.connectionId || `conv-${i}`}
           group={conv}
           defaultExpanded={false}
           globalShowPublic={globalShowPublic}
@@ -419,8 +419,8 @@ export function SessionList({ preGrouped, globalShowPublic, showFullDate, highli
         />
       ))}
 
-      {/* Sentinel for IntersectionObserver — triggers next batch */}
-      {isTruncated && <div ref={sentinelRef} className="h-px" />}
+      {/* Sentinel for IntersectionObserver — triggers next batch (client or server) */}
+      {(isTruncated || hasMore) && <div ref={sentinelRef} className="h-px" />}
 
       {/* Footer showing progress */}
       {conversations.length > BATCH_SIZE && (

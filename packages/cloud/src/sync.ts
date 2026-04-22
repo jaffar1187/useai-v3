@@ -37,49 +37,40 @@ function sanitizeSession(
 
   // ── Evaluation (scores always sent, reasons controlled by evaluationReasons) ─
   if (session.evaluation) {
-    const ev = session.evaluation;
+    const ev = session.evaluation as unknown as Record<string, unknown>;
     const evalObj: Record<string, unknown> = {
-      promptQuality: ev.prompt_quality,
-      contextProvided: ev.context_provided,
-      scopeQuality: ev.scope_quality,
-      independenceLevel: ev.independence_level,
-      taskOutcome: ev.task_outcome,
-      iterationCount: ev.iteration_count,
-      toolsLeveraged: ev.tools_leveraged,
+      promptQuality: ev["promptQuality"],
+      contextProvided: ev["contextProvided"],
+      scopeQuality: ev["scopeQuality"],
+      independenceLevel: ev["independenceLevel"],
+      taskOutcome: ev["taskOutcome"],
+      iterationCount: ev["iterationCount"],
+      toolsLeveraged: ev["toolsLeveraged"],
     };
 
     if (sync.evaluationReasons === "all") {
-      evalObj["promptQualityReason"] = ev.prompt_quality_reason;
-      evalObj["contextProvidedReason"] = ev.context_provided_reason;
-      evalObj["scopeQualityReason"] = ev.scope_quality_reason;
-      evalObj["independenceLevelReason"] = ev.independence_level_reason;
-      evalObj["taskOutcomeReason"] = ev.task_outcome_reason;
-      evalObj["promptQualityIdeal"] = ev.prompt_quality_ideal;
-      evalObj["contextProvidedIdeal"] = ev.context_provided_ideal;
-      evalObj["scopeQualityIdeal"] = ev.scope_quality_ideal;
-      evalObj["independenceLevelIdeal"] = ev.independence_level_ideal;
-      evalObj["taskOutcomeIdeal"] = ev.task_outcome_ideal;
+      evalObj["promptQualityReason"] = ev["promptQualityReason"];
+      evalObj["contextProvidedReason"] = ev["contextProvidedReason"];
+      evalObj["scopeQualityReason"] = ev["scopeQualityReason"];
+      evalObj["independenceLevelReason"] = ev["independenceLevelReason"];
+      evalObj["taskOutcomeReason"] = ev["taskOutcomeReason"];
+      evalObj["promptQualityIdeal"] = ev["promptQualityIdeal"];
+      evalObj["contextProvidedIdeal"] = ev["contextProvidedIdeal"];
+      evalObj["scopeQualityIdeal"] = ev["scopeQualityIdeal"];
+      evalObj["independenceLevelIdeal"] = ev["independenceLevelIdeal"];
+      evalObj["taskOutcomeIdeal"] = ev["taskOutcomeIdeal"];
     } else if (sync.evaluationReasons === "belowPerfect") {
-      if (ev.prompt_quality < 5) {
-        evalObj["promptQualityReason"] = ev.prompt_quality_reason;
-        evalObj["promptQualityIdeal"] = ev.prompt_quality_ideal;
-      }
-      if (ev.context_provided < 5) {
-        evalObj["contextProvidedReason"] = ev.context_provided_reason;
-        evalObj["contextProvidedIdeal"] = ev.context_provided_ideal;
-      }
-      if (ev.scope_quality < 5) {
-        evalObj["scopeQualityReason"] = ev.scope_quality_reason;
-        evalObj["scopeQualityIdeal"] = ev.scope_quality_ideal;
-      }
-      if (ev.independence_level < 5) {
-        evalObj["independenceLevelReason"] = ev.independence_level_reason;
-        evalObj["independenceLevelIdeal"] = ev.independence_level_ideal;
-      }
-      evalObj["taskOutcomeReason"] = ev.task_outcome_reason;
-      evalObj["taskOutcomeIdeal"] = ev.task_outcome_ideal;
+      const pq = ev["promptQuality"] as number;
+      const cp = ev["contextProvided"] as number;
+      const sq = ev["scopeQuality"] as number;
+      const il = ev["independenceLevel"] as number;
+      if (pq < 5) { evalObj["promptQualityReason"] = ev["promptQualityReason"]; evalObj["promptQualityIdeal"] = ev["promptQualityIdeal"]; }
+      if (cp < 5) { evalObj["contextProvidedReason"] = ev["contextProvidedReason"]; evalObj["contextProvidedIdeal"] = ev["contextProvidedIdeal"]; }
+      if (sq < 5) { evalObj["scopeQualityReason"] = ev["scopeQualityReason"]; evalObj["scopeQualityIdeal"] = ev["scopeQualityIdeal"]; }
+      if (il < 5) { evalObj["independenceLevelReason"] = ev["independenceLevelReason"]; evalObj["independenceLevelIdeal"] = ev["independenceLevelIdeal"]; }
+      evalObj["taskOutcomeReason"] = ev["taskOutcomeReason"];
+      evalObj["taskOutcomeIdeal"] = ev["taskOutcomeIdeal"];
     }
-    // "none" — scores only, no reasons
 
     result["evaluation"] = evalObj;
   }
@@ -178,12 +169,16 @@ async function fetchSessionsFromDaemon(days: number): Promise<Session[]> {
     });
     if (!res.ok) break;
     const json = (await res.json()) as {
-      conversations: Array<{ prompts: Array<{ prompt: Session }> }>;
+      conversations: Array<{ prompts: Array<{ prompt: Session; milestones: unknown[] }> }>;
       hasMore: boolean;
     };
     for (const conv of json.conversations) {
       for (const pg of conv.prompts) {
-        all.push(pg.prompt);
+        const session = pg.prompt;
+        if (pg.milestones && pg.milestones.length > 0) {
+          (session as unknown as Record<string, unknown>)["milestones"] = pg.milestones;
+        }
+        all.push(session);
       }
     }
     if (!json.hasMore) break;

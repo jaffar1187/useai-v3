@@ -62,7 +62,8 @@ function CategoryBadge({ category }: { category: string }) {
 }
 
 function computeAvgScore(ev: SessionEvaluation): number {
-  return (ev.promptQuality + ev.contextProvided + ev.scopeQuality + ev.independenceLevel) / 4;
+  if (!ev.promptQuality && !ev.contextProvided && !ev.scopeQuality && !ev.independenceLevel) return 0;
+  return ((ev.promptQuality ?? 0) + (ev.contextProvided ?? 0) + (ev.scopeQuality ?? 0) + (ev.independenceLevel ?? 0)) / 4;
 }
 
 function scoreColorClass(score: number): string {
@@ -356,13 +357,13 @@ export const SessionCard = memo(function SessionCard({ session, milestones, defa
                   </span>
                   <span className="flex items-center gap-1.5" title="AI time">
                     <Bot className="w-3 h-3 opacity-75" />
-                    {formatDuration(Math.round(session.durationMs / 1000))}
+                    {formatDuration(computeUserTimeSeconds(session))}
                   </span>
                 </>
               ) : (
                 <span className="flex items-center gap-1.5">
                   <Clock className="w-3 h-3 opacity-75" />
-                  {formatDuration(Math.round(session.durationMs / 1000))}
+                  {formatDuration(computeUserTimeSeconds(session))}
                 </span>
               )}
 
