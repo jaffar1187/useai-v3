@@ -10,10 +10,7 @@ export function registerHeartbeatTool(
   server.registerTool(
     "useai_heartbeat",
     {
-      description:
-        "Keep-alive signal for active sessions. Call every 4-4.5 minutes while actively working. " +
-        "Gaps longer than 5 minutes between heartbeats are automatically counted as idle time " +
-        "and excluded from the active session duration.",
+      description: "Keep-alive signal for active sessions.",
       inputSchema: {
         prompt_id: z
           .string()

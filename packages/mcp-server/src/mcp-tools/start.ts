@@ -13,13 +13,7 @@ export function registerStartTool(server: McpServer, ctx: PromptContext): void {
   server.registerTool(
     "useai_start",
     {
-      description:
-        "Start tracking an AI coding session. Call this at the beginning of every response to a real user message. " +
-        'Generate a session title from the user\'s prompt: a generic public "title" (no project/file names) ' +
-        'and a detailed "private_title" (can include specifics). ' +
-        "task_type must be one of: coding, debugging, testing, planning, reviewing, documenting, learning, " +
-        "deployment, devops, research, migration, design, data, security, configuration, code_review, " +
-        "investigation, infrastructure, analysis, ops, setup, refactoring, other.",
+      description: "Start tracking an AI coding session.",
       inputSchema: {
         client: z
           .string()

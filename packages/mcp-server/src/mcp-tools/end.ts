@@ -48,14 +48,7 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
   server.registerTool(
     "useai_end",
     {
-      description:
-        "End the current AI coding session and record milestones. " +
-        'Each milestone needs a "title" (generic, no project/file names) and "category". ' +
-        "category values are defined in the schema. " +
-        'Also provide an "evaluation" object assessing the session: prompt_quality (1-5), context_provided (1-5), ' +
-        "task_outcome (completed/partial/abandoned/blocked), iteration_count, independence_level (1-5), " +
-        "scope_quality (1-5), and tools_leveraged count. For every scored metric, provide a *_reason field. " +
-        "When using the calibrated framework, also provide *_ideal fields explaining what would make each metric perfect.",
+      description: "End the current AI coding session and record milestones and evaluation.",
       inputSchema: {
         prompt_id: z
           .string()
