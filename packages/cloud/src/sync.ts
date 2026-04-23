@@ -208,34 +208,19 @@ export async function syncPrompts(
   // Group by date for per-day cloud sync
   const byDate = groupByDate(sanitized);
 
+  // Fetch streak once (same value regardless of date)
+  const today = new Date().toISOString().slice(0, 10);
+  const streakAgg = await fetchDaemonAggregations(today);
+  const streakDays = streakAgg?.stats.currentStreak ?? 0;
+
   // Build all payloads first, then send in one batch request
   const payloads: SyncPayload[] = [];
 
   for (const [date, daySessions] of byDate) {
-    const agg = await fetchDaemonAggregations(date);
-    if (!agg) continue;
-
-    const clockTimeSeconds = Math.round(agg.stats.coveredHours * 3600);
-    const aiTimeSeconds = Math.round(agg.stats.totalHours * 3600);
-    const multiplier = agg.stats.aiMultiplier;
-    const streakDays = agg.stats.currentStreak;
-    const clients = agg.stats.byAiToolDuration;
-    const taskTypes = agg.stats.byTaskTypeAiTime;
-    const languages = agg.stats.byLanguageAiTime;
-
     payloads.push({
       date,
-      clockTimeSeconds,
-      aiTimeSeconds,
-      multiplier,
-      promptCount: daySessions.length,
       streakDays,
-      clients,
-      taskTypes,
-      languages,
       sessions: daySessions,
-      clientVersion: CLIENT_VERSION,
-      syncSignature: "",
     });
   }
 
