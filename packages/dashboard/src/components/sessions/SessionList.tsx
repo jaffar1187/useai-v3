@@ -117,7 +117,7 @@ const ConversationCard = memo(function ConversationCard({ group, defaultExpanded
       {/* Conversation header */}
       <div className="flex items-center">
         <button
-          className="flex-1 flex items-center gap-3 px-3.5 py-2.5 text-left min-w-0"
+          className="flex-1 flex items-center gap-3 px-3.5 py-2.5 text-left min-w-0 cursor-pointer"
           onClick={() => setExpanded(!expanded)}
         >
           <div

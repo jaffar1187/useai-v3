@@ -285,9 +285,8 @@ export const SessionCard = memo(function SessionCard({ session, milestones, defa
     }`}>
       <div className="flex items-center">
         <button
-          className="flex-1 flex items-center gap-3 px-3.5 py-2.5 text-left min-w-0"
-          onClick={() => hasDetails && setExpanded(!expanded)}
-          style={{ cursor: hasDetails ? 'pointer' : 'default' }}
+          className="flex-1 flex items-center gap-3 px-3.5 py-2.5 text-left min-w-0 cursor-pointer"
+          onClick={() => setExpanded(!expanded)}
         >
           {/* Client avatar — hidden when nested inside a conversation group */}
           {!hideClientAvatar && (
@@ -459,7 +458,7 @@ export const SessionCard = memo(function SessionCard({ session, milestones, defa
               )}
               {!session.evaluation && <SessionMetaRow model={session.model} />}
 
-              {milestones.length > 0 && <div className="space-y-0.5">
+              {!showPublic && milestones.length > 0 && <div className="space-y-0.5">
                 {milestones.map((m) => {
                   const displayTitle = (showPublic ? m.title : (m.privateTitle || m.title));
                   const dur = fmtMinutes(m.durationMinutes);

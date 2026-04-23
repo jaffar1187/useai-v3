@@ -68,8 +68,7 @@ function sanitizeSession(
       if (cp < 5) { evalObj["contextProvidedReason"] = ev["contextProvidedReason"]; evalObj["contextProvidedIdeal"] = ev["contextProvidedIdeal"]; }
       if (sq < 5) { evalObj["scopeQualityReason"] = ev["scopeQualityReason"]; evalObj["scopeQualityIdeal"] = ev["scopeQualityIdeal"]; }
       if (il < 5) { evalObj["independenceLevelReason"] = ev["independenceLevelReason"]; evalObj["independenceLevelIdeal"] = ev["independenceLevelIdeal"]; }
-      evalObj["taskOutcomeReason"] = ev["taskOutcomeReason"];
-      evalObj["taskOutcomeIdeal"] = ev["taskOutcomeIdeal"];
+      if (ev["taskOutcome"] !== "completed") { evalObj["taskOutcomeReason"] = ev["taskOutcomeReason"]; }
     }
 
     result["evaluation"] = evalObj;
