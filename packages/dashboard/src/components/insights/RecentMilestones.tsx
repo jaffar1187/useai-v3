@@ -1,7 +1,7 @@
 import { Trophy, Brain } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { Milestone } from '../../lib/api';
-import { CATEGORY_COLORS, TOOL_INITIALS, TOOL_COLORS } from '../../constants/tools';
+import { CATEGORY_COLORS } from '../../constants/tools';
 
 const BADGE_CLASSES: Record<string, string> = {
   feature: 'bg-success/10 text-success border-success/20',
@@ -63,8 +63,6 @@ export function RecentMilestones({ milestones, showPublic = false }: RecentMiles
           {recent.map((m, i) => {
             const catColor = CATEGORY_COLORS[m.category] ?? '#9c9588';
             const badgeCls = BADGE_CLASSES[m.category] ?? 'bg-bg-surface-2 text-text-secondary border-border';
-            const initials = TOOL_INITIALS[m.client] ?? m.client.slice(0, 2).toUpperCase();
-            const toolColor = TOOL_COLORS[m.client] ?? '#91919a';
             const displayTitle = showPublic ? m.title : (m.privateTitle || m.title);
             const isComplex = m.complexity === 'complex';
 
@@ -105,13 +103,6 @@ export function RecentMilestones({ milestones, showPublic = false }: RecentMiles
                   {relativeTime(m.createdAt)}
                 </span>
 
-                {/* Client initials badge */}
-                <div
-                  className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-bold font-mono flex-shrink-0"
-                  style={{ backgroundColor: `${toolColor}15`, color: toolColor, border: `1px solid ${toolColor}20` }}
-                >
-                  {initials}
-                </div>
               </motion.div>
             );
           })}
