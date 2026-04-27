@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Monitor, Code2 } from 'lucide-react';
+import { Monitor, Code2, Info } from 'lucide-react';
 import type { ComputedStats } from '../../lib/stats';
 import { TOOL_COLORS, TOOL_DISPLAY_NAMES } from '../../constants/tools';
 
@@ -108,10 +108,12 @@ function DonutCard({
   title,
   icon,
   segments,
+  tooltip,
 }: {
   title: string;
   icon: React.ReactNode;
   segments: Segment[];
+  tooltip?: string;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const size = 100;
@@ -147,6 +149,14 @@ function DonutCard({
           <h2 className="text-sm font-bold text-text-muted uppercase tracking-widest">
             {title}
           </h2>
+          {tooltip && (
+            <div className="relative group cursor-pointer">
+              <Info className="w-3.5 h-3.5 text-text-muted/40 hover:text-text-muted transition-colors" />
+              <div className="absolute left-1/2 -translate-x-1/2 top-6 z-50 w-56 rounded-lg bg-bg-surface-2 border border-border/50 p-2.5 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150">
+                <p className="text-[11px] text-text-muted leading-relaxed">{tooltip}</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -254,6 +264,7 @@ export function SummaryChips({ stats, timeMode = 'user' }: SummaryChipsProps) {
           title="AI Tools"
           icon={<Monitor className="w-3.5 h-3.5 text-text-muted" />}
           segments={clientSegments}
+          tooltip="Time is calculated — when two or more sessions overlap, the overlapping time is equally divided between tools."
         />
       )}
       {langSegments.length > 0 && (
@@ -261,6 +272,7 @@ export function SummaryChips({ stats, timeMode = 'user' }: SummaryChipsProps) {
           title="Languages"
           icon={<Code2 className="w-3.5 h-3.5 text-text-muted" />}
           segments={langSegments}
+          tooltip="Time is calculated — when two or more sessions overlap, the overlapping time is equally divided between languages."
         />
       )}
     </>

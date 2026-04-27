@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ListChecks, X } from 'lucide-react';
+import { ListChecks, X, Info } from 'lucide-react';
 import type { Milestone, SessionSeal } from '../../lib/api.js';
 
 const TASK_TYPE_COLORS: Record<string, string> = {
@@ -72,6 +72,14 @@ export function TaskTypeBreakdown({ byTaskTypeClockTime, byTaskTypeAiTime, sessi
           <h2 className="text-sm font-bold text-text-muted uppercase tracking-widest">
             Task Types
           </h2>
+          <div className="relative group cursor-pointer">
+            <Info className="w-3.5 h-3.5 text-text-muted/40 hover:text-text-muted transition-colors" />
+            <div className="absolute left-1/2 -translate-x-1/2 top-6 z-50 w-56 rounded-lg bg-bg-surface-2 border border-border/50 p-2.5 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150">
+              <p className="text-[11px] text-text-muted leading-relaxed">
+                Time is calculated — when two or more sessions overlap, the overlapping time is equally divided between task types.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-2.5">
