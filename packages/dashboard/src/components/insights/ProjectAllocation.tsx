@@ -29,6 +29,7 @@ function formatTime(seconds: number): string {
 interface ProjectAllocationProps {
   byProjectClock: Record<string, number>;
   byProjectAiTime: Record<string, number>;
+  byProjectRawClock?: Record<string, number>;
   timeMode: TimeMode;
 }
 
@@ -79,7 +80,7 @@ function buildSegments(data: Record<string, number>): Segment[] {
   return result;
 }
 
-export function ProjectAllocation({ byProjectClock, byProjectAiTime, timeMode }: ProjectAllocationProps) {
+export function ProjectAllocation({ byProjectClock, byProjectAiTime, byProjectRawClock, timeMode }: ProjectAllocationProps) {
   const [hovered, setHovered] = useState<string | null>(null);
 
   const data = timeMode === 'user' ? byProjectClock : byProjectAiTime;
@@ -124,14 +125,6 @@ export function ProjectAllocation({ byProjectClock, byProjectAiTime, timeMode }:
           <h2 className="text-sm font-bold text-text-muted uppercase tracking-widest">
             Project Allocation
           </h2>
-          <div className="relative group cursor-pointer">
-            <Info className="w-3.5 h-3.5 text-text-muted/40 hover:text-text-muted transition-colors" />
-            <div className="absolute left-1/2 -translate-x-1/2 top-6 z-50 w-56 rounded-lg bg-bg-surface-2 border border-border/50 p-2.5 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150">
-              <p className="text-[11px] text-text-muted leading-relaxed">
-                Time is calculated — when two or more sessions overlap, the overlapping time is equally divided between projects.
-              </p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -196,7 +189,27 @@ export function ProjectAllocation({ byProjectClock, byProjectAiTime, timeMode }:
         </div>
 
         {/* Legend */}
-        <div className="flex-1 min-w-0 space-y-1.5 w-full">
+        <div className="flex-1 min-w-0 w-full">
+          {timeMode === 'user' && byProjectRawClock && (
+            <div className="flex items-center gap-2.5 px-1 -mx-1 mb-1">
+              <span className="w-2.5 shrink-0" />
+              <span className="flex-1" />
+              <div className="relative group cursor-pointer w-12 text-right shrink-0">
+                <span className="text-[9px] text-text-muted font-mono uppercase tracking-wider flex items-center gap-0.5 justify-end">Calc <Info className="w-2.5 h-2.5" /></span>
+                <div className="absolute right-0 top-4 z-50 w-48 rounded-lg bg-bg-surface-2 border border-border/50 p-2 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150">
+                  <p className="text-[11px] text-text-muted leading-relaxed">Overlapping session time is equally divided between projects.</p>
+                </div>
+              </div>
+              <div className="relative group cursor-pointer w-12 text-right shrink-0">
+                <span className="text-[9px] text-text-muted font-mono uppercase tracking-wider flex items-center gap-0.5 justify-end">Raw <Info className="w-2.5 h-2.5" /></span>
+                <div className="absolute right-0 top-4 z-50 w-48 rounded-lg bg-bg-surface-2 border border-border/50 p-2 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150">
+                  <p className="text-[11px] text-text-muted leading-relaxed">Each session's full active time, no division between overlapping sessions.</p>
+                </div>
+              </div>
+              <span className="w-10 shrink-0" />
+            </div>
+          )}
+          <div className="space-y-1.5">
           {segments.map((seg, i) => (
             <motion.div
               key={seg.name}
@@ -222,14 +235,20 @@ export function ProjectAllocation({ byProjectClock, byProjectAiTime, timeMode }:
               <span className="text-xs text-text-secondary font-medium truncate flex-1 min-w-0">
                 {seg.name}
               </span>
-              <span className="text-[10px] text-text-muted font-mono shrink-0">
+              <span className="text-[10px] text-text-muted font-mono w-12 text-right shrink-0">
                 {formatTime(seg.seconds)}
               </span>
+              {timeMode === 'user' && byProjectRawClock && (
+                <span className="text-[10px] text-text-muted font-mono w-12 text-right shrink-0">
+                  {formatTime(byProjectRawClock[seg.name] ?? 0)}
+                </span>
+              )}
               <span className="text-[10px] text-text-muted/70 font-mono w-10 text-right shrink-0">
                 {seg.percentage.toFixed(0)}%
               </span>
             </motion.div>
           ))}
+          </div>
         </div>
       </div>
 

@@ -45,13 +45,14 @@ function formatDate(iso: string): string {
 interface TaskTypeBreakdownProps {
   byTaskTypeClockTime: Record<string, number>;
   byTaskTypeAiTime?: Record<string, number>;
+  byTaskTypeRawClock?: Record<string, number>;
   sessions?: SessionSeal[];
   milestones?: Milestone[];
   showPublic?: boolean;
   timeMode?: TimeMode;
 }
 
-export function TaskTypeBreakdown({ byTaskTypeClockTime, byTaskTypeAiTime, sessions = [], milestones = [], showPublic = false, timeMode = 'user' }: TaskTypeBreakdownProps) {
+export function TaskTypeBreakdown({ byTaskTypeClockTime, byTaskTypeAiTime, byTaskTypeRawClock, sessions = [], milestones = [], showPublic = false, timeMode = 'user' }: TaskTypeBreakdownProps) {
 
   const data = timeMode === 'user' || !byTaskTypeAiTime ? byTaskTypeClockTime : byTaskTypeAiTime;
 
@@ -72,16 +73,26 @@ export function TaskTypeBreakdown({ byTaskTypeClockTime, byTaskTypeAiTime, sessi
           <h2 className="text-sm font-bold text-text-muted uppercase tracking-widest">
             Task Types
           </h2>
-          <div className="relative group cursor-pointer">
-            <Info className="w-3.5 h-3.5 text-text-muted/40 hover:text-text-muted transition-colors" />
-            <div className="absolute left-1/2 -translate-x-1/2 top-6 z-50 w-56 rounded-lg bg-bg-surface-2 border border-border/50 p-2.5 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150">
-              <p className="text-[11px] text-text-muted leading-relaxed">
-                Time is calculated — when two or more sessions overlap, the overlapping time is equally divided between task types.
-              </p>
-            </div>
-          </div>
         </div>
 
+        {timeMode === 'user' && byTaskTypeRawClock && (
+          <div className="flex items-center gap-3 mb-1 px-1">
+            <span className="w-24 shrink-0" />
+            <span className="flex-1" />
+            <div className="relative group cursor-pointer w-12 text-right shrink-0">
+              <span className="text-[9px] text-text-muted font-mono uppercase tracking-wider flex items-center gap-0.5 justify-end">Calc <Info className="w-2.5 h-2.5" /></span>
+              <div className="absolute right-0 top-4 z-50 w-48 rounded-lg bg-bg-surface-2 border border-border/50 p-2 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150">
+                <p className="text-[11px] text-text-muted leading-relaxed">Overlapping session time is equally divided between task types.</p>
+              </div>
+            </div>
+            <div className="relative group cursor-pointer w-12 text-right shrink-0">
+              <span className="text-[9px] text-text-muted font-mono uppercase tracking-wider flex items-center gap-0.5 justify-end">Raw <Info className="w-2.5 h-2.5" /></span>
+              <div className="absolute right-0 top-4 z-50 w-48 rounded-lg bg-bg-surface-2 border border-border/50 p-2 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150">
+                <p className="text-[11px] text-text-muted leading-relaxed">Each session's full active time, no division between overlapping sessions.</p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="space-y-2.5">
           {entries.map(([type, seconds], index) => {
             const color = TASK_TYPE_COLORS[type] ?? TASK_TYPE_COLORS['other']!;
@@ -114,6 +125,11 @@ export function TaskTypeBreakdown({ byTaskTypeClockTime, byTaskTypeAiTime, sessi
                 <span className="text-xs text-text-muted font-mono w-12 text-right shrink-0">
                   {formatTime(seconds)}
                 </span>
+                {timeMode === 'user' && byTaskTypeRawClock && (
+                  <span className="text-xs text-text-muted font-mono w-12 text-right shrink-0">
+                    {formatTime(byTaskTypeRawClock[type] ?? 0)}
+                  </span>
+                )}
               </button>
             );
           })}

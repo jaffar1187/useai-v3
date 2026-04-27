@@ -328,6 +328,7 @@ export function DashboardBody({
             <ProjectAllocation
               byProjectClock={data.stats.byProjectClock}
               byProjectAiTime={data.stats.byProjectAiTime}
+              byProjectRawClock={(data.stats as any).byProjectRawClock}
               timeMode={timeMode}
             />
             <ComplexityDistribution
@@ -341,6 +342,7 @@ export function DashboardBody({
           <TaskTypeBreakdown
             byTaskTypeClockTime={data.stats.byTaskTypeClockTime}
             byTaskTypeAiTime={data.stats.byTaskTypeAiTime}
+            byTaskTypeRawClock={(data.stats as any).byTaskTypeRawClock}
             sessions={data.filteredSessions}
             milestones={data.filteredMilestones}
             showPublic={globalShowPublic}

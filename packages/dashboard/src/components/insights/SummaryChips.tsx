@@ -108,12 +108,12 @@ function DonutCard({
   title,
   icon,
   segments,
-  tooltip,
+  rawData,
 }: {
   title: string;
   icon: React.ReactNode;
   segments: Segment[];
-  tooltip?: string;
+  rawData?: Record<string, number>;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const size = 100;
@@ -149,14 +149,6 @@ function DonutCard({
           <h2 className="text-sm font-bold text-text-muted uppercase tracking-widest">
             {title}
           </h2>
-          {tooltip && (
-            <div className="relative group cursor-pointer">
-              <Info className="w-3.5 h-3.5 text-text-muted/40 hover:text-text-muted transition-colors" />
-              <div className="absolute left-1/2 -translate-x-1/2 top-6 z-50 w-56 rounded-lg bg-bg-surface-2 border border-border/50 p-2.5 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150">
-                <p className="text-[11px] text-text-muted leading-relaxed">{tooltip}</p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -208,7 +200,27 @@ function DonutCard({
           </div>
         </div>
 
-        <div className="flex-1 min-w-0 space-y-1.5 w-full">
+        <div className="flex-1 min-w-0 w-full">
+          {rawData && (
+            <div className="flex items-center gap-2.5 px-1 -mx-1 mb-1">
+              <span className="w-2.5 shrink-0" />
+              <span className="flex-1" />
+              <div className="relative group cursor-pointer w-12 text-right shrink-0">
+                <span className="text-[9px] text-text-muted font-mono uppercase tracking-wider flex items-center gap-0.5 justify-end">Calc <Info className="w-2.5 h-2.5" /></span>
+                <div className="absolute right-0 top-4 z-50 w-48 rounded-lg bg-bg-surface-2 border border-border/50 p-2 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150">
+                  <p className="text-[11px] text-text-muted leading-relaxed">Overlapping session time is equally divided between categories.</p>
+                </div>
+              </div>
+              <div className="relative group cursor-pointer w-12 text-right shrink-0">
+                <span className="text-[9px] text-text-muted font-mono uppercase tracking-wider flex items-center gap-0.5 justify-end">Raw <Info className="w-2.5 h-2.5" /></span>
+                <div className="absolute right-0 top-4 z-50 w-48 rounded-lg bg-bg-surface-2 border border-border/50 p-2 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150">
+                  <p className="text-[11px] text-text-muted leading-relaxed">Each session's full active time, no division between overlapping sessions.</p>
+                </div>
+              </div>
+              <span className="w-10 shrink-0" />
+            </div>
+          )}
+          <div className="space-y-1.5">
           {segments.map((seg, i) => (
             <motion.div
               key={seg.name}
@@ -227,14 +239,20 @@ function DonutCard({
               <span className="text-xs text-text-secondary font-medium truncate flex-1 min-w-0">
                 {seg.displayName}
               </span>
-              <span className="text-[10px] text-text-muted font-mono shrink-0">
+              <span className="text-[10px] text-text-muted font-mono w-12 text-right shrink-0">
                 {formatTime(seg.seconds)}
               </span>
+              {rawData && (
+                <span className="text-[10px] text-text-muted font-mono w-12 text-right shrink-0">
+                  {formatTime(rawData[seg.name] ?? 0)}
+                </span>
+              )}
               <span className="text-[10px] text-text-muted/70 font-mono w-10 text-right shrink-0">
                 {seg.percentage.toFixed(0)}%
               </span>
             </motion.div>
           ))}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -244,6 +262,8 @@ function DonutCard({
 export function SummaryChips({ stats, timeMode = 'user' }: SummaryChipsProps) {
   const clientData = timeMode === 'user' ? stats.byToolClockTime : stats.byAiToolDuration;
   const langData = timeMode === 'user' ? stats.byLanguageClockTime : stats.byLanguageAiTime;
+  const clientRaw = timeMode === 'user' ? (stats as any).byToolRawClock : undefined;
+  const langRaw = timeMode === 'user' ? (stats as any).byLanguageRawClock : undefined;
 
   const clientSegments = useMemo(
     () => buildSegments(clientData, LANG_COLORS, TOOL_DISPLAY_NAMES, TOOL_COLORS),
@@ -264,7 +284,7 @@ export function SummaryChips({ stats, timeMode = 'user' }: SummaryChipsProps) {
           title="AI Tools"
           icon={<Monitor className="w-3.5 h-3.5 text-text-muted" />}
           segments={clientSegments}
-          tooltip="Time is calculated — when two or more sessions overlap, the overlapping time is equally divided between tools."
+          rawData={clientRaw}
         />
       )}
       {langSegments.length > 0 && (
@@ -272,7 +292,7 @@ export function SummaryChips({ stats, timeMode = 'user' }: SummaryChipsProps) {
           title="Languages"
           icon={<Code2 className="w-3.5 h-3.5 text-text-muted" />}
           segments={langSegments}
-          tooltip="Time is calculated — when two or more sessions overlap, the overlapping time is equally divided between languages."
+          rawData={langRaw}
         />
       )}
     </>

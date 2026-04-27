@@ -58,6 +58,14 @@ export interface ComputedStats {
   byAiToolDuration: Record<string, number>;
   byLanguageAiTime: Record<string, number>;
   byTaskTypeAiTime: Record<string, number>;
+  /** Raw clock-time per tool — each session's full active time, no concurrency splitting */
+  byToolRawClock: Record<string, number>;
+  /** Raw clock-time per language — each session's full active time, no concurrency splitting */
+  byLanguageRawClock: Record<string, number>;
+  /** Raw clock-time per task type — each session's full active time, no concurrency splitting */
+  byTaskTypeRawClock: Record<string, number>;
+  /** Raw clock-time per project — each session's full active time, no concurrency splitting */
+  byProjectRawClock: Record<string, number>;
 }
 
 export interface PromptGroup {
@@ -211,6 +219,48 @@ export function computeClockTimeBreakdown(
   return result;
 }
 
+// ── Raw clock-time breakdown (no concurrency splitting) ──────────────────────
+
+/**
+ * Raw clock-time breakdown: each session's full active time is attributed
+ * to every key it maps to. No sweep-line, no division between concurrent
+ * sessions — each session's individual active time goes entirely to each key.
+ *
+ * Uses activeSegments when available; falls back to durationMs.
+ */
+export function computeRawClockBreakdown(
+  sessions: Session[],
+  getKeys: (s: Session) => string[],
+): Record<string, number> {
+  const map: Record<string, number> = {};
+
+  for (const s of sessions) {
+    const keys = getKeys(s);
+    if (keys.length === 0) continue;
+
+    // Compute individual active time for this session
+    let activeMs = 0;
+    if (s.activeSegments && s.activeSegments.length > 0) {
+      for (const [segStart, segEnd] of s.activeSegments) {
+        const t0 = parseTimestamp(segStart);
+        const t1 = parseTimestamp(segEnd);
+        if (t1 > t0) activeMs += t1 - t0;
+      }
+    } else {
+      activeMs = s.durationMs;
+    }
+
+    if (activeMs <= 0) continue;
+    const activeSec = activeMs / 1000;
+
+    for (const key of keys) {
+      map[key] = (map[key] ?? 0) + activeSec;
+    }
+  }
+
+  return map;
+}
+
 // ── Main computeStats ─────────────────────────────────────────────────────────
 
 export function computeStats(
@@ -260,6 +310,19 @@ export function computeStats(
     s.taskType,
   ]);
   const byProjectClock = computeClockTimeBreakdown(prompts, (s) => [
+    s.project || "other",
+  ]);
+
+  // Raw clock-time breakdowns (no concurrency splitting)
+  const byToolRawClock = computeRawClockBreakdown(prompts, (s) => [s.client]);
+  const byLanguageRawClock = computeRawClockBreakdown(prompts, (s) => {
+    const langs = (s.languages ?? []).map((l) => l.toLowerCase());
+    return langs.length > 0 ? langs : ["other"];
+  });
+  const byTaskTypeRawClock = computeRawClockBreakdown(prompts, (s) => [
+    s.taskType,
+  ]);
+  const byProjectRawClock = computeRawClockBreakdown(prompts, (s) => [
     s.project || "other",
   ]);
 
@@ -358,6 +421,10 @@ export function computeStats(
     byAiToolDuration: dropZero(byAiToolDuration),
     byLanguageAiTime: dropZero(byLanguageAiTime),
     byTaskTypeAiTime: dropZero(byTaskTypeAiTime),
+    byToolRawClock: dropZero(byToolRawClock),
+    byLanguageRawClock: dropZero(byLanguageRawClock),
+    byTaskTypeRawClock: dropZero(byTaskTypeRawClock),
+    byProjectRawClock: dropZero(byProjectRawClock),
   };
 }
 
