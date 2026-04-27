@@ -12,6 +12,7 @@ import { buildSessionRecord } from "@devness/useai-crypto";
 import {
   appendSession,
   getOrCreateKeystore,
+  getConfig,
 } from "@devness/useai-storage";
 import {
   TaskTypeSchema,
@@ -42,6 +43,49 @@ async function getPrivateKey(): Promise<Buffer> {
     privateKey = ks.privateKey;
   }
   return privateKey;
+}
+
+const SEAL_API_FALLBACK = "https://useai.dev/api/seal";
+
+/**
+ * Fire-and-forget cloud seal verification.
+ * Posts the sealed session to the cloud; if it returns a signature,
+ * patches the local JSONL file to store it as `sealVerification`.
+ */
+async function verifySeal(sessionId: string, timestamp: string): Promise<string | null> {
+  try {
+    const config = await getConfig();
+    const apiUrl =
+      process.env["USEAI_API_URL"]
+        ? `${process.env["USEAI_API_URL"]}/api/seal`
+        : SEAL_API_FALLBACK;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (config.auth.token) {
+      headers["Authorization"] = `Bearer ${config.auth.token}`;
+    }
+
+    const res = await fetch(apiUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ sessionId, timestamp }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!res.ok) return null;
+
+    const json = (await res.json()) as { signature?: string };
+    return json.signature ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export function registerEndTool(server: McpServer, ctx: PromptContext): void {
@@ -259,9 +303,12 @@ export function registerEndTool(server: McpServer, ctx: PromptContext): void {
         throw err;
       }
       try {
+        // Get cloud seal verification before sealing (best-effort)
+        const sealVerification = await verifySeal(sessionDataBase.promptId, sessionDataBase.endedAt);
         const sessionData: Omit<Session, "hash" | "signature"> = {
           ...sessionDataBase,
           prevHash: ctx.prevHash,
+          ...(sealVerification && { sealVerification }),
         };
         const { hash, signature } = buildSessionRecord(sessionData, key);
         ctx.prevHash = hash;

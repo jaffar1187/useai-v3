@@ -14,9 +14,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@devness/useai-types": "workspace:*",
-    "@devness/useai-storage": "workspace:*",
     "@devness/useai-crypto": "workspace:*",
+    "@devness/useai-storage": "workspace:*",
+    "@devness/useai-types": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "zod": "^3.24.0"
   },

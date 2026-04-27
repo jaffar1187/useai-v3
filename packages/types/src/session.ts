@@ -111,4 +111,6 @@ export interface Session {
   prevHash: string;
   hash: string;
   signature: string;
+  /** Cloud seal verification signature, set asynchronously after session is sealed. */
+  sealVerification?: string;
 }

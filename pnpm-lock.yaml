@@ -51,9 +51,6 @@ importers:
 
   packages/cloud:
     dependencies:
-      '@devness/useai-storage':
-        specifier: workspace:*
-        version: link:../storage
       '@devness/useai-types':
         specifier: workspace:*
         version: link:../types
@@ -86,9 +83,6 @@ importers:
       '@devness/useai-cloud':
         specifier: workspace:*
         version: link:../cloud
-      '@devness/useai-scoring':
-        specifier: workspace:*
-        version: link:../scoring
       '@devness/useai-storage':
         specifier: workspace:*
         version: link:../storage
@@ -166,9 +160,6 @@ importers:
       '@devness/useai-crypto':
         specifier: workspace:*
         version: link:../crypto
-      '@devness/useai-scoring':
-        specifier: workspace:*
-        version: link:../scoring
       '@devness/useai-storage':
         specifier: workspace:*
         version: link:../storage

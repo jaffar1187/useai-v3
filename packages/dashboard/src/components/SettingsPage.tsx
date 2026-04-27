@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Camera, Cloud, AlertTriangle, ChevronDown, Save, Check, Loader2, HardDrive, CloudUpload, ScrollText, Info } from 'lucide-react';
+import { Camera, Cloud, AlertTriangle, ChevronDown, Save, Check, Loader2, HardDrive, CloudUpload, ScrollText, Info, ShieldCheck } from 'lucide-react';
 import type { FullConfig, UserOrg } from '../lib/api';
 import { fetchFullConfig, patchConfig, fetchMyOrgs } from '../lib/api';
 import { useDashboardStore } from '../store';
@@ -365,6 +365,51 @@ export function SettingsPage({ onTabChange }: { onTabChange?: (tab: string) => v
           )}
         </div>
         )}
+      </section>
+
+      {/* Seal Verification */}
+      <section className="bg-bg-surface-1 border border-border/50 rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <ShieldCheck className="w-4 h-4 text-emerald" />
+          <h2 className="text-xs font-bold text-text-muted uppercase tracking-widest">Seal Verification</h2>
+        </div>
+        <div className="space-y-2">
+          <p className="text-[11px] text-text-muted leading-relaxed">
+            When a session ends, a verification request is sent to useai.dev with the session ID and timestamp.
+            The server generates a unique signature and stores it. This proves the session was sealed in real-time
+            and not fabricated later.
+          </p>
+          <div className="divide-y divide-border/30 rounded-lg border border-emerald/15 bg-emerald/[0.03] px-3">
+            <div className="py-2 flex items-start gap-2">
+              <span className="text-[10px] font-mono text-emerald mt-0.5">→</span>
+              <div>
+                <div className="text-xs font-medium text-text-primary">What's sent</div>
+                <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">Session ID + end timestamp — no prompt content, no code, no evaluation data.</div>
+              </div>
+            </div>
+            <div className="py-2 flex items-start gap-2">
+              <span className="text-[10px] font-mono text-emerald mt-0.5">→</span>
+              <div>
+                <div className="text-xs font-medium text-text-primary">What happens</div>
+                <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">Server generates a hash and returns the signature.</div>
+              </div>
+            </div>
+            <div className="py-2 flex items-start gap-2">
+              <span className="text-[10px] font-mono text-emerald mt-0.5">→</span>
+              <div>
+                <div className="text-xs font-medium text-text-primary">Why</div>
+                <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">Only verified sessions are counted towards the leaderboard.</div>
+              </div>
+            </div>
+            <div className="py-2 flex items-start gap-2">
+              <span className="text-[10px] font-mono text-emerald mt-0.5">→</span>
+              <div>
+                <div className="text-xs font-medium text-text-primary">If offline</div>
+                <div className="text-[11px] text-text-muted leading-relaxed mt-0.5">Session seals normally without verification. It won't count towards the leaderboard.</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* More */}

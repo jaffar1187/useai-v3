@@ -3,8 +3,6 @@ const DAEMON_URL = "http://127.0.0.1:19200";
 import { apiFetch } from "./api-client.js";
 import type { SanitizedSession, SyncPayload, SyncResult } from "./types.js";
 
-const CLIENT_VERSION = "3.0.0";
-
 // ---------------------------------------------------------------------------
 // Sanitization — builds session for sync based on settings toggles.
 // Each section matches a toggle in the dashboard settings UI.
