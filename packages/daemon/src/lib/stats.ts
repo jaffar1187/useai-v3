@@ -228,36 +228,52 @@ export function computeClockTimeBreakdown(
  *
  * Uses activeSegments when available; falls back to durationMs.
  */
-export function computeRawClockBreakdown(
+/**
+ * Raw clock breakdown: merges all overlapping segments within each key
+ * (union per key), then sums the merged duration. No cross-key division.
+ * Two sessions on the same project that overlap = counted once.
+ * Two sessions on different projects that overlap = each gets full time.
+ */
+function computeRawClockBreakdown(
   sessions: Session[],
   getKeys: (s: Session) => string[],
 ): Record<string, number> {
-  const map: Record<string, number> = {};
+  const keyIntervals: Record<string, [number, number][]> = {};
 
   for (const s of sessions) {
     const keys = getKeys(s);
     if (keys.length === 0) continue;
 
-    // Compute individual active time for this session
-    let activeMs = 0;
+    const sStart = parseTimestamp(s.startedAt);
+    const sEnd = parseTimestamp(s.endedAt);
+    if (sEnd <= sStart) continue;
+
+    const segments: [number, number][] = [];
     if (s.activeSegments && s.activeSegments.length > 0) {
       for (const [segStart, segEnd] of s.activeSegments) {
         const t0 = parseTimestamp(segStart);
         const t1 = parseTimestamp(segEnd);
-        if (t1 > t0) activeMs += t1 - t0;
+        if (t1 > t0) segments.push([t0, t1]);
       }
     } else {
-      activeMs = s.durationMs;
+      const activeEnd = Math.min(sStart + s.durationMs, sEnd);
+      if (activeEnd > sStart) segments.push([sStart, activeEnd]);
     }
 
-    if (activeMs <= 0) continue;
-    const activeSec = activeMs / 1000;
-
     for (const key of keys) {
-      map[key] = (map[key] ?? 0) + activeSec;
+      if (!keyIntervals[key]) keyIntervals[key] = [];
+      for (const seg of segments) keyIntervals[key].push(seg);
     }
   }
 
+  const map: Record<string, number> = {};
+  for (const [key, intervals] of Object.entries(keyIntervals)) {
+    let totalMs = 0;
+    for (const [s, e] of mergeIntervals(intervals)) {
+      totalMs += e - s;
+    }
+    if (totalMs > 0) map[key] = totalMs / 1000;
+  }
   return map;
 }
 
