@@ -7,7 +7,7 @@ import { mcpRoutes } from "../routes/mcp.js";
 import { authRoutes } from "../routes/auth.js";
 import { syncRouteRoutes } from "../routes/sync-route.js";
 import { updateRoutes } from "../routes/update.js";
-// import { orgsRoutes } from "../routes/orgs.js";
+import { orgsRoutes } from "../routes/orgs.js";
 import { usersRoutes } from "../routes/users.js";
 import { aggregationsRoutes } from "../routes/aggregations.js";
 import { promptsRoutes } from "../routes/prompts.js";
@@ -28,7 +28,7 @@ export function createApp(): Hono {
   app.route("/api/local/config", configRoutes);
   app.route("/api/local/auth", authRoutes);
   app.route("/api/local/sync", syncRouteRoutes);
-  // app.route("/api/local/orgs", orgsRoutes);
+  app.route("/api/local/orgs", orgsRoutes);
   app.route("/api/local/users", usersRoutes);
   app.route("/api/local/logs", logsRoutes);
   app.route("/api/local/update-check", updateRoutes);
