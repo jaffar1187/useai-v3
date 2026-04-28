@@ -371,6 +371,11 @@ export interface SyncLogEntry {
     error?: string;
     [key: string]: unknown;
   };
+  payload?: {
+    method: string;
+    endpoint: string;
+    body: unknown;
+  };
 }
 
 export function fetchLogs(): Promise<SyncLogEntry[]> {

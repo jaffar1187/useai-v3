@@ -1,4 +1,4 @@
-import { getConfig, saveConfig } from "@devness/useai-storage";
+import { getConfig, saveConfig, addSyncLogEntry } from "@devness/useai-storage";
 import { syncPrompts } from "@devness/useai-cloud";
 
 const MIN_INTERVAL_MS = 5 * 60 * 1000; // floor: 5 minutes
@@ -24,9 +24,27 @@ async function runSync(): Promise<void> {
       await saveConfig({ ...config, lastSyncAt: new Date().toISOString() });
     }
     if (result.synced > 0 || result.errors > 0) {
+      const ok = result.errors === 0;
+      addSyncLogEntry({
+        event: "auto_sync",
+        status: ok ? "success" : "error",
+        message: ok
+          ? `Auto-synced ${result.synced} prompts`
+          : `Auto-sync completed with ${result.errors} errors`,
+        details: {
+          synced: result.synced,
+          skipped: result.skipped,
+          errors: result.errors,
+        },
+      });
       console.log(`[useai sync] Synced ${result.synced} prompts (skipped: ${result.skipped}, errors: ${result.errors})`);
     }
   } catch (err) {
+    addSyncLogEntry({
+      event: "auto_sync",
+      status: "error",
+      message: `Auto-sync failed: ${String(err)}`,
+    });
     console.error("[useai sync] Sync failed:", err);
   }
 }

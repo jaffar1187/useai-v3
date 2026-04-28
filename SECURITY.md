@@ -1,0 +1,173 @@
+# Security
+
+This document describes UseAI v3's cryptographic design, authentication model, and vulnerability reporting process.
+
+## Ed25519 Session Chain
+
+Every session is part of a hash chain that provides tamper evidence. Unlike v1, the chain operates at the session level -- there are no individual chain records for start, heartbeat, or end events. A session is sealed as one unit when `useai_end` is called.
+
+### How It Works
+
+1. **Session sealed:** When `useai_end` is called, the entire session (all fields except `hash` and `signature`) is serialized to JSON
+2. **Hashing:** `SHA-256(session_json + prev_hash)` produces the session's hash, linking it to the previous session
+3. **Signing:** The hash is signed with your Ed25519 private key: `Ed25519_sign(hash, private_key)` (PKCS#8 DER format)
+4. **Chaining:** The session's hash becomes the `prevHash` for the next session
+
+This creates an append-only chain. If any session is modified, deleted, or reordered, the hash chain breaks and verification fails.
+
+### Session Structure
+
+```typescript
+interface Session {
+  promptId: string;
+  connectionId: string;
+  client: string;
+  taskType: string;
+  title: string;
+  startedAt: string;       // ISO 8601
+  endedAt: string;         // ISO 8601
+  durationMs: number;
+  milestones: Milestone[];
+  languages?: string[];
+  evaluation?: SessionEvaluation;
+  prevHash: string;         // Hash of the previous session
+  hash: string;             // SHA-256(JSON(all_fields_except_hash_signature) + prevHash)
+  signature: string;        // Ed25519 signature of hash, base64-encoded
+  sealVerification?: string; // Cloud seal verification signature (see below)
+  // ... additional optional fields
+}
+```
+
+### Verification
+
+Verification checks two things for each session:
+
+1. **Hash integrity:** Recompute `SHA-256(JSON(session_without_hash_and_signature) + prevHash)` and compare to the stored `hash`
+2. **Signature validity:** Verify the Ed25519 signature over the hash using the public key (SPKI DER format)
+
+Chain verification walks the full sequence and confirms each session's `prevHash` matches the previous session's `hash`.
+
+## Seal Verification
+
+Seal verification is a cloud-based mechanism that proves a session was sealed at a specific point in time. It is the primary mechanism used to determine which sessions count towards the leaderboard.
+
+### How It Works
+
+1. **Client request:** At `useai_end`, the client sends `POST /api/seal` with `{ sessionId, timestamp }` to the cloud API. This happens before the local hash is computed, so the seal verification signature is included in the hashed session data.
+2. **Timestamp validation:** The server checks that the timestamp is within 60 seconds of the current server time. If not, the request is rejected.
+3. **Signature generation:** The server generates a random 32-byte key, computes `bcrypt(timestamp + randomKey, cost=10)`, and stores the result.
+4. **Storage:** The server stores `{ sessionId, randomKey, hash }` in the `seal_verifications` table. A session can only be seal-verified once -- duplicate requests are rejected.
+5. **Response:** The bcrypt hash is returned to the client as the `signature`.
+6. **Client stores:** The client stores the returned signature as the `sealVerification` field on the session, which is then included in the hash chain computation.
+
+### What Seal Verification Proves
+
+- The session was sealed within 60 seconds of the server's clock
+- The session ID was seen by the server at that time
+- The seal can only happen once per session (the server rejects duplicates)
+
+### What Seal Verification Does Not Prove
+
+- It does not validate the session's contents, duration, milestones, or evaluation data
+- It does not verify the Ed25519 signature or hash chain integrity
+- It does not confirm the session was actually worked on by a human
+- A session can be sealed locally without seal verification (if the cloud is unreachable, the session is still saved -- it just won't have a `sealVerification` field)
+
+### Leaderboard Impact
+
+Only seal-verified sessions count towards the leaderboard. Sessions without a `sealVerification` field are excluded from leaderboard calculations. This prevents backdating sessions or submitting fabricated historical data, since the cloud must witness the seal in real time.
+
+## Key Management
+
+### Key Generation
+
+On first use, UseAI generates an Ed25519 key pair:
+
+- **Private key:** Generated in PKCS#8 DER format, encrypted with AES-256-GCM, stored in `~/.useai/keystore.json`
+- **Public key:** Stored as base64-encoded SPKI DER in the same keystore file
+
+The encryption key for the private key is derived from machine-specific data:
+
+```
+SHA-256("useai-" + hostname + "-" + $USER)
+```
+
+The keystore file contains:
+```json
+{
+  "publicKey": "base64-encoded SPKI DER public key",
+  "encryptedPrivateKey": "base64-encoded AES-256-GCM ciphertext",
+  "iv": "base64-encoded 12-byte IV",
+  "authTag": "base64-encoded GCM authentication tag",
+  "createdAt": "ISO timestamp"
+}
+```
+
+### Encryption Key Derivation
+
+The private key encryption is based on hostname and OS username. This means:
+
+- The keystore is tied to the machine it was generated on
+- Moving `keystore.json` to a different machine (or changing your hostname/username) will fail to decrypt
+- This is not a strong secret -- anyone with access to the file and knowledge of the hostname/username can derive the key
+
+**Honest caveat:** The encryption key derivation is deterministic from public system information. It protects against casual file theft but not against a targeted attacker with access to the machine. The primary purpose is to prevent accidental exposure of the raw private key.
+
+### Key Registration
+
+You can register your public key with the server (`useai.dev`). This allows the server to verify that synced sessions were signed by your key.
+
+### No Key Rotation
+
+There is no key rotation mechanism. If your keystore is compromised, generate a new one by deleting `~/.useai/keystore.json` and restarting the MCP server. This breaks chain continuity with previously signed sessions.
+
+## Verification Tiers
+
+When sessions are synced to the server, they receive a verification tier:
+
+- **`verified`** -- The user has registered a public key with the server
+- **`unverified`** -- No public key registered; signatures cannot be validated server-side
+
+**Honest caveat:** Verification tiers indicate whether a public key exists on the server, but seal verification (described above) is the primary integrity mechanism for the leaderboard. The verification tier alone does not mean the server has validated the Ed25519 signatures on individual sessions. Local verification (checking chain integrity on your machine) works fully.
+
+## Authentication
+
+### Login Flow
+
+UseAI uses OTP (one-time password) authentication:
+
+1. User requests OTP via email at `useai.dev`
+2. User enters OTP in CLI (`useai login`)
+3. Server returns a JWT token
+4. Token is stored locally in `~/.useai/config.json`
+
+### What's Stored
+
+- **JWT token** in `~/.useai/config.json` (used for sync and seal verification API calls)
+- **No passwords** -- OTP-only authentication
+- **No OAuth tokens** -- UseAI does not connect to GitHub, Google, or other providers
+
+### Token Expiry
+
+JWT tokens have a server-defined expiry. When expired, you'll need to re-authenticate with `useai login`.
+
+## Data Storage
+
+All user data lives in `~/.useai/`:
+
+- **Sessions:** `~/.useai/data/YYYY-MM-DD.jsonl` (one file per day, one JSON line per session)
+- **Config:** `~/.useai/config.json`
+- **Keystore:** `~/.useai/keystore.json`
+- **PID file:** `~/.useai/daemon.pid`
+- **Logs:** `~/.useai/daemon.log`
+
+Session data is stored locally first and synced to the cloud on a configurable schedule. The cloud stores sessions in a PostgreSQL database.
+
+## Vulnerability Reporting
+
+If you discover a security vulnerability in UseAI, please report it responsibly:
+
+- **Email:** security@useai.dev
+- **GitHub:** Open a private security advisory at [github.com/devness-com/useai/security](https://github.com/devness-com/useai/security)
+
+Please do not file public issues for security vulnerabilities. We aim to acknowledge reports within 48 hours and provide a fix timeline within 7 days.

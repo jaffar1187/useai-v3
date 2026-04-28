@@ -10,6 +10,7 @@ export const CONFIG_FILE = join(USEAI_DIR, "config.json");
 export const KEYSTORE_FILE = join(USEAI_DIR, "keystore.json");
 export const DAEMON_PID_FILE = join(USEAI_DIR, "daemon.pid");
 export const DAEMON_LOG_FILE = join(USEAI_DIR, "daemon.log");
+export const SYNC_LOG_FILE = join(USEAI_DIR, "sync-log.json");
 
 export const DAEMON_PORT = Number(process.env["USEAI_PORT"] ?? 19200);
 export const DAEMON_HOST = process.env["USEAI_HOST"] ?? "127.0.0.1";

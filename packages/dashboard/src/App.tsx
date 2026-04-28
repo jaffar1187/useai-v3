@@ -5,6 +5,7 @@ import { DashboardBody } from "./components/DashboardBody";
 import { SearchOverlay } from "./components/SearchOverlay";
 import { SettingsPage } from "./components/SettingsPage";
 import { FaqsPage } from "./components/FaqsPage";
+import { LogsPage } from "./components/LogsPage";
 
 export function App() {
   const {
@@ -73,7 +74,9 @@ export function App() {
         onRefresh={loadConfig}
       />
       <div className="max-w-[1240px] mx-auto px-4 sm:px-6 pb-6">
-        {activeTab === "faqs" ? (
+        {activeTab === "logs" ? (
+          <LogsPage />
+        ) : activeTab === "faqs" ? (
           <FaqsPage />
         ) : activeTab === "settings" ? (
           <SettingsPage onTabChange={setActiveTab as (tab: string) => void} />

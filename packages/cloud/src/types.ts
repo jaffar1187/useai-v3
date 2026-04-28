@@ -15,4 +15,6 @@ export interface SyncResult {
   synced: number;
   skipped: number;
   errors: number;
+  dates: { date: string; sessions: number }[];
+  payload?: unknown;
 }

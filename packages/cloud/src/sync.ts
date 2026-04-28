@@ -194,7 +194,7 @@ export async function syncPrompts(
   config: UseaiConfig,
   days?: number,
 ): Promise<SyncResult> {
-  const result: SyncResult = { synced: 0, skipped: 0, errors: 0 };
+  const result: SyncResult = { synced: 0, skipped: 0, errors: 0, dates: [] };
 
   const sessions = await fetchSessionsFromDaemon(days ?? 180);
 
@@ -234,8 +234,13 @@ export async function syncPrompts(
     body: payloads,
   });
 
+  result.payload = payloads;
+
   if (batchRes.ok) {
     result.synced += totalSessions;
+    for (const p of payloads) {
+      result.dates.push({ date: p.date, sessions: p.sessions.length });
+    }
   } else {
     console.error(
       `[sync] Batch failed: ${batchRes.error} (status ${batchRes.status})`,

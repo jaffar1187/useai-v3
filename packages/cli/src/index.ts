@@ -8,6 +8,7 @@ import { registerServe }      from "./commands/serve.js";
 import { registerConfig }     from "./commands/config.js";
 import { registerLogin }      from "./commands/login.js";
 import { registerLogout }     from "./commands/logout.js";
+import { registerSync }       from "./commands/sync.js";
 import { registerUpdate }     from "./commands/update.js";
 
 import { registerDaemonStart }   from "./commands/daemon/start.js";
@@ -34,6 +35,7 @@ registerServe(program);
 registerConfig(program);
 registerLogin(program);
 registerLogout(program);
+registerSync(program);
 registerUpdate(program);
 
 // useai daemon <subcommand>

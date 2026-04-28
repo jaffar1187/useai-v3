@@ -8,7 +8,8 @@
     "./paths": "./dist/paths.js",
     "./sessions": "./dist/sessions.js",
     "./config": "./dist/config.js",
-    "./keystore": "./dist/keystore.js"
+    "./keystore": "./dist/keystore.js",
+    "./sync-log": "./dist/sync-log.js"
   },
   "scripts": {
     "build": "tsc",
