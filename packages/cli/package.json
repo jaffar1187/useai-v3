@@ -1,8 +1,9 @@
 {
   "name": "@devness/useai-cli",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "files": ["dist"],
   "bin": {
     "useai": "./dist/index.js"
   },

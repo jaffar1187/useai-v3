@@ -288,9 +288,9 @@ export function DashboardBody({
             outsideWindowCounts={data.outsideWindowCounts}
             onNavigateNewer={data.handleNavigateNewer}
             onNavigateOlder={data.handleNavigateOlder}
-            onDeleteSession={data.handleDeleteSession}
-            onDeleteConversation={data.handleDeleteConversation}
-            onDeleteMilestone={data.handleDeleteMilestone}
+            onDeleteSession={undefined}
+            onDeleteConversation={undefined}
+            onDeleteMilestone={undefined}
             onLoadMore={data.handleLoadMore}
             hasMore={data.feedHasMore}
           />

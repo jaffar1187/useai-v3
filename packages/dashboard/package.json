@@ -1,11 +1,14 @@
 {
   "name": "@devness/useai-dashboard",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
   "type": "module",
+  "files": ["dist", "src", "package.json"],
   "exports": {
     ".": "./src/index.ts",
     "./components/*": "./src/components/*.tsx",
+    "./components/insights/*": "./src/components/insights/*.tsx",
+    "./components/sessions/*": "./src/components/sessions/*.tsx",
+    "./components/stats/*": "./src/components/stats/*.tsx",
     "./components/time-travel/*": "./src/components/time-travel/*.ts",
     "./lib/*": "./src/lib/*.ts",
     "./constants/*": "./src/constants/*.ts",

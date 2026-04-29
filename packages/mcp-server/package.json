@@ -1,8 +1,10 @@
 {
   "name": "@devness/useai",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
   "exports": {
     ".": "./dist/index.js",
     "./tools": "./dist/mcp-tools.js"

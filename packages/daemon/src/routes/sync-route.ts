@@ -10,13 +10,6 @@ syncRouteRoutes.post("/", async (c) => {
     return c.json({ ok: false, error: "Not authenticated" }, 401);
   }
 
-  // Log what we're about to sync before sending
-  addSyncLogEntry({
-    event: "sync",
-    status: "info",
-    message: "Starting sync...",
-  });
-
   try {
     const result = await syncPrompts(config.auth.token, config);
 

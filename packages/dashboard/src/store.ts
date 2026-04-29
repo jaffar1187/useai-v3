@@ -70,7 +70,7 @@ export const useDashboardStore = create<DashboardState>()(
 
       activeTab: (() => {
         try {
-          const allTabs = ["prompts", "insights", "settings"];
+          const allTabs = ["prompts", "insights", "settings", "logs", "faqs"];
           const saved = localStorage.getItem("useai-active-tab");
           if (saved && allTabs.includes(saved)) {
             return saved as ActiveTab;
